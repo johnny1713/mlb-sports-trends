@@ -30,6 +30,8 @@
             --accent-blue: #00b0ff;
             --accent-gold: #ffd200;
             --accent-gold-glow: rgba(255, 210, 0, 0.25);
+            --accent-purple: #a855f7;
+            --accent-purple-glow: rgba(168, 85, 247, 0.25);
             --font-family: 'Inter', 'Noto Sans TC', sans-serif;
             --shadow-premium: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
             --glass-blur: blur(12px);
@@ -831,6 +833,197 @@
         }
 
         /* ==========================================
+           AI 精選推薦專區 (AI Top 3 Section)
+           ========================================== */
+        .ai-section {
+            margin-bottom: 45px;
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(253, 80, 0, 0.04) 100%);
+            border: 1px solid rgba(168, 85, 247, 0.2);
+            border-radius: 24px;
+            padding: 28px;
+            box-shadow: 0 15px 35px -10px rgba(168, 85, 247, 0.15);
+            backdrop-filter: var(--glass-blur);
+        }
+
+        .ai-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+        }
+
+        .ai-main-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+        }
+
+        .ai-badge-glow {
+            background: linear-gradient(135deg, #a855f7 0%, #fd5000 100%);
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 99px;
+            box-shadow: 0 0 12px rgba(168, 85, 247, 0.5);
+            letter-spacing: 0.5px;
+        }
+
+        .ai-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 992px) {
+            .ai-cards-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+
+        .ai-card {
+            background: rgba(8, 12, 20, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 18px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .ai-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, #a855f7, #fd5000);
+            opacity: 0.8;
+        }
+
+        .ai-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(168, 85, 247, 0.4);
+            box-shadow: 0 10px 25px -5px rgba(168, 85, 247, 0.15);
+            background: rgba(15, 23, 42, 0.7);
+        }
+
+        .ai-card-rank {
+            position: absolute;
+            right: 16px;
+            top: 16px;
+            font-size: 28px;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.03);
+            font-style: italic;
+            line-height: 1;
+        }
+
+        .ai-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .ai-card-tag {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+
+        .ai-card-tag.side-tag {
+            background: rgba(0, 176, 255, 0.15);
+            color: var(--accent-blue);
+            border: 1px solid rgba(0, 176, 255, 0.25);
+        }
+
+        .ai-card-tag.total-tag {
+            background: rgba(0, 230, 118, 0.15);
+            color: var(--accent-green);
+            border: 1px solid rgba(0, 230, 118, 0.25);
+        }
+
+        .ai-card-match {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .ai-card-bet {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-top: 4px;
+        }
+
+        .ai-card-logos {
+            display: flex;
+            align-items: center;
+            height: 30px;
+        }
+
+        .ai-card-logo {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 3px;
+        }
+
+        .ai-card-logos .ai-card-logo:nth-child(2) {
+            margin-left: -10px;
+            background: rgba(8, 12, 20, 0.95);
+        }
+
+        .ai-card-rationale {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            flex-grow: 1;
+        }
+
+        .ai-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 10px;
+            margin-top: 4px;
+        }
+
+        .ai-card-roi-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .ai-card-roi-val {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--accent-gold);
+            text-shadow: 0 0 8px rgba(255, 210, 0, 0.3);
+        }
+
+        /* ==========================================
            7. 頁尾
            ========================================== */
         footer {
@@ -879,6 +1072,11 @@
                 </div>
             </div>
         </header>
+
+        <!-- 今日 AI 精選 Top 3 推薦專區 -->
+        <section class="ai-section" id="ai-top3-section">
+            <!-- 由 JS 動態渲染 -->
+        </section>
 
         <!-- 今日雙欄 Top 5 黃金投注推薦專區 -->
         <section class="top-section">
@@ -940,10 +1138,13 @@
         [{"path": "/sport/baseball/mlb/matchup/369892", "team_a": "Los Angeles Angels", "team_b": "Detroit Tigers", "team_a_logo": "https://img.covers.com/covers/data/svg_logos/mlb/laa.svg", "team_b_logo": "https://img.covers.com/covers/data/svg_logos/mlb/det.svg", "processed_trends": [{"team": "Los Angeles Angels", "class": "High", "text": "The Los Angeles Angels have hit the Game Total Under in 16 of their last 25 games (+6.05 Units / 22% ROI)", "market": "Game Total", "direction": "Under", "units": 6.05, "roi": 22}, {"team": "Los Angeles Angels", "class": "High", "text": "The Los Angeles Angels have hit the Team Total Under in 14 of their last 21 games (+6.05 Units / 25% ROI)", "market": "Team Total", "direction": "Under", "units": 6.05, "roi": 25}, {"team": "Los Angeles Angels", "class": "High", "text": "The Los Angeles Angels have hit the 1st Five Innings (F5) Team Total Under in 7 of their last 10 away games (+3.60 Units / 31% ROI)", "market": "F5 Team Total", "direction": "Under", "units": 3.6, "roi": 31}, {"team": "Los Angeles Angels", "class": "High", "text": "The Los Angeles Angels have hit the Moneyline in 4 of their last 5 games (+3.55 Units / 66% ROI)", "market": "Moneyline", "direction": "Win", "units": 3.55, "roi": 66}, {"team": "Los Angeles Angels", "class": "High", "text": "The Los Angeles Angels have hit the 1st Five Innings (F5) Moneyline in 4 of their last 7 games (+2.40 Units / 30% ROI)", "market": "F5 Moneyline", "direction": "Win", "units": 2.4, "roi": 30}, {"team": "Los Angeles Angels", "class": "Low", "text": "The Los Angeles Angels have only hit the Team Total Over in 18 of their last 50 away games (-18.65 Units / -31% ROI)", "market": "Team Total", "direction": "Over", "units": -18.65, "roi": -31}, {"team": "Los Angeles Angels", "class": "Low", "text": "The Los Angeles Angels have only covered the Run Line in 12 of their last 35 games (-15.10 Units / -32% ROI)", "market": "Run Line", "direction": "Fail to Cover", "units": -15.1, "roi": -32}, {"team": "Los Angeles Angels", "class": "Low", "text": "The Los Angeles Angels have only covered the 1st Five Innings (F5) Run Line in 3 of their last 14 away games (-10.15 Units / -60% ROI)", "market": "F5 Run Line", "direction": "Fail to Cover", "units": -10.15, "roi": -60}, {"team": "Los Angeles Angels", "class": "Low", "text": "The Los Angeles Angels have only hit the 1st Five Innings (F5) Team Total Over in 15 of their last 35 games (-10.15 Units / -24% ROI)", "market": "F5 Team Total", "direction": "Over", "units": -10.15, "roi": -24}, {"team": "Los Angeles Angels", "class": "Low", "text": "The Los Angeles Angels have only hit the Game Total Over in 16 of their last 40 games (-8.90 Units / -20% ROI)", "market": "Game Total", "direction": "Over", "units": -8.9, "roi": -20}, {"team": "Detroit Tigers", "class": "High", "text": "The Detroit Tigers have hit the Team Total Under in 14 of their last 20 games (+7.50 Units / 32% ROI)", "market": "Team Total", "direction": "Under", "units": 7.5, "roi": 32}, {"team": "Detroit Tigers", "class": "High", "text": "The Detroit Tigers have hit the Game Total Under in 10 of their last 14 games at home (+5.60 Units / 36% ROI)", "market": "Game Total", "direction": "Under", "units": 5.6, "roi": 36}, {"team": "Detroit Tigers", "class": "High", "text": "The Detroit Tigers have hit the 1st Five Innings (F5) Team Total Over in their last 5 games (+5.00 Units / 77% ROI)", "market": "F5 Team Total", "direction": "Over", "units": 5.0, "roi": 77}, {"team": "Detroit Tigers", "class": "High", "text": "The Detroit Tigers have covered the 1st Five Innings (F5) Run Line in 6 of their last 8 games (+3.70 Units / 36% ROI)", "market": "F5 Run Line", "direction": "Cover", "units": 3.7, "roi": 36}, {"team": "Detroit Tigers", "class": "High", "text": "The Detroit Tigers have hit the 1st Five Innings (F5) Moneyline in 4 of their last 5 games (+3.05 Units / 56% ROI)", "market": "F5 Moneyline", "direction": "Win", "units": 3.05, "roi": 56}, {"team": "Detroit Tigers", "class": "Low", "text": "The Detroit Tigers have only hit the Moneyline in 8 of their last 30 games (-16.30 Units / -49% ROI)", "market": "Moneyline", "direction": "Lose", "units": -16.3, "roi": -49}, {"team": "Detroit Tigers", "class": "Low", "text": "The Detroit Tigers have only covered the Run Line in 13 of their last 35 games (-12.20 Units / -25% ROI)", "market": "Run Line", "direction": "Fail to Cover", "units": -12.2, "roi": -25}, {"team": "Detroit Tigers", "class": "Low", "text": "The Detroit Tigers have only hit the 1st Five Innings (F5) Team Total Under in 23 of their last 50 games at home (-9.30 Units / -15% ROI)", "market": "F5 Team Total", "direction": "Under", "units": -9.3, "roi": -15}, {"team": "Detroit Tigers", "class": "Low", "text": "The Detroit Tigers have only hit the Game Total Over in 21 of their last 50 games (-7.45 Units / -14% ROI)", "market": "Game Total", "direction": "Over", "units": -7.45, "roi": -14}], "double_positive": [{"market_type": "Under (小分)", "recommendation": "買 Under (全場/首五局小分)", "confidence": "雙正面強勢指標：Los Angeles Angels 擁有 3 項 Under 趨勢，Detroit Tigers 擁有 2 項 Under 趨勢。", "team_a_trends": ["The Los Angeles Angels have hit the Game Total Under in 16 of their last 25 games (+6.05 Units / 22% ROI)", "The Los Angeles Angels have hit the Team Total Under in 14 of their last 21 games (+6.05 Units / 25% ROI)", "The Los Angeles Angels have hit the 1st Five Innings (F5) Team Total Under in 7 of their last 10 away games (+3.60 Units / 31% ROI)"], "team_b_trends": ["The Detroit Tigers have hit the Team Total Under in 14 of their last 20 games (+7.50 Units / 32% ROI)", "The Detroit Tigers have hit the Game Total Under in 10 of their last 14 games at home (+5.60 Units / 36% ROI)"], "avg_roi": 29.2}], "opposing_trends": [{"market": "Moneyline", "bet_on": "Los Angeles Angels", "bet_against": "Detroit Tigers", "recommendation": "買 Los Angeles Angels Moneyline", "confidence": "黃金一正一反組合：Los Angeles Angels 在 Moneyline 表現極強（+3.55 Units），而對手 Detroit Tigers 表現極差（-16.3 Units）。", "strong_trend": "The Los Angeles Angels have hit the Moneyline in 4 of their last 5 games (+3.55 Units / 66% ROI)", "weak_trend": "The Detroit Tigers have only hit the Moneyline in 8 of their last 30 games (-16.30 Units / -49% ROI)", "roi_diff": 115, "strong_roi": 66}, {"market": "F5 Run Line", "bet_on": "Detroit Tigers", "bet_against": "Los Angeles Angels", "recommendation": "買 Detroit Tigers F5 Run Line", "confidence": "黃金一正一反組合：Detroit Tigers 在 F5 Run Line 表現極強（+3.7 Units），而對手 Los Angeles Angels 表現極差（-10.15 Units）。", "strong_trend": "The Detroit Tigers have covered the 1st Five Innings (F5) Run Line in 6 of their last 8 games (+3.70 Units / 36% ROI)", "weak_trend": "The Los Angeles Angels have only covered the 1st Five Innings (F5) Run Line in 3 of their last 14 away games (-10.15 Units / -60% ROI)", "roi_diff": 96, "strong_roi": 36}]}, {"path": "/sport/baseball/mlb/matchup/367898", "team_a": "Minnesota Twins", "team_b": "Chicago White Sox", "team_a_logo": "https://img.covers.com/covers/data/svg_logos/mlb/min.svg", "team_b_logo": "https://img.covers.com/covers/data/svg_logos/mlb/chw.svg", "processed_trends": [{"team": "Minnesota Twins", "class": "High", "text": "The Minnesota Twins have covered the Run Line in 13 of their last 17 games (+9.50 Units / 40% ROI)", "market": "Run Line", "direction": "Cover", "units": 9.5, "roi": 40}, {"team": "Minnesota Twins", "class": "High", "text": "The Minnesota Twins have hit the Game Total Over in 16 of their last 24 away games (+7.30 Units / 28% ROI)", "market": "Game Total", "direction": "Over", "units": 7.3, "roi": 28}, {"team": "Minnesota Twins", "class": "High", "text": "The Minnesota Twins have hit the Team Total Over in 31 of their last 50 games (+9.45 Units / 16% ROI)", "market": "Team Total", "direction": "Over", "units": 9.45, "roi": 16}, {"team": "Minnesota Twins", "class": "High", "text": "The Minnesota Twins have hit the 1st Five Innings (F5) Team Total Over in 30 of their last 50 games (+6.90 Units / 11% ROI)", "market": "F5 Team Total", "direction": "Over", "units": 6.9, "roi": 11}, {"team": "Minnesota Twins", "class": "High", "text": "The Minnesota Twins have hit the Moneyline in 11 of their last 17 games (+5.70 Units / 31% ROI)", "market": "Moneyline", "direction": "Win", "units": 5.7, "roi": 31}, {"team": "Minnesota Twins", "class": "Low", "text": "The Minnesota Twins have only hit the Team Total Under in 19 of their last 50 games (-16.25 Units / -28% ROI)", "market": "Team Total", "direction": "Under", "units": -16.25, "roi": -28}, {"team": "Minnesota Twins", "class": "Low", "text": "The Minnesota Twins have only hit the 1st Five Innings (F5) Team Total Under in 20 of their last 50 games (-15.45 Units / -26% ROI)", "market": "F5 Team Total", "direction": "Under", "units": -15.45, "roi": -26}, {"team": "Minnesota Twins", "class": "Low", "text": "The Minnesota Twins have only hit the Game Total Under in 17 of their last 50 games (-15.00 Units / -27% ROI)", "market": "Game Total", "direction": "Under", "units": -15.0, "roi": -27}, {"team": "Minnesota Twins", "class": "Low", "text": "The Minnesota Twins have only covered the 1st Five Innings (F5) Run Line in 8 of their last 24 away games (-10.50 Units / -36% ROI)", "market": "F5 Run Line", "direction": "Fail to Cover", "units": -10.5, "roi": -36}, {"team": "Minnesota Twins", "class": "Low", "text": "The Minnesota Twins have only hit the 1st Five Innings (F5) Moneyline in 15 of their last 45 away games (-10.40 Units / -21% ROI)", "market": "F5 Moneyline", "direction": "Lose", "units": -10.4, "roi": -21}, {"team": "Chicago White Sox", "class": "High", "text": "The Chicago White Sox have hit the 1st Five Innings (F5) Team Total Over in 14 of their last 20 games (+7.85 Units / 32% ROI)", "market": "F5 Team Total", "direction": "Over", "units": 7.85, "roi": 32}, {"team": "Chicago White Sox", "class": "High", "text": "The Chicago White Sox have hit the Team Total Over in 26 of their last 40 games (+10.10 Units / 22% ROI)", "market": "Team Total", "direction": "Over", "units": 10.1, "roi": 22}, {"team": "Chicago White Sox", "class": "High", "text": "The Chicago White Sox have hit the Game Total Over in 25 of their last 40 games (+10.05 Units / 23% ROI)", "market": "Game Total", "direction": "Over", "units": 10.05, "roi": 23}, {"team": "Chicago White Sox", "class": "High", "text": "The Chicago White Sox have hit the Moneyline in 12 of their last 15 games at home (+9.60 Units / 61% ROI)", "market": "Moneyline", "direction": "Win", "units": 9.6, "roi": 61}, {"team": "Chicago White Sox", "class": "High", "text": "The Chicago White Sox have covered the Run Line in 23 of their last 35 games (+8.60 Units / 16% ROI)", "market": "Run Line", "direction": "Cover", "units": 8.6, "roi": 16}, {"team": "Chicago White Sox", "class": "Low", "text": "The Chicago White Sox have only hit the Team Total Under in 14 of their last 40 games (-15.95 Units / -34% ROI)", "market": "Team Total", "direction": "Under", "units": -15.95, "roi": -34}, {"team": "Chicago White Sox", "class": "Low", "text": "The Chicago White Sox have only hit the Game Total Under in 14 of their last 40 games (-13.65 Units / -31% ROI)", "market": "Game Total", "direction": "Under", "units": -13.65, "roi": -31}, {"team": "Chicago White Sox", "class": "Low", "text": "The Chicago White Sox have only hit the 1st Five Innings (F5) Team Total Under in 4 of their last 18 games (-11.95 Units / -58% ROI)", "market": "F5 Team Total", "direction": "Under", "units": -11.95, "roi": -58}, {"team": "Chicago White Sox", "class": "Low", "text": "The Chicago White Sox have only covered the 1st Five Innings (F5) Run Line in 15 of their last 30 games (-3.90 Units / -10% ROI)", "market": "F5 Run Line", "direction": "Fail to Cover", "units": -3.9, "roi": -10}, {"team": "Chicago White Sox", "class": "Low", "text": "The Chicago White Sox have only hit the 1st Five Innings (F5) Moneyline in 11 of their last 30 games (-3.55 Units / -11% ROI)", "market": "F5 Moneyline", "direction": "Lose", "units": -3.55, "roi": -11}], "double_positive": [{"market_type": "Over (大分)", "recommendation": "買 Over (全場/首五局大分)", "confidence": "雙正面強勢指標：Minnesota Twins 擁有 3 項 Over 趨勢，Chicago White Sox 擁有 3 項 Over 趨勢。", "team_a_trends": ["The Minnesota Twins have hit the Game Total Over in 16 of their last 24 away games (+7.30 Units / 28% ROI)", "The Minnesota Twins have hit the Team Total Over in 31 of their last 50 games (+9.45 Units / 16% ROI)", "The Minnesota Twins have hit the 1st Five Innings (F5) Team Total Over in 30 of their last 50 games (+6.90 Units / 11% ROI)"], "team_b_trends": ["The Chicago White Sox have hit the 1st Five Innings (F5) Team Total Over in 14 of their last 20 games (+7.85 Units / 32% ROI)", "The Chicago White Sox have hit the Team Total Over in 26 of their last 40 games (+10.10 Units / 22% ROI)", "The Chicago White Sox have hit the Game Total Over in 25 of their last 40 games (+10.05 Units / 23% ROI)"], "avg_roi": 22.0}], "opposing_trends": []}, {"path": "/sport/baseball/mlb/matchup/368799", "team_a": "Atlanta Braves", "team_b": "Boston Red Sox", "team_a_logo": "https://img.covers.com/covers/data/svg_logos/mlb/atl.svg", "team_b_logo": "https://img.covers.com/covers/data/svg_logos/mlb/bos.svg", "processed_trends": [{"team": "Atlanta Braves", "class": "High", "text": "The Atlanta Braves have covered the Run Line in 39 of their last 50 away games (+31.65 Units / 52% ROI)", "market": "Run Line", "direction": "Cover", "units": 31.65, "roi": 52}, {"team": "Atlanta Braves", "class": "High", "text": "The Atlanta Braves have hit the Team Total Over in 28 of their last 40 away games (+14.00 Units / 30% ROI)", "market": "Team Total", "direction": "Over", "units": 14.0, "roi": 30}, {"team": "Atlanta Braves", "class": "High", "text": "The Atlanta Braves have hit the Moneyline in 35 of their last 50 away games (+20.20 Units / 33% ROI)", "market": "Moneyline", "direction": "Win", "units": 20.2, "roi": 33}, {"team": "Atlanta Braves", "class": "High", "text": "The Atlanta Braves have hit the Game Total Over in 22 of their last 35 away games (+9.95 Units / 25% ROI)", "market": "Game Total", "direction": "Over", "units": 9.95, "roi": 25}, {"team": "Atlanta Braves", "class": "High", "text": "The Atlanta Braves have hit the 1st Five Innings (F5) Team Total Over in 28 of their last 45 away games (+9.50 Units / 18% ROI)", "market": "F5 Team Total", "direction": "Over", "units": 9.5, "roi": 18}, {"team": "Atlanta Braves", "class": "Low", "text": "The Atlanta Braves have only hit the Team Total Under in 17 of their last 50 away games (-21.35 Units / -37% ROI)", "market": "Team Total", "direction": "Under", "units": -21.35, "roi": -37}, {"team": "Atlanta Braves", "class": "Low", "text": "The Atlanta Braves have only hit the 1st Five Innings (F5) Team Total Under in 17 of their last 45 away games (-17.40 Units / -32% ROI)", "market": "F5 Team Total", "direction": "Under", "units": -17.4, "roi": -32}, {"team": "Atlanta Braves", "class": "Low", "text": "The Atlanta Braves have only hit the Game Total Under in 16 of their last 45 away games (-13.10 Units / -27% ROI)", "market": "Game Total", "direction": "Under", "units": -13.1, "roi": -27}, {"team": "Atlanta Braves", "class": "Low", "text": "The Atlanta Braves have only hit the 1st Five Innings (F5) Moneyline in 2 of their last 9 games (-4.50 Units / -35% ROI)", "market": "F5 Moneyline", "direction": "Lose", "units": -4.5, "roi": -35}, {"team": "Atlanta Braves", "class": "Low", "text": "The Atlanta Braves have only covered the 1st Five Innings (F5) Run Line in 3 of their last 9 games (-4.25 Units / -38% ROI)", "market": "F5 Run Line", "direction": "Fail to Cover", "units": -4.25, "roi": -38}, {"team": "Boston Red Sox", "class": "High", "text": "The Boston Red Sox have hit the Game Total Under in 28 of their last 45 games at home (+12.55 Units / 26% ROI)", "market": "Game Total", "direction": "Under", "units": 12.55, "roi": 26}, {"team": "Boston Red Sox", "class": "High", "text": "The Boston Red Sox have hit the Team Total Under in 30 of their last 45 games at home (+14.10 Units / 27% ROI)", "market": "Team Total", "direction": "Under", "units": 14.1, "roi": 27}, {"team": "Boston Red Sox", "class": "High", "text": "The Boston Red Sox have hit the 1st Five Innings (F5) Team Total Under in 31 of their last 50 games at home (+8.45 Units / 13% ROI)", "market": "F5 Team Total", "direction": "Under", "units": 8.45, "roi": 13}, {"team": "Boston Red Sox", "class": "High", "text": "The Boston Red Sox have covered the Run Line in 11 of their last 19 games (+4.75 Units / 19% ROI)", "market": "Run Line", "direction": "Cover", "units": 4.75, "roi": 19}, {"team": "Boston Red Sox", "class": "High", "text": "The Boston Red Sox have hit the 1st Five Innings (F5) Moneyline in 7 of their last 15 games at home (+2.25 Units / 11% ROI)", "market": "F5 Moneyline", "direction": "Win", "units": 2.25, "roi": 11}, {"team": "Boston Red Sox", "class": "Low", "text": "The Boston Red Sox have only hit the Moneyline in 16 of their last 45 games at home (-23.00 Units / -37% ROI)", "market": "Moneyline", "direction": "Lose", "units": -23.0, "roi": -37}, {"team": "Boston Red Sox", "class": "Low", "text": "The Boston Red Sox have only hit the Team Total Over in 15 of their last 45 games at home (-20.10 Units / -37% ROI)", "market": "Team Total", "direction": "Over", "units": -20.1, "roi": -37}, {"team": "Boston Red Sox", "class": "Low", "text": "The Boston Red Sox have only hit the Game Total Over in 14 of their last 45 games at home (-17.20 Units / -34% ROI)", "market": "Game Total", "direction": "Over", "units": -17.2, "roi": -34}, {"team": "Boston Red Sox", "class": "Low", "text": "The Boston Red Sox have only covered the 1st Five Innings (F5) Run Line in 19 of their last 50 games (-15.75 Units / -27% ROI)", "market": "F5 Run Line", "direction": "Fail to Cover", "units": -15.75, "roi": -27}, {"team": "Boston Red Sox", "class": "Low", "text": "The Boston Red Sox have only hit the 1st Five Innings (F5) Team Total Over in 19 of their last 50 games at home (-14.55 Units / -26% ROI)", "market": "F5 Team Total", "direction": "Over", "units": -14.55, "roi": -26}], "double_positive": [], "opposing_trends": [{"market": "Moneyline", "bet_on": "Atlanta Braves", "bet_against": "Boston Red Sox", "recommendation": "買 Atlanta Braves Moneyline", "confidence": "黃金一正一反組合：Atlanta Braves 在 Moneyline 表現極強（+20.2 Units），而對手 Boston Red Sox 表現極差（-23.0 Units）。", "strong_trend": "The Atlanta Braves have hit the Moneyline in 35 of their last 50 away games (+20.20 Units / 33% ROI)", "weak_trend": "The Boston Red Sox have only hit the Moneyline in 16 of their last 45 games at home (-23.00 Units / -37% ROI)", "roi_diff": 70, "strong_roi": 33}, {"market": "F5 Moneyline", "bet_on": "Boston Red Sox", "bet_against": "Atlanta Braves", "recommendation": "買 Boston Red Sox F5 Moneyline", "confidence": "黃金一正一反組合：Boston Red Sox 在 F5 Moneyline 表現極強（+2.25 Units），而對手 Atlanta Braves 表現極差（-4.5 Units）。", "strong_trend": "The Boston Red Sox have hit the 1st Five Innings (F5) Moneyline in 7 of their last 15 games at home (+2.25 Units / 11% ROI)", "weak_trend": "The Atlanta Braves have only hit the 1st Five Innings (F5) Moneyline in 2 of their last 9 games (-4.50 Units / -35% ROI)", "roi_diff": 46, "strong_roi": 11}]}, {"path": "/sport/baseball/mlb/matchup/368133", "team_a": "Toronto Blue Jays", "team_b": "Baltimore Orioles", "team_a_logo": "https://img.covers.com/covers/data/svg_logos/mlb/tor.svg", "team_b_logo": "https://img.covers.com/covers/data/svg_logos/mlb/bal.svg", "processed_trends": [{"team": "Toronto Blue Jays", "class": "High", "text": "The Toronto Blue Jays have hit the 1st Five Innings (F5) Team Total Under in 32 of their last 50 games (+14.30 Units / 24% ROI)", "market": "F5 Team Total", "direction": "Under", "units": 14.3, "roi": 24}, {"team": "Toronto Blue Jays", "class": "High", "text": "The Toronto Blue Jays have hit the Run Line in 8 of their last 11 games (+6.55 Units / 48% ROI)", "market": "Run Line", "direction": "Cover", "units": 6.55, "roi": 48}, {"team": "Toronto Blue Jays", "class": "High", "text": "The Toronto Blue Jays have hit the Team Total Under in 17 of their last 25 away games (+8.40 Units / 29% ROI)", "market": "Team Total", "direction": "Under", "units": 8.4, "roi": 29}, {"team": "Toronto Blue Jays", "class": "High", "text": "The Toronto Blue Jays have hit the Game Total Under in 8 of their last 11 away games (+5.90 Units / 49% ROI)", "market": "Game Total", "direction": "Under", "units": 5.9, "roi": 49}, {"team": "Toronto Blue Jays", "class": "High", "text": "The Toronto Blue Jays have covered the 1st Five Innings (F5) Run Line in 6 of their last 7 away games (+4.90 Units / 60% ROI)", "market": "F5 Run Line", "direction": "Cover", "units": 4.9, "roi": 60}, {"team": "Toronto Blue Jays", "class": "Low", "text": "The Toronto Blue Jays have only hit the 1st Five Innings (F5) Team Total Over in 18 of their last 50 games (-21.20 Units / -34% ROI)", "market": "F5 Team Total", "direction": "Over", "units": -21.2, "roi": -34}, {"team": "Toronto Blue Jays", "class": "Low", "text": "The Toronto Blue Jays have only hit the 1st Five Innings (F5) Moneyline in 16 of their last 50 games (-12.90 Units / -21% ROI)", "market": "F5 Moneyline", "direction": "Lose", "units": -12.9, "roi": -21}, {"team": "Toronto Blue Jays", "class": "Low", "text": "The Toronto Blue Jays have only hit the Team Total Over in 21 of their last 50 games (-12.85 Units / -22% ROI)", "market": "Team Total", "direction": "Over", "units": -12.85, "roi": -22}, {"team": "Toronto Blue Jays", "class": "Low", "text": "The Toronto Blue Jays have only hit the Moneyline in 23 of their last 50 games (-8.25 Units / -13% ROI)", "market": "Moneyline", "direction": "Lose", "units": -8.25, "roi": -13}, {"team": "Toronto Blue Jays", "class": "Low", "text": "The Toronto Blue Jays have only hit the Game Total Over in 8 of their last 24 away games (-7.40 Units / -28% ROI)", "market": "Game Total", "direction": "Over", "units": -7.4, "roi": -28}, {"team": "Baltimore Orioles", "class": "High", "text": "The Baltimore Orioles have hit the Game Total Under in 30 of their last 50 games at home (+10.20 Units / 19% ROI)", "market": "Game Total", "direction": "Under", "units": 10.2, "roi": 19}, {"team": "Baltimore Orioles", "class": "High", "text": "The Baltimore Orioles have hit the Run Line in 6 of their last 7 games at home (+6.25 Units / 69% ROI)", "market": "Run Line", "direction": "Cover", "units": 6.25, "roi": 69}, {"team": "Baltimore Orioles", "class": "High", "text": "The Baltimore Orioles have hit the Moneyline in 8 of their last 10 games at home (+6.50 Units / 58% ROI)", "market": "Moneyline", "direction": "Win", "units": 6.5, "roi": 58}, {"team": "Baltimore Orioles", "class": "High", "text": "The Baltimore Orioles have hit the 1st Five Innings (F5) Team Total Under in 27 of their last 45 games at home (+6.25 Units / 11% ROI)", "market": "F5 Team Total", "direction": "Under", "units": 6.25, "roi": 11}, {"team": "Baltimore Orioles", "class": "High", "text": "The Baltimore Orioles have hit the Team Total Over in 6 of their last 7 games at home (+4.75 Units / 56% ROI)", "market": "Team Total", "direction": "Over", "units": 4.75, "roi": 56}, {"team": "Baltimore Orioles", "class": "Low", "text": "The Baltimore Orioles have only hit the 1st Five Innings (F5) Moneyline in 15 of their last 50 games (-18.01 Units / -30% ROI)", "market": "F5 Moneyline", "direction": "Lose", "units": -18.01, "roi": -30}, {"team": "Baltimore Orioles", "class": "Low", "text": "The Baltimore Orioles have only hit the Game Total Over in 18 of their last 50 games at home (-15.15 Units / -27% ROI)", "market": "Game Total", "direction": "Over", "units": -15.15, "roi": -27}, {"team": "Baltimore Orioles", "class": "Low", "text": "The Baltimore Orioles have only hit the 1st Five Innings (F5) Team Total Over in 21 of their last 50 games (-14.20 Units / -23% ROI)", "market": "F5 Team Total", "direction": "Over", "units": -14.2, "roi": -23}, {"team": "Baltimore Orioles", "class": "Low", "text": "The Baltimore Orioles have only covered the 1st Five Innings (F5) Run Line in 20 of their last 50 games at home (-12.20 Units / -22% ROI)", "market": "F5 Run Line", "direction": "Fail to Cover", "units": -12.2, "roi": -22}], "double_positive": [{"market_type": "Under (小分)", "recommendation": "買 Under (全場/首五局小分)", "confidence": "雙正面強勢指標：Toronto Blue Jays 擁有 3 項 Under 趨勢，Baltimore Orioles 擁有 2 項 Under 趨勢。", "team_a_trends": ["The Toronto Blue Jays have hit the 1st Five Innings (F5) Team Total Under in 32 of their last 50 games (+14.30 Units / 24% ROI)", "The Toronto Blue Jays have hit the Team Total Under in 17 of their last 25 away games (+8.40 Units / 29% ROI)", "The Toronto Blue Jays have hit the Game Total Under in 8 of their last 11 away games (+5.90 Units / 49% ROI)"], "team_b_trends": ["The Baltimore Orioles have hit the Game Total Under in 30 of their last 50 games at home (+10.20 Units / 19% ROI)", "The Baltimore Orioles have hit the 1st Five Innings (F5) Team Total Under in 27 of their last 45 games at home (+6.25 Units / 11% ROI)"], "avg_roi": 26.4}], "opposing_trends": [{"market": "Moneyline", "bet_on": "Baltimore Orioles", "bet_against": "Toronto Blue Jays", "recommendation": "買 Baltimore Orioles Moneyline", "confidence": "黃金一正一反組合：Baltimore Orioles 在 Moneyline 表現極強（+6.5 Units），而對手 Toronto Blue Jays 表現極差（-8.25 Units）。", "strong_trend": "The Baltimore Orioles have hit the Moneyline in 8 of their last 10 games at home (+6.50 Units / 58% ROI)", "weak_trend": "The Toronto Blue Jays have only hit the Moneyline in 23 of their last 50 games (-8.25 Units / -13% ROI)", "roi_diff": 71, "strong_roi": 58}, {"market": "F5 Run Line", "bet_on": "Toronto Blue Jays", "bet_against": "Baltimore Orioles", "recommendation": "買 Toronto Blue Jays F5 Run Line", "confidence": "黃金一正一反組合：Toronto Blue Jays 在 F5 Run Line 表現極強（+4.9 Units），而對手 Baltimore Orioles 表現極差（-12.2 Units）。", "strong_trend": "The Toronto Blue Jays have covered the 1st Five Innings (F5) Run Line in 6 of their last 7 away games (+4.90 Units / 60% ROI)", "weak_trend": "The Baltimore Orioles have only covered the 1st Five Innings (F5) Run Line in 20 of their last 50 games at home (-12.20 Units / -22% ROI)", "roi_diff": 82, "strong_roi": 60}]}, {"path": "/sport/baseball/mlb/matchup/370303", "team_a": "Chicago Cubs", "team_b": "Pittsburgh Pirates", "team_a_logo": "https://img.covers.com/covers/data/svg_logos/mlb/chc.svg", "team_b_logo": "https://img.covers.com/covers/data/svg_logos/mlb/pit.svg", "processed_trends": [{"team": "Chicago Cubs", "class": "High", "text": "The Chicago Cubs have hit the 1st Five Innings (F5) Team Total Under in 13 of their last 17 games (+8.95 Units / 44% ROI)", "market": "F5 Team Total", "direction": "Under", "units": 8.95, "roi": 44}, {"team": "Chicago Cubs", "class": "High", "text": "The Chicago Cubs have hit the Team Total Under in 12 of their last 16 games (+7.35 Units / 37% ROI)", "market": "Team Total", "direction": "Under", "units": 7.35, "roi": 37}, {"team": "Chicago Cubs", "class": "High", "text": "The Chicago Cubs have hit the Game Total Over in 15 of their last 24 away games (+6.25 Units / 23% ROI)", "market": "Game Total", "direction": "Over", "units": 6.25, "roi": 23}, {"team": "Chicago Cubs", "class": "High", "text": "The Chicago Cubs have hit the Moneyline in 23 of their last 40 games (+3.85 Units / 7% ROI)", "market": "Moneyline", "direction": "Win", "units": 3.85, "roi": 7}, {"team": "Chicago Cubs", "class": "Low", "text": "The Chicago Cubs have only covered the 1st Five Innings (F5) Run Line in 9 of their last 35 away games (-21.20 Units / -51% ROI)", "market": "F5 Run Line", "direction": "Fail to Cover", "units": -21.2, "roi": -51}, {"team": "Chicago Cubs", "class": "Low", "text": "The Chicago Cubs have only covered the Run Line in 18 of their last 50 away games (-18.70 Units / -29% ROI)", "market": "Run Line", "direction": "Fail to Cover", "units": -18.7, "roi": -29}, {"team": "Chicago Cubs", "class": "Low", "text": "The Chicago Cubs have only hit the Team Total Over in 20 of their last 50 away games (-13.10 Units / -23% ROI)", "market": "Team Total", "direction": "Over", "units": -13.1, "roi": -23}, {"team": "Chicago Cubs", "class": "Low", "text": "The Chicago Cubs have only hit the 1st Five Innings (F5) Moneyline in 1 of their last 17 games (-13.05 Units / -60% ROI)", "market": "F5 Moneyline", "direction": "Lose", "units": -13.05, "roi": -60}, {"team": "Chicago Cubs", "class": "Low", "text": "The Chicago Cubs have only hit the 1st Five Innings (F5) Team Total Over in 4 of their last 17 games (-11.70 Units / -56% ROI)", "market": "F5 Team Total", "direction": "Over", "units": -11.7, "roi": -56}, {"team": "Pittsburgh Pirates", "class": "High", "text": "The Pittsburgh Pirates have hit the 1st Five Innings (F5) Team Total Over in 28 of their last 45 games at home (+9.30 Units / 17% ROI)", "market": "F5 Team Total", "direction": "Over", "units": 9.3, "roi": 17}, {"team": "Pittsburgh Pirates", "class": "High", "text": "The Pittsburgh Pirates have hit the 1st Five Innings (F5) Run Line in 14 of their last 23 games (+4.40 Units / 17% ROI)", "market": "F5 Run Line", "direction": "Cover", "units": 4.4, "roi": 17}, {"team": "Pittsburgh Pirates", "class": "High", "text": "The Pittsburgh Pirates have hit the Game Total Over in 19 of their last 30 games at home (+6.90 Units / 21% ROI)", "market": "Game Total", "direction": "Over", "units": 6.9, "roi": 21}, {"team": "Pittsburgh Pirates", "class": "High", "text": "The Pittsburgh Pirates have covered the Run Line in 24 of their last 45 games at home (+5.45 Units / 10% ROI)", "market": "Run Line", "direction": "Cover", "units": 5.45, "roi": 10}, {"team": "Pittsburgh Pirates", "class": "High", "text": "The Pittsburgh Pirates have hit the 1st Five Innings (F5) Moneyline in 14 of their last 24 games (+5.05 Units / 15% ROI)", "market": "F5 Moneyline", "direction": "Win", "units": 5.05, "roi": 15}, {"team": "Pittsburgh Pirates", "class": "Low", "text": "The Pittsburgh Pirates have only hit the 1st Five Innings (F5) Team Total Under in 17 of their last 45 games at home (-16.95 Units / -31% ROI)", "market": "F5 Team Total", "direction": "Under", "units": -16.95, "roi": -31}, {"team": "Pittsburgh Pirates", "class": "Low", "text": "The Pittsburgh Pirates have only hit the Game Total Under in 11 of their last 30 games at home (-9.75 Units / -30% ROI)", "market": "Game Total", "direction": "Under", "units": -9.75, "roi": -30}, {"team": "Pittsburgh Pirates", "class": "Low", "text": "The Pittsburgh Pirates have only hit the Moneyline in 19 of their last 40 games at home (-8.45 Units / -16% ROI)", "market": "Moneyline", "direction": "Lose", "units": -8.45, "roi": -16}, {"team": "Pittsburgh Pirates", "class": "Low", "text": "The Pittsburgh Pirates have only hit the Team Total Over in 23 of their last 50 games at home (-7.20 Units / -13% ROI)", "market": "Team Total", "direction": "Over", "units": -7.2, "roi": -13}], "double_positive": [{"market_type": "Over (大分)", "recommendation": "買 Over (全場/首五局大分)", "confidence": "雙正面強勢指標：Chicago Cubs 擁有 1 項 Over 趨勢，Pittsburgh Pirates 擁有 2 項 Over 趨勢。", "team_a_trends": ["The Chicago Cubs have hit the Game Total Over in 15 of their last 24 away games (+6.25 Units / 23% ROI)"], "team_b_trends": ["The Pittsburgh Pirates have hit the 1st Five Innings (F5) Team Total Over in 28 of their last 45 games at home (+9.30 Units / 17% ROI)", "The Pittsburgh Pirates have hit the Game Total Over in 19 of their last 30 games at home (+6.90 Units / 21% ROI)"], "avg_roi": 20.3}], "opposing_trends": [{"market": "Moneyline", "bet_on": "Chicago Cubs", "bet_against": "Pittsburgh Pirates", "recommendation": "買 Chicago Cubs Moneyline", "confidence": "黃金一正一反組合：Chicago Cubs 在 Moneyline 表現極強（+3.85 Units），而對手 Pittsburgh Pirates 表現極差（-8.45 Units）。", "strong_trend": "The Chicago Cubs have hit the Moneyline in 23 of their last 40 games (+3.85 Units / 7% ROI)", "weak_trend": "The Pittsburgh Pirates have only hit the Moneyline in 19 of their last 40 games at home (-8.45 Units / -16% ROI)", "roi_diff": 23, "strong_roi": 7}, {"market": "Run Line", "bet_on": "Pittsburgh Pirates", "bet_against": "Chicago Cubs", "recommendation": "買 Pittsburgh Pirates Run Line", "confidence": "黃金一正一反組合：Pittsburgh Pirates 在 Run Line 表現極強（+5.45 Units），而對手 Chicago Cubs 表現極差（-18.7 Units）。", "strong_trend": "The Pittsburgh Pirates have covered the Run Line in 24 of their last 45 games at home (+5.45 Units / 10% ROI)", "weak_trend": "The Chicago Cubs have only covered the Run Line in 18 of their last 50 away games (-18.70 Units / -29% ROI)", "roi_diff": 39, "strong_roi": 10}, {"market": "F5 Moneyline", "bet_on": "Pittsburgh Pirates", "bet_against": "Chicago Cubs", "recommendation": "買 Pittsburgh Pirates F5 Moneyline", "confidence": "黃金一正一反組合：Pittsburgh Pirates 在 F5 Moneyline 表現極強（+5.05 Units），而對手 Chicago Cubs 表現極差（-13.05 Units）。", "strong_trend": "The Pittsburgh Pirates have hit the 1st Five Innings (F5) Moneyline in 14 of their last 24 games (+5.05 Units / 15% ROI)", "weak_trend": "The Chicago Cubs have only hit the 1st Five Innings (F5) Moneyline in 1 of their last 17 games (-13.05 Units / -60% ROI)", "roi_diff": 75, "strong_roi": 15}, {"market": "F5 Run Line", "bet_on": "Pittsburgh Pirates", "bet_against": "Chicago Cubs", "recommendation": "買 Pittsburgh Pirates F5 Run Line", "confidence": "黃金一正一反組合：Pittsburgh Pirates 在 F5 Run Line 表現極強（+4.4 Units），而對手 Chicago Cubs 表現極差（-21.2 Units）。", "strong_trend": "The Pittsburgh Pirates have hit the 1st Five Innings (F5) Run Line in 14 of their last 23 games (+4.40 Units / 17% ROI)", "weak_trend": "The Chicago Cubs have only covered the 1st Five Innings (F5) Run Line in 9 of their last 35 away games (-21.20 Units / -51% ROI)", "roi_diff": 68, "strong_roi": 17}]}, {"path": "/sport/baseball/mlb/matchup/368473", "team_a": "Houston Astros", "team_b": "Texas Rangers", "team_a_logo": "https://img.covers.com/covers/data/svg_logos/mlb/hou.svg", "team_b_logo": "https://img.covers.com/covers/data/svg_logos/mlb/tex.svg", "processed_trends": [{"team": "Houston Astros", "class": "High", "text": "The Houston Astros have hit the 1st Five Innings (F5) Team Total Over in 23 of their last 35 away games (+10.75 Units / 27% ROI)", "market": "F5 Team Total", "direction": "Over", "units": 10.75, "roi": 27}, {"team": "Houston Astros", "class": "High", "text": "The Houston Astros have hit the Team Total Under in 20 of their last 30 games (+7.60 Units / 21% ROI)", "market": "Team Total", "direction": "Under", "units": 7.6, "roi": 21}, {"team": "Houston Astros", "class": "High", "text": "The Houston Astros have hit the Moneyline in 11 of their last 19 away games (+5.55 Units / 29% ROI)", "market": "Moneyline", "direction": "Win", "units": 5.55, "roi": 29}, {"team": "Houston Astros", "class": "High", "text": "The Houston Astros have hit the Game Total Under in 10 of their last 18 games (+4.60 Units / 24% ROI)", "market": "Game Total", "direction": "Under", "units": 4.6, "roi": 24}, {"team": "Houston Astros", "class": "High", "text": "The Houston Astros have hit the 1st Five Innings (F5) Moneyline in 7 of their last 12 games (+4.20 Units / 34% ROI)", "market": "F5 Moneyline", "direction": "Win", "units": 4.2, "roi": 34}, {"team": "Houston Astros", "class": "Low", "text": "The Houston Astros have only covered the Run Line in 20 of their last 50 games (-17.35 Units / -25% ROI)", "market": "Run Line", "direction": "Fail to Cover", "units": -17.35, "roi": -25}, {"team": "Houston Astros", "class": "Low", "text": "The Houston Astros have only hit the 1st Five Innings (F5) Team Total Under in 20 of their last 50 away games (-15.90 Units / -26% ROI)", "market": "F5 Team Total", "direction": "Under", "units": -15.9, "roi": -26}, {"team": "Houston Astros", "class": "Low", "text": "The Houston Astros have only covered the 1st Five Innings (F5) Run Line in 20 of their last 50 games (-15.25 Units / -25% ROI)", "market": "F5 Run Line", "direction": "Fail to Cover", "units": -15.25, "roi": -25}, {"team": "Texas Rangers", "class": "High", "text": "The Texas Rangers have hit the Game Total Under in 28 of their last 50 games (+8.50 Units / 16% ROI)", "market": "Game Total", "direction": "Under", "units": 8.5, "roi": 16}, {"team": "Texas Rangers", "class": "High", "text": "The Texas Rangers have hit the Team Total Under in 21 of their last 30 games at home (+11.95 Units / 35% ROI)", "market": "Team Total", "direction": "Under", "units": 11.95, "roi": 35}, {"team": "Texas Rangers", "class": "High", "text": "The Texas Rangers have hit the 1st Five Innings (F5) Team Total Under in 20 of their last 30 games at home (+9.30 Units / 25% ROI)", "market": "F5 Team Total", "direction": "Under", "units": 9.3, "roi": 25}, {"team": "Texas Rangers", "class": "High", "text": "The Texas Rangers have covered the Run Line in 7 of their last 11 games at home (+4.95 Units / 34% ROI)", "market": "Run Line", "direction": "Cover", "units": 4.95, "roi": 34}, {"team": "Texas Rangers", "class": "High", "text": "The Texas Rangers have hit the 1st Five Innings (F5) Moneyline in 5 of their last 8 games at home (+2.60 Units / 25% ROI)", "market": "F5 Moneyline", "direction": "Win", "units": 2.6, "roi": 25}, {"team": "Texas Rangers", "class": "Low", "text": "The Texas Rangers have only hit the Game Total Over in 16 of their last 50 games at home (-19.25 Units / -35% ROI)", "market": "Game Total", "direction": "Over", "units": -19.25, "roi": -35}, {"team": "Texas Rangers", "class": "Low", "text": "The Texas Rangers have only hit the Team Total Over in 19 of their last 50 games at home (-15.10 Units / -26% ROI)", "market": "Team Total", "direction": "Over", "units": -15.1, "roi": -26}, {"team": "Texas Rangers", "class": "Low", "text": "The Texas Rangers have only covered the 1st Five Innings (F5) Run Line in 20 of their last 50 games (-14.40 Units / -24% ROI)", "market": "F5 Run Line", "direction": "Fail to Cover", "units": -14.4, "roi": -24}], "double_positive": [{"market_type": "Under (小分)", "recommendation": "買 Under (全場/首五局小分)", "confidence": "雙正面強勢指標：Houston Astros 擁有 2 項 Under 趨勢，Texas Rangers 擁有 3 項 Under 趨勢。", "team_a_trends": ["The Houston Astros have hit the Team Total Under in 20 of their last 30 games (+7.60 Units / 21% ROI)", "The Houston Astros have hit the Game Total Under in 10 of their last 18 games (+4.60 Units / 24% ROI)"], "team_b_trends": ["The Texas Rangers have hit the Game Total Under in 28 of their last 50 games (+8.50 Units / 16% ROI)", "The Texas Rangers have hit the Team Total Under in 21 of their last 30 games at home (+11.95 Units / 35% ROI)", "The Texas Rangers have hit the 1st Five Innings (F5) Team Total Under in 20 of their last 30 games at home (+9.30 Units / 25% ROI)"], "avg_roi": 24.2}], "opposing_trends": [{"market": "Run Line", "bet_on": "Texas Rangers", "bet_against": "Houston Astros", "recommendation": "買 Texas Rangers Run Line", "confidence": "黃金一正一反組合：Texas Rangers 在 Run Line 表現極強（+4.95 Units），而對手 Houston Astros 表現極差（-17.35 Units）。", "strong_trend": "The Texas Rangers have covered the Run Line in 7 of their last 11 games at home (+4.95 Units / 34% ROI)", "weak_trend": "The Houston Astros have only covered the Run Line in 20 of their last 50 games (-17.35 Units / -25% ROI)", "roi_diff": 59, "strong_roi": 34}]}]
     </script>
     <script id="top-sides-data" type="application/json">
-        [{"matchup_id": "369892", "matchup_name": "Los Angeles Angels vs Detroit Tigers", "type": "opposing", "type_zh": "勝負/讓分盤", "market_type": "Moneyline", "recommendation": "買 Los Angeles Angels Moneyline", "confidence": "黃金一正一反組合：Los Angeles Angels 在 Moneyline 表現極強（+3.55 Units），而對手 Detroit Tigers 表現極差（-16.3 Units）。", "roi": 66, "logo": "https://img.covers.com/covers/data/svg_logos/mlb/laa.svg", "details": "優勢隊投報率: 66% (雙方差距: 115% ROI)"}, {"matchup_id": "368133", "matchup_name": "Toronto Blue Jays vs Baltimore Orioles", "type": "opposing", "type_zh": "勝負/讓分盤", "market_type": "F5 Run Line", "recommendation": "買 Toronto Blue Jays F5 Run Line", "confidence": "黃金一正一反組合：Toronto Blue Jays 在 F5 Run Line 表現極強（+4.9 Units），而對手 Baltimore Orioles 表現極差（-12.2 Units）。", "roi": 60, "logo": "https://img.covers.com/covers/data/svg_logos/mlb/tor.svg", "details": "優勢隊投報率: 60% (雙方差距: 82% ROI)"}, {"matchup_id": "368133", "matchup_name": "Toronto Blue Jays vs Baltimore Orioles", "type": "opposing", "type_zh": "勝負/讓分盤", "market_type": "Moneyline", "recommendation": "買 Baltimore Orioles Moneyline", "confidence": "黃金一正一反組合：Baltimore Orioles 在 Moneyline 表現極強（+6.5 Units），而對手 Toronto Blue Jays 表現極差（-8.25 Units）。", "roi": 58, "logo": "https://img.covers.com/covers/data/svg_logos/mlb/bal.svg", "details": "優勢隊投報率: 58% (雙方差距: 71% ROI)"}, {"matchup_id": "369892", "matchup_name": "Los Angeles Angels vs Detroit Tigers", "type": "opposing", "type_zh": "勝負/讓分盤", "market_type": "F5 Run Line", "recommendation": "買 Detroit Tigers F5 Run Line", "confidence": "黃金一正一反組合：Detroit Tigers 在 F5 Run Line 表現極強（+3.7 Units），而對手 Los Angeles Angels 表現極差（-10.15 Units）。", "roi": 36, "logo": "https://img.covers.com/covers/data/svg_logos/mlb/det.svg", "details": "優勢隊投報率: 36% (雙方差距: 96% ROI)"}, {"matchup_id": "368473", "matchup_name": "Houston Astros vs Texas Rangers", "type": "opposing", "type_zh": "勝負/讓分盤", "market_type": "Run Line", "recommendation": "買 Texas Rangers Run Line", "confidence": "黃金一正一反組合：Texas Rangers 在 Run Line 表現極強（+4.95 Units），而對手 Houston Astros 表現極差（-17.35 Units）。", "roi": 34, "logo": "https://img.covers.com/covers/data/svg_logos/mlb/tex.svg", "details": "優勢隊投報率: 34% (雙方差距: 59% ROI)"}]
+        [{"matchup_id": "369892", "matchup_name": "Los Angeles Angels vs Detroit Tigers", "type": "opposing", "type_zh": "勝負/讓分盤", "market_type": "Moneyline", "recommendation": "買 Los Angeles Angels Moneyline", "confidence": "黃金一正一反組合：Los Angeles Angels 在 Moneyline 表現極強（+3.55 Units），而對手 Detroit Tigers 表現極差（-16.3 Units）。", "roi": 66, "roi_diff": 115, "bet_on": "Los Angeles Angels", "logo": "https://img.covers.com/covers/data/svg_logos/mlb/laa.svg", "details": "優勢隊投報率: 66% (雙方差距: 115% ROI)"}, {"matchup_id": "368133", "matchup_name": "Toronto Blue Jays vs Baltimore Orioles", "type": "opposing", "type_zh": "勝負/讓分盤", "market_type": "F5 Run Line", "recommendation": "買 Toronto Blue Jays F5 Run Line", "confidence": "黃金一正一反組合：Toronto Blue Jays 在 F5 Run Line 表現極強（+4.9 Units），而對手 Baltimore Orioles 表現極差（-12.2 Units）。", "roi": 60, "roi_diff": 82, "bet_on": "Toronto Blue Jays", "logo": "https://img.covers.com/covers/data/svg_logos/mlb/tor.svg", "details": "優勢隊投報率: 60% (雙方差距: 82% ROI)"}, {"matchup_id": "368133", "matchup_name": "Toronto Blue Jays vs Baltimore Orioles", "type": "opposing", "type_zh": "勝負/讓分盤", "market_type": "Moneyline", "recommendation": "買 Baltimore Orioles Moneyline", "confidence": "黃金一正一反組合：Baltimore Orioles 在 Moneyline 表現極強（+6.5 Units），而對手 Toronto Blue Jays 表現極差（-8.25 Units）。", "roi": 58, "roi_diff": 71, "bet_on": "Baltimore Orioles", "logo": "https://img.covers.com/covers/data/svg_logos/mlb/bal.svg", "details": "優勢隊投報率: 58% (雙方差距: 71% ROI)"}, {"matchup_id": "369892", "matchup_name": "Los Angeles Angels vs Detroit Tigers", "type": "opposing", "type_zh": "勝負/讓分盤", "market_type": "F5 Run Line", "recommendation": "買 Detroit Tigers F5 Run Line", "confidence": "黃金一正一反組合：Detroit Tigers 在 F5 Run Line 表現極強（+3.7 Units），而對手 Los Angeles Angels 表現極差（-10.15 Units）。", "roi": 36, "roi_diff": 96, "bet_on": "Detroit Tigers", "logo": "https://img.covers.com/covers/data/svg_logos/mlb/det.svg", "details": "優勢隊投報率: 36% (雙方差距: 96% ROI)"}, {"matchup_id": "368473", "matchup_name": "Houston Astros vs Texas Rangers", "type": "opposing", "type_zh": "勝負/讓分盤", "market_type": "Run Line", "recommendation": "買 Texas Rangers Run Line", "confidence": "黃金一正一反組合：Texas Rangers 在 Run Line 表現極強（+4.95 Units），而對手 Houston Astros 表現極差（-17.35 Units）。", "roi": 34, "roi_diff": 59, "bet_on": "Texas Rangers", "logo": "https://img.covers.com/covers/data/svg_logos/mlb/tex.svg", "details": "優勢隊投報率: 34% (雙方差距: 59% ROI)"}]
     </script>
     <script id="top-totals-data" type="application/json">
         [{"matchup_id": "369892", "matchup_name": "Los Angeles Angels vs Detroit Tigers", "type": "double", "type_zh": "大小分總分", "market_type": "Under (小分)", "recommendation": "買 Under (全場/首五局小分)", "confidence": "雙正面強勢指標：Los Angeles Angels 擁有 3 項 Under 趨勢，Detroit Tigers 擁有 2 項 Under 趨勢。", "roi": 29.2, "logo_a": "https://img.covers.com/covers/data/svg_logos/mlb/laa.svg", "logo_b": "https://img.covers.com/covers/data/svg_logos/mlb/det.svg", "details": "雙方平均投報率: 29.2%"}, {"matchup_id": "368133", "matchup_name": "Toronto Blue Jays vs Baltimore Orioles", "type": "double", "type_zh": "大小分總分", "market_type": "Under (小分)", "recommendation": "買 Under (全場/首五局小分)", "confidence": "雙正面強勢指標：Toronto Blue Jays 擁有 3 項 Under 趨勢，Baltimore Orioles 擁有 2 項 Under 趨勢。", "roi": 26.4, "logo_a": "https://img.covers.com/covers/data/svg_logos/mlb/tor.svg", "logo_b": "https://img.covers.com/covers/data/svg_logos/mlb/bal.svg", "details": "雙方平均投報率: 26.4%"}, {"matchup_id": "368473", "matchup_name": "Houston Astros vs Texas Rangers", "type": "double", "type_zh": "大小分總分", "market_type": "Under (小分)", "recommendation": "買 Under (全場/首五局小分)", "confidence": "雙正面強勢指標：Houston Astros 擁有 2 項 Under 趨勢，Texas Rangers 擁有 3 項 Under 趨勢。", "roi": 24.2, "logo_a": "https://img.covers.com/covers/data/svg_logos/mlb/hou.svg", "logo_b": "https://img.covers.com/covers/data/svg_logos/mlb/tex.svg", "details": "雙方平均投報率: 24.2%"}, {"matchup_id": "367898", "matchup_name": "Minnesota Twins vs Chicago White Sox", "type": "double", "type_zh": "大小分總分", "market_type": "Over (大分)", "recommendation": "買 Over (全場/首五局大分)", "confidence": "雙正面強勢指標：Minnesota Twins 擁有 3 項 Over 趨勢，Chicago White Sox 擁有 3 項 Over 趨勢。", "roi": 22.0, "logo_a": "https://img.covers.com/covers/data/svg_logos/mlb/min.svg", "logo_b": "https://img.covers.com/covers/data/svg_logos/mlb/chw.svg", "details": "雙方平均投報率: 22.0%"}, {"matchup_id": "370303", "matchup_name": "Chicago Cubs vs Pittsburgh Pirates", "type": "double", "type_zh": "大小分總分", "market_type": "Over (大分)", "recommendation": "買 Over (全場/首五局大分)", "confidence": "雙正面強勢指標：Chicago Cubs 擁有 1 項 Over 趨勢，Pittsburgh Pirates 擁有 2 項 Over 趨勢。", "roi": 20.3, "logo_a": "https://img.covers.com/covers/data/svg_logos/mlb/chc.svg", "logo_b": "https://img.covers.com/covers/data/svg_logos/mlb/pit.svg", "details": "雙方平均投報率: 20.3%"}]
+    </script>
+    <script id="top-ai-data" type="application/json">
+        [{"matchup_id": "368473", "matchup_name": "Houston Astros vs Texas Rangers", "type": "opposing", "type_zh": "勝負/讓分盤", "market_type": "Run Line", "recommendation": "買 Texas Rangers Run Line", "confidence": "黃金一正一反組合：Texas Rangers 在 Run Line 表現極強（+4.95 Units），而對手 Houston Astros 表現極差（-17.35 Units）。", "roi": 34, "roi_diff": 59, "bet_on": "Texas Rangers", "logo_a": "https://img.covers.com/covers/data/svg_logos/mlb/tex.svg", "logo_b": null, "rationale": "黃金對立組合！優勢隊 Texas Rangers 歷史投報率達 34%，且雙方 ROI 差距達 59%，戰績勢力差距顯著。"}, {"matchup_id": "369892", "matchup_name": "Los Angeles Angels vs Detroit Tigers", "type": "double", "type_zh": "大小分總分", "market_type": "Under (小分)", "recommendation": "買 Under (全場/首五局小分)", "confidence": "雙正面強勢指標：Los Angeles Angels 擁有 3 項 Under 趨勢，Detroit Tigers 擁有 2 項 Under 趨勢。", "roi": 29.2, "logo_a": "https://img.covers.com/covers/data/svg_logos/mlb/laa.svg", "logo_b": "https://img.covers.com/covers/data/svg_logos/mlb/det.svg", "rationale": "雙向強勢指標！兩隊近期在 Under (小分) 盤口高度吻合，歷史平均投報率達 29.2%，大/小分走勢非常清晰。"}, {"matchup_id": "368133", "matchup_name": "Toronto Blue Jays vs Baltimore Orioles", "type": "double", "type_zh": "大小分總分", "market_type": "Under (小分)", "recommendation": "買 Under (全場/首五局小分)", "confidence": "雙正面強勢指標：Toronto Blue Jays 擁有 3 項 Under 趨勢，Baltimore Orioles 擁有 2 項 Under 趨勢。", "roi": 26.4, "logo_a": "https://img.covers.com/covers/data/svg_logos/mlb/tor.svg", "logo_b": "https://img.covers.com/covers/data/svg_logos/mlb/bal.svg", "rationale": "雙向強勢指標！兩隊近期在 Under (小分) 盤口高度吻合，歷史平均投報率達 26.4%，大/小分走勢非常清晰。"}]
     </script>
 
     <script>
@@ -953,6 +1154,7 @@
         let allMatchups = [];
         let topSides = [];
         let topTotals = [];
+        let topAi = [];
         let currentTab = 'all';
         let searchQuery = '';
 
@@ -961,11 +1163,14 @@
             const rawData = document.getElementById('matchups-data').textContent;
             const rawSides = document.getElementById('top-sides-data').textContent;
             const rawTotals = document.getElementById('top-totals-data').textContent;
+            const rawAi = document.getElementById('top-ai-data').textContent;
             try {
                 allMatchups = JSON.parse(rawData);
                 topSides = JSON.parse(rawSides);
                 topTotals = JSON.parse(rawTotals);
+                topAi = JSON.parse(rawAi);
                 
+                renderAiTop3();
                 renderTopLists();
                 renderMatchups();
             } catch(e) {
@@ -979,6 +1184,72 @@
                 `;
             }
         });
+
+        // 渲染今日 AI 精選 Top 3 推薦
+        function renderAiTop3() {
+            const section = document.getElementById('ai-top3-section');
+            if (!section) return;
+            
+            if (topAi.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            
+            let cardsHtml = '';
+            topAi.forEach((rec, idx) => {
+                const rankNum = idx + 1;
+                const tagClass = rec.type === 'opposing' ? 'side-tag' : 'total-tag';
+                const tagText = rec.type === 'opposing' ? '🎯 勝負/讓分' : '🔥 大小總分';
+                const roiLabel = rec.type === 'opposing' ? '優勢隊投報率' : '平均投報率';
+                
+                let logosHtml = '';
+                if (rec.logo_b) {
+                    logosHtml = `
+                        <img src="${rec.logo_a}" class="ai-card-logo" onerror="this.style.display='none'" />
+                        <img src="${rec.logo_b}" class="ai-card-logo" onerror="this.style.display='none'" />
+                    `;
+                } else {
+                    logosHtml = `
+                        <img src="${rec.logo_a}" class="ai-card-logo" onerror="this.style.display='none'" />
+                    `;
+                }
+                
+                cardsHtml += `
+                    <div class="ai-card" onclick="scrollToMatch('match-card-${rec.matchup_id}')">
+                        <div class="ai-card-rank">#0${rankNum}</div>
+                        <div class="ai-card-header">
+                            <span class="ai-card-tag ${tagClass}">${tagText}</span>
+                            <span class="ai-card-match">${rec.matchup_name}</span>
+                        </div>
+                        <div>
+                            <div class="ai-card-bet">${rec.recommendation}</div>
+                        </div>
+                        <div class="ai-card-logos">
+                            ${logosHtml}
+                        </div>
+                        <div class="ai-card-rationale">
+                            ${rec.rationale}
+                        </div>
+                        <div class="ai-card-footer">
+                            <span class="ai-card-roi-label">${roiLabel}</span>
+                            <span class="ai-card-roi-val">${rec.roi}%</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            section.innerHTML = `
+                <div class="ai-title-row">
+                    <h2 class="ai-main-title">
+                        🤖 今日 AI 智慧精選 Top 3 黃金推薦
+                    </h2>
+                    <span class="ai-badge-glow">AI OPTIMIZED</span>
+                </div>
+                <div class="ai-cards-grid">
+                    ${cardsHtml}
+                </div>
+            `;
+        }
 
         // 渲染頂部兩欄 Top 5 黃金投注推薦
         function renderTopLists() {

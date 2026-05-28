@@ -323,7 +323,7 @@ def analyze_betting_recommendations(matchup, processed_trends):
 # ==========================================
 # 質感中文化 HTML 儀表板文件生成器
 # ==========================================
-def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, date_str):
+def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, date_str):
     """
     將爬取與運算後的結果導出為一個極具質感的本機互動式繁體中文 HTML 網頁。
     """
@@ -336,6 +336,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, date_str):
     matchups_json = json.dumps(matchups_data, ensure_ascii=False)
     top_sides_json = json.dumps(top_5_sides, ensure_ascii=False)
     top_totals_json = json.dumps(top_5_totals, ensure_ascii=False)
+    top_ai_json = json.dumps(top_3_ai, ensure_ascii=False)
     
     html_template = f"""<!DOCTYPE html>
 <html lang="zh-TW">
@@ -369,6 +370,8 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, date_str):
             --accent-blue: #00b0ff;
             --accent-gold: #ffd200;
             --accent-gold-glow: rgba(255, 210, 0, 0.25);
+            --accent-purple: #a855f7;
+            --accent-purple-glow: rgba(168, 85, 247, 0.25);
             --font-family: 'Inter', 'Noto Sans TC', sans-serif;
             --shadow-premium: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
             --glass-blur: blur(12px);
@@ -1170,6 +1173,197 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, date_str):
         }}
 
         /* ==========================================
+           AI 精選推薦專區 (AI Top 3 Section)
+           ========================================== */
+        .ai-section {{
+            margin-bottom: 45px;
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(253, 80, 0, 0.04) 100%);
+            border: 1px solid rgba(168, 85, 247, 0.2);
+            border-radius: 24px;
+            padding: 28px;
+            box-shadow: 0 15px 35px -10px rgba(168, 85, 247, 0.15);
+            backdrop-filter: var(--glass-blur);
+        }}
+
+        .ai-title-row {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+        }}
+
+        .ai-main-title {{
+            font-size: 20px;
+            font-weight: 800;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+        }}
+
+        .ai-badge-glow {{
+            background: linear-gradient(135deg, #a855f7 0%, #fd5000 100%);
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 99px;
+            box-shadow: 0 0 12px rgba(168, 85, 247, 0.5);
+            letter-spacing: 0.5px;
+        }}
+
+        .ai-cards-grid {{
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }}
+
+        @media (max-width: 992px) {{
+            .ai-cards-grid {{
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }}
+        }}
+
+        .ai-card {{
+            background: rgba(8, 12, 20, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 18px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }}
+
+        .ai-card::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, #a855f7, #fd5000);
+            opacity: 0.8;
+        }}
+
+        .ai-card:hover {{
+            transform: translateY(-5px);
+            border-color: rgba(168, 85, 247, 0.4);
+            box-shadow: 0 10px 25px -5px rgba(168, 85, 247, 0.15);
+            background: rgba(15, 23, 42, 0.7);
+        }}
+
+        .ai-card-rank {{
+            position: absolute;
+            right: 16px;
+            top: 16px;
+            font-size: 28px;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.03);
+            font-style: italic;
+            line-height: 1;
+        }}
+
+        .ai-card-header {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }}
+
+        .ai-card-tag {{
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }}
+
+        .ai-card-tag.side-tag {{
+            background: rgba(0, 176, 255, 0.15);
+            color: var(--accent-blue);
+            border: 1px solid rgba(0, 176, 255, 0.25);
+        }}
+
+        .ai-card-tag.total-tag {{
+            background: rgba(0, 230, 118, 0.15);
+            color: var(--accent-green);
+            border: 1px solid rgba(0, 230, 118, 0.25);
+        }}
+
+        .ai-card-match {{
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }}
+
+        .ai-card-bet {{
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-top: 4px;
+        }}
+
+        .ai-card-logos {{
+            display: flex;
+            align-items: center;
+            height: 30px;
+        }}
+
+        .ai-card-logo {{
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 3px;
+        }}
+
+        .ai-card-logos .ai-card-logo:nth-child(2) {{
+            margin-left: -10px;
+            background: rgba(8, 12, 20, 0.95);
+        }}
+
+        .ai-card-rationale {{
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            flex-grow: 1;
+        }}
+
+        .ai-card-footer {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 10px;
+            margin-top: 4px;
+        }}
+
+        .ai-card-roi-label {{
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }}
+
+        .ai-card-roi-val {{
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--accent-gold);
+            text-shadow: 0 0 8px rgba(255, 210, 0, 0.3);
+        }}
+
+        /* ==========================================
            7. 頁尾
            ========================================== */
         footer {{
@@ -1218,6 +1412,11 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, date_str):
                 </div>
             </div>
         </header>
+
+        <!-- 今日 AI 精選 Top 3 推薦專區 -->
+        <section class="ai-section" id="ai-top3-section">
+            <!-- 由 JS 動態渲染 -->
+        </section>
 
         <!-- 今日雙欄 Top 5 黃金投注推薦專區 -->
         <section class="top-section">
@@ -1284,6 +1483,9 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, date_str):
     <script id="top-totals-data" type="application/json">
         {top_totals_json}
     </script>
+    <script id="top-ai-data" type="application/json">
+        {top_ai_json}
+    </script>
 
     <script>
         // ==========================================
@@ -1292,6 +1494,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, date_str):
         let allMatchups = [];
         let topSides = [];
         let topTotals = [];
+        let topAi = [];
         let currentTab = 'all';
         let searchQuery = '';
 
@@ -1300,11 +1503,14 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, date_str):
             const rawData = document.getElementById('matchups-data').textContent;
             const rawSides = document.getElementById('top-sides-data').textContent;
             const rawTotals = document.getElementById('top-totals-data').textContent;
+            const rawAi = document.getElementById('top-ai-data').textContent;
             try {{
                 allMatchups = JSON.parse(rawData);
                 topSides = JSON.parse(rawSides);
                 topTotals = JSON.parse(rawTotals);
+                topAi = JSON.parse(rawAi);
                 
+                renderAiTop3();
                 renderTopLists();
                 renderMatchups();
             }} catch(e) {{
@@ -1318,6 +1524,72 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, date_str):
                 `;
             }}
         }});
+
+        // 渲染今日 AI 精選 Top 3 推薦
+        function renderAiTop3() {{
+            const section = document.getElementById('ai-top3-section');
+            if (!section) return;
+            
+            if (topAi.length === 0) {{
+                section.style.display = 'none';
+                return;
+            }}
+            
+            let cardsHtml = '';
+            topAi.forEach((rec, idx) => {{
+                const rankNum = idx + 1;
+                const tagClass = rec.type === 'opposing' ? 'side-tag' : 'total-tag';
+                const tagText = rec.type === 'opposing' ? '🎯 勝負/讓分' : '🔥 大小總分';
+                const roiLabel = rec.type === 'opposing' ? '優勢隊投報率' : '平均投報率';
+                
+                let logosHtml = '';
+                if (rec.logo_b) {{
+                    logosHtml = `
+                        <img src="${{rec.logo_a}}" class="ai-card-logo" onerror="this.style.display='none'" />
+                        <img src="${{rec.logo_b}}" class="ai-card-logo" onerror="this.style.display='none'" />
+                    `;
+                }} else {{
+                    logosHtml = `
+                        <img src="${{rec.logo_a}}" class="ai-card-logo" onerror="this.style.display='none'" />
+                    `;
+                }}
+                
+                cardsHtml += `
+                    <div class="ai-card" onclick="scrollToMatch('match-card-${{rec.matchup_id}}')">
+                        <div class="ai-card-rank">#0${{rankNum}}</div>
+                        <div class="ai-card-header">
+                            <span class="ai-card-tag ${{tagClass}}">${{tagText}}</span>
+                            <span class="ai-card-match">${{rec.matchup_name}}</span>
+                        </div>
+                        <div>
+                            <div class="ai-card-bet">${{rec.recommendation}}</div>
+                        </div>
+                        <div class="ai-card-logos">
+                            ${{logosHtml}}
+                        </div>
+                        <div class="ai-card-rationale">
+                            ${{rec.rationale}}
+                        </div>
+                        <div class="ai-card-footer">
+                            <span class="ai-card-roi-label">${{roiLabel}}</span>
+                            <span class="ai-card-roi-val">${{rec.roi}}%</span>
+                        </div>
+                    </div>
+                `;
+            }});
+            
+            section.innerHTML = `
+                <div class="ai-title-row">
+                    <h2 class="ai-main-title">
+                        🤖 今日 AI 智慧精選 Top 3 黃金推薦
+                    </h2>
+                    <span class="ai-badge-glow">AI OPTIMIZED</span>
+                </div>
+                <div class="ai-cards-grid">
+                    ${{cardsHtml}}
+                </div>
+            `;
+        }}
 
         // 渲染頂部兩欄 Top 5 黃金投注推薦
         function renderTopLists() {{
@@ -1719,6 +1991,8 @@ def main():
                 'recommendation': rec['recommendation'],
                 'confidence': rec['confidence'],
                 'roi': rec['strong_roi'],
+                'roi_diff': rec['roi_diff'],
+                'bet_on': rec['bet_on'],
                 'logo': logo_url,
                 'details': f"優勢隊投報率: {rec['strong_roi']}% (雙方差距: {rec['roi_diff']}% ROI)"
             })
@@ -1727,10 +2001,62 @@ def main():
     top_5_sides = sorted(sides_recs, key=lambda x: x['roi'], reverse=True)[:5]
     top_5_totals = sorted(totals_recs, key=lambda x: x['roi'], reverse=True)[:5]
     
+    # 5.5 計算「今日 AI 推薦 Top 3」 (智慧過濾方向衝突，依 ROI 排序)
+    conflicting_matchups = set()
+    matchup_bet_teams = {}
+    for r in sides_recs:
+        m_id = r['matchup_id']
+        team = r.get('bet_on')
+        if m_id not in matchup_bet_teams:
+            matchup_bet_teams[m_id] = set()
+        matchup_bet_teams[m_id].add(team)
+        
+    for m_id, teams in matchup_bet_teams.items():
+        if len(teams) > 1:
+            conflicting_matchups.add(m_id)
+            
+    ai_candidates = []
+    for r in sides_recs:
+        if r['matchup_id'] in conflicting_matchups:
+            continue
+        ai_candidates.append({
+            'matchup_id': r['matchup_id'],
+            'matchup_name': r['matchup_name'],
+            'type': 'opposing',
+            'type_zh': '勝負/讓分盤',
+            'market_type': r['market_type'],
+            'recommendation': r['recommendation'],
+            'confidence': r['confidence'],
+            'roi': r['roi'],
+            'roi_diff': r['roi_diff'],
+            'bet_on': r['bet_on'],
+            'logo_a': r['logo'],
+            'logo_b': None,
+            'rationale': f"黃金對立組合！優勢隊 {r['bet_on']} 歷史投報率達 {r['roi']}%，且雙方 ROI 差距達 {r['roi_diff']}%，戰績勢力差距顯著。"
+        })
+        
+    for r in totals_recs:
+        ai_candidates.append({
+            'matchup_id': r['matchup_id'],
+            'matchup_name': r['matchup_name'],
+            'type': 'double',
+            'type_zh': '大小分總分',
+            'market_type': r['market_type'],
+            'recommendation': r['recommendation'],
+            'confidence': r['confidence'],
+            'roi': r['roi'],
+            'logo_a': r['logo_a'],
+            'logo_b': r['logo_b'],
+            'rationale': f"雙向強勢指標！兩隊近期在 {r['market_type']} 盤口高度吻合，歷史平均投報率達 {r['roi']}%，大/小分走勢非常清晰。"
+        })
+        
+    top_3_ai = sorted(ai_candidates, key=lambda x: x['roi'], reverse=True)[:3]
+    
     print(f"\n[+] 成功計算出今日「勝負/讓分盤」與「大小分總分」雙欄 Top 5 黃金投注推薦。")
+    print(f"[+] 成功計算出今日「AI 推薦 Top 3」精選：{len(top_3_ai)} 項組合。")
     
     # 6. 生成動態互動式 HTML 數據儀表板
-    generate_html_dashboard(all_matchups_data, top_5_sides, top_5_totals, date_str)
+    generate_html_dashboard(all_matchups_data, top_5_sides, top_5_totals, top_3_ai, date_str)
     
     print("====================================================")
     print("                  抓取與分析完成！")
