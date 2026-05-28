@@ -238,8 +238,8 @@ def classify_and_process_trends(matchup):
 def analyze_betting_recommendations(matchup, processed_trends):
     """
     根據用戶要求的兩種核心趨勢演算法進行媒合：
-    1. 雙向正面趨勢 (Double Positive)：兩隊皆在大小分(Totals)中看好同一個方向(Under/Over)。
-    2. 一正一反趨勢 (Opposing Trends)：對戰雙方在同一個勝負市場（獨贏、讓分）中，一隊正數（強勢獲利）且一隊負數（弱勢虧損）。
+    1. 大小分總分 (Double Positive)：兩隊皆在大小分(Totals)中看好同一個方向(Under/Over)。
+    2. 勝負/讓分盤 (Opposing Trends)：對戰雙方在同一個勝負市場（獨贏、讓分）中，一隊正數（強勢獲利）且一隊負數（弱勢虧損）。
     """
     team_a = matchup['team_a']
     team_b = matchup['team_b']
@@ -247,7 +247,7 @@ def analyze_betting_recommendations(matchup, processed_trends):
     double_positive = []
     opposing_trends = []
     
-    # --- 1. 雙向正面趨勢媒合 (大分/小分) ---
+    # --- 1. 大小分總分趨勢媒合 (大分/小分) ---
     high_under_trends = [t for t in processed_trends if t['class'] == 'High' and t['direction'] == 'Under']
     high_over_trends = [t for t in processed_trends if t['class'] == 'High' and t['direction'] == 'Over']
     
@@ -277,7 +277,7 @@ def analyze_betting_recommendations(matchup, processed_trends):
             'avg_roi': round((sum(t['roi'] for t in a_over + b_over) / len(a_over + b_over)), 1)
         })
 
-    # --- 2. 一正一反趨勢媒合 (勝負盤/讓分盤) ---
+    # --- 2. 勝負/讓分盤趨勢媒合 (勝負盤/讓分盤) ---
     h2h_markets = ["Moneyline", "Run Line", "F5 Moneyline", "F5 Run Line"]
     
     for m in h2h_markets:
@@ -323,7 +323,7 @@ def analyze_betting_recommendations(matchup, processed_trends):
 # ==========================================
 # 質感中文化 HTML 儀表板文件生成器
 # ==========================================
-def generate_html_dashboard(matchups_data, top_5_recs, date_str):
+def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, date_str):
     """
     將爬取與運算後的結果導出為一個極具質感的本機互動式繁體中文 HTML 網頁。
     """
@@ -334,7 +334,8 @@ def generate_html_dashboard(matchups_data, top_5_recs, date_str):
     display_date = date_str if date_str else datetime.now().strftime("%Y-%m-%d")
     
     matchups_json = json.dumps(matchups_data, ensure_ascii=False)
-    top_5_json = json.dumps(top_5_recs, ensure_ascii=False)
+    top_sides_json = json.dumps(top_5_sides, ensure_ascii=False)
+    top_totals_json = json.dumps(top_5_totals, ensure_ascii=False)
     
     html_template = f"""<!DOCTYPE html>
 <html lang="zh-TW">
@@ -523,111 +524,98 @@ def generate_html_dashboard(matchups_data, top_5_recs, date_str):
         }}
 
         /* ==========================================
-           3. 今日 Top 5 黃金投注推薦專區 (Top 5 Section)
+           3. 今日雙欄 Top 5 黃金投注推薦專區 (Top 5 Columns)
            ========================================== */
         .top-section {{
-            margin-bottom: 40px;
+            margin-bottom: 45px;
+        }}
+
+        .top-columns-grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+        }}
+
+        @media (max-width: 992px) {{
+            .top-columns-grid {{
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }}
+        }}
+
+        .top-col {{
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
         }}
 
         .section-main-title {{
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 800;
-            margin-bottom: 20px;
             display: flex;
             align-items: center;
             gap: 10px;
             color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
         }}
 
         .pulse-glow {{
             animation: pulse 1.5s infinite alternate;
-            font-size: 22px;
+            font-size: 20px;
+        }}
+
+        .pulse-glow-green {{
+            animation: pulse-green 1.5s infinite alternate;
+            font-size: 20px;
         }}
 
         @keyframes pulse {{
-            0% {{ transform: scale(1); filter: drop-shadow(0 0 2px rgba(255,210,0,0.5)); }}
-            100% {{ transform: scale(1.15); filter: drop-shadow(0 0 10px rgba(255,210,0,0.9)); }}
+            0% {{ transform: scale(1); filter: drop-shadow(0 0 2px rgba(0,176,255,0.5)); }}
+            100% {{ transform: scale(1.15); filter: drop-shadow(0 0 8px rgba(0,176,255,0.9)); }}
         }}
 
-        .top-rec-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-            gap: 16px;
+        @keyframes pulse-green {{
+            0% {{ transform: scale(1); filter: drop-shadow(0 0 2px rgba(0,230,118,0.5)); }}
+            100% {{ transform: scale(1.15); filter: drop-shadow(0 0 8px rgba(0,230,118,0.9)); }}
         }}
 
-        .top-rec-card {{
-            background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.01) 100%), var(--surface-color);
-            backdrop-filter: var(--glass-blur);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px;
-            padding: 20px;
+        .top-rec-vertical-list {{
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
             gap: 12px;
+        }}
+
+        /* 橫向列表項目 (Sleek List Item Card) */
+        .top-rec-list-item {{
+            background: var(--surface-color);
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: var(--shadow-premium);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
             position: relative;
         }}
 
-        .top-rec-card::after {{
-            content: 'TOP';
-            position: absolute;
-            top: 10px;
-            right: 12px;
-            font-size: 10px;
-            font-weight: 900;
-            color: rgba(255, 210, 0, 0.35);
-            border: 1px solid rgba(255, 210, 0, 0.2);
-            padding: 1px 5px;
-            border-radius: 4px;
-            letter-spacing: 0.5px;
+        .top-rec-list-item:hover {{
+            transform: translateX(6px);
+            border-color: var(--hover-glow-color, var(--accent-blue));
+            box-shadow: 0 4px 15px var(--hover-shadow-color, rgba(0, 176, 255, 0.15));
+            background: rgba(255, 255, 255, 0.02);
         }}
 
-        .top-rec-card:hover {{
-            transform: translateY(-4px) scale(1.02);
-            border-color: rgba(255, 210, 0, 0.4);
-            box-shadow: 0 12px 25px -5px rgba(255, 210, 0, 0.15);
-            background: rgba(255, 255, 255, 0.03);
-        }}
-
-        .top-rec-badge-row {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-        }}
-
-        .top-rec-tag {{
-            font-size: 11px;
-            font-weight: 800;
-            padding: 3px 8px;
-            border-radius: 6px;
-        }}
-
-        .top-rec-tag.tag-double {{
-            background: rgba(0, 230, 118, 0.12);
-            color: var(--accent-green);
-            border: 1px solid rgba(0, 230, 118, 0.2);
-        }}
-
-        .top-rec-tag.tag-opposing {{
-            background: rgba(0, 176, 255, 0.12);
-            color: var(--accent-blue);
-            border: 1px solid rgba(0, 176, 255, 0.2);
-        }}
-
-        .top-rec-roi {{
-            font-size: 13px;
-            font-weight: 800;
-            color: var(--accent-gold);
-        }}
-
-        .top-rec-mid-row {{
+        .top-rec-item-left {{
             display: flex;
             align-items: center;
             gap: 12px;
+            overflow: hidden;
+            flex-grow: 1;
         }}
 
         .top-rec-logo-container {{
@@ -655,30 +643,41 @@ def generate_html_dashboard(matchups_data, top_5_recs, date_str):
             background: rgba(18, 25, 38, 0.95);
         }}
 
-        .top-rec-text-container {{
-            flex-grow: 1;
+        .top-rec-item-info {{
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow: hidden;
         }}
 
-        .top-rec-matchname {{
-            font-size: 11px;
+        .top-rec-item-match {{
+            font-size: 10px;
             color: var(--text-muted);
             font-weight: 600;
             text-transform: uppercase;
         }}
 
-        .top-rec-bet {{
-            font-size: 15px;
+        .top-rec-item-bet {{
+            font-size: 14px;
             font-weight: 800;
             color: var(--text-primary);
-            line-height: 1.4;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }}
 
-        .top-rec-detail {{
-            font-size: 11px;
-            color: var(--text-secondary);
-            border-top: 1px solid rgba(255,255,255,0.05);
-            padding-top: 8px;
-            margin-top: 4px;
+        .top-rec-item-right {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }}
+
+        .top-rec-item-roi {{
+            font-size: 12px;
+            font-weight: 800;
+            padding: 4px 8px;
+            border-radius: 6px;
         }}
 
         /* ==========================================
@@ -934,7 +933,7 @@ def generate_html_dashboard(matchups_data, top_5_recs, date_str):
             box-shadow: 0 4px 15px rgba(0,0,0,0.15);
         }}
 
-        /* 雙正面推薦箱 */
+        /* 大小分總分推薦箱 */
         .rec-box.double-box {{
             background: radial-gradient(circle at top right, rgba(0, 230, 118, 0.05), transparent 60%), rgba(255, 255, 255, 0.02);
             border-color: rgba(0, 230, 118, 0.25);
@@ -950,7 +949,7 @@ def generate_html_dashboard(matchups_data, top_5_recs, date_str):
             background: var(--accent-green);
         }}
 
-        /* 一正一反推薦箱 */
+        /* 勝負/讓分盤推薦箱 */
         .rec-box.opposing-box {{
             background: radial-gradient(circle at top right, rgba(0, 176, 255, 0.05), transparent 60%), rgba(255, 255, 255, 0.02);
             border-color: rgba(0, 176, 255, 0.25);
@@ -1187,7 +1186,7 @@ def generate_html_dashboard(matchups_data, top_5_recs, date_str):
         <!-- 頂部導航與標題 -->
         <header>
             <div class="header-top">
-                <h1>MLB 每日賽事黃金趨勢篩選 <span>PRO v1.2</span></h1>
+                <h1>MLB 每日賽事黃金趨勢篩選 <span>PRO v1.3</span></h1>
                 <div class="date-badge">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                     賽事日期：<strong>{display_date}</strong>
@@ -1205,14 +1204,14 @@ def generate_html_dashboard(matchups_data, top_5_recs, date_str):
                 </div>
                 <div class="stats-card stats-double">
                     <div class="stats-info">
-                        <h3>🔥 雙向正面推薦 (大小分)</h3>
+                        <h3>🔥 大小分總分推薦數</h3>
                         <p id="stat-double-recs">{total_double_pos}</p>
                     </div>
                     <div class="stats-icon">🔥</div>
                 </div>
                 <div class="stats-card stats-opposing">
                     <div class="stats-info">
-                        <h3>🎯 一正一反推薦 (勝負/讓分)</h3>
+                        <h3>🎯 勝負/讓分盤推薦數</h3>
                         <p id="stat-opposing-recs">{total_opposing}</p>
                     </div>
                     <div class="stats-icon">🎯</div>
@@ -1220,13 +1219,28 @@ def generate_html_dashboard(matchups_data, top_5_recs, date_str):
             </div>
         </header>
 
-        <!-- 今日 Top 5 黃金投注推薦專區 -->
+        <!-- 今日雙欄 Top 5 黃金投注推薦專區 -->
         <section class="top-section">
-            <h2 class="section-main-title">
-                <span class="pulse-glow">⚡</span> 今日 Top 5 超高機率黃金推薦
-            </h2>
-            <div class="top-rec-grid" id="top-rec-container">
-                <!-- 由 JS 動態加載渲染 Top 5 推薦 -->
+            <div class="top-columns-grid">
+                <!-- 勝負/讓分盤專區 -->
+                <div class="top-col">
+                    <h2 class="section-main-title">
+                        <span class="pulse-glow">⚡</span> 今日「勝負/讓分盤」Top 5 黃金推薦
+                    </h2>
+                    <div class="top-rec-vertical-list" id="top-sides-container">
+                        <!-- 由 JS 動態渲染 -->
+                    </div>
+                </div>
+                
+                <!-- 大小分總分專區 -->
+                <div class="top-col">
+                    <h2 class="section-main-title">
+                        <span class="pulse-glow-green" style="color: var(--accent-green);">🔥</span> 今日「大小分總分」Top 5 黃金推薦
+                    </h2>
+                    <div class="top-rec-vertical-list" id="top-totals-container">
+                        <!-- 由 JS 動態渲染 -->
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -1237,10 +1251,10 @@ def generate_html_dashboard(matchups_data, top_5_recs, date_str):
                     全部對戰 <span class="tab-count" id="count-all">{total_matches}</span>
                 </button>
                 <button class="tab-btn" onclick="switchTab('double', this)">
-                    🔥 雙向正面 <span class="tab-count" id="count-double">{total_double_pos}</span>
+                    🔥 大小分總分 <span class="tab-count" id="count-double">{total_double_pos}</span>
                 </button>
                 <button class="tab-btn" onclick="switchTab('opposing', this)">
-                    🎯 一正一反 <span class="tab-count" id="count-opposing">{total_opposing}</span>
+                    🎯 勝負/讓分盤 <span class="tab-count" id="count-opposing">{total_opposing}</span>
                 </button>
             </div>
             
@@ -1264,8 +1278,11 @@ def generate_html_dashboard(matchups_data, top_5_recs, date_str):
     <script id="matchups-data" type="application/json">
         {matchups_json}
     </script>
-    <script id="top-recs-data" type="application/json">
-        {top_5_json}
+    <script id="top-sides-data" type="application/json">
+        {top_sides_json}
+    </script>
+    <script id="top-totals-data" type="application/json">
+        {top_totals_json}
     </script>
 
     <script>
@@ -1273,19 +1290,22 @@ def generate_html_dashboard(matchups_data, top_5_recs, date_str):
         // 核心前端邏輯 (Core Frontend Script)
         // ==========================================
         let allMatchups = [];
-        let topRecs = [];
+        let topSides = [];
+        let topTotals = [];
         let currentTab = 'all';
         let searchQuery = '';
 
         // 初始化加載數據
         window.addEventListener('DOMContentLoaded', () => {{
             const rawData = document.getElementById('matchups-data').textContent;
-            const rawTopData = document.getElementById('top-recs-data').textContent;
+            const rawSides = document.getElementById('top-sides-data').textContent;
+            const rawTotals = document.getElementById('top-totals-data').textContent;
             try {{
                 allMatchups = JSON.parse(rawData);
-                topRecs = JSON.parse(rawTopData);
+                topSides = JSON.parse(rawSides);
+                topTotals = JSON.parse(rawTotals);
                 
-                renderTopRecommendations();
+                renderTopLists();
                 renderMatchups();
             }} catch(e) {{
                 console.error("解析 JSON 數據出錯:", e);
@@ -1299,71 +1319,82 @@ def generate_html_dashboard(matchups_data, top_5_recs, date_str):
             }}
         }});
 
-        // 渲染 Top 5 黃金投注推薦
-        function renderTopRecommendations() {{
-            const container = document.getElementById('top-rec-container');
-            container.innerHTML = '';
+        // 渲染頂部兩欄 Top 5 黃金投注推薦
+        function renderTopLists() {{
+            // 1. 渲染「勝負/讓分盤」Top 5
+            const sidesContainer = document.getElementById('top-sides-container');
+            sidesContainer.innerHTML = '';
             
-            if (topRecs.length === 0) {{
-                container.innerHTML = `
-                    <div class="no-data-card" style="padding: 30px; grid-column: 1 / -1;">
+            if (topSides.length === 0) {{
+                sidesContainer.innerHTML = `
+                    <div class="no-data-card" style="padding: 24px;">
                         <p style="font-size: 13px; color: var(--text-muted); font-style: italic;">
-                            今日暫無符合篩選標準的「雙向正面」或「一正一反」黃金投注推薦組合。
+                            今日暫無符合篩選標準的「勝負/讓分盤」推薦組合。
                         </p>
                     </div>
                 `;
-                return;
-            }}
-            
-            topRecs.forEach(rec => {{
-                const tagClass = rec.type === 'double' ? 'tag-double' : 'tag-opposing';
-                const tagText = rec.type_zh;
-                
-                // 動態加載 Logo 圖示
-                let logoHtml = '';
-                if (rec.type === 'double') {{
-                    logoHtml = `
-                        <div class="top-rec-logo-container">
-                            <img src="${{rec.logo_a}}" class="top-rec-logo" onerror="this.style.display='none'" />
-                            <img src="${{rec.logo_b}}" class="top-rec-logo" onerror="this.style.display='none'" />
-                        </div>
-                    `;
-                }} else {{
-                    logoHtml = `
-                        <div class="top-rec-logo-container">
-                            <img src="${{rec.logo}}" class="top-rec-logo" onerror="this.style.display='none'" />
-                        </div>
-                    `;
-                }}
-                
-                const cardHtml = `
-                    <div class="top-rec-card" onclick="scrollToMatch('match-card-${{rec.matchup_id}}')">
-                        <div class="top-rec-badge-row">
-                            <span class="top-rec-tag ${{tagClass}}">${{tagText}}</span>
-                            <span class="top-rec-roi">ROI: ${{rec.roi}}%</span>
-                        </div>
-                        <div class="top-rec-mid-row">
-                            ${{logoHtml}}
-                            <div class="top-rec-text-container">
-                                <div class="top-rec-matchname">${{rec.matchup_name}}</div>
-                                <div class="top-rec-bet">${{rec.recommendation}}</div>
+            }} else {{
+                topSides.forEach(rec => {{
+                    const cardHtml = `
+                        <div class="top-rec-list-item" style="--hover-glow-color: var(--accent-blue); --hover-shadow-color: rgba(0, 176, 255, 0.15);" onclick="scrollToMatch('match-card-${{rec.matchup_id}}')">
+                            <div class="top-rec-item-left">
+                                <div class="top-rec-logo-container">
+                                    <img src="${{rec.logo}}" class="top-rec-logo" onerror="this.style.display='none'" />
+                                </div>
+                                <div class="top-rec-item-info">
+                                    <span class="top-rec-item-match">${{rec.matchup_name}} • ${{rec.market_type}}</span>
+                                    <span class="top-rec-item-bet">${{rec.recommendation}}</span>
+                                </div>
+                            </div>
+                            <div class="top-rec-item-right">
+                                <span class="top-rec-item-roi" style="color: var(--accent-blue); background: rgba(0, 176, 255, 0.12); border: 1px solid rgba(0, 176, 255, 0.25);">ROI: ${{rec.roi}}%</span>
                             </div>
                         </div>
-                        <div class="top-rec-detail">
-                            ${{rec.details}}<br>
-                            <span style="color: var(--accent-orange); font-size: 10px; font-weight: bold; display: inline-block; margin-top: 4px;">⚡ 點擊滾動至此賽事</span>
-                        </div>
+                    `;
+                    sidesContainer.insertAdjacentHTML('beforeend', cardHtml);
+                }});
+            }}
+
+            // 2. 渲染「大小分總分」Top 5
+            const totalsContainer = document.getElementById('top-totals-container');
+            totalsContainer.innerHTML = '';
+            
+            if (topTotals.length === 0) {{
+                totalsContainer.innerHTML = `
+                    <div class="no-data-card" style="padding: 24px;">
+                        <p style="font-size: 13px; color: var(--text-muted); font-style: italic;">
+                            今日暫無符合篩選標準的「大小分總分」推薦組合。
+                        </p>
                     </div>
                 `;
-                container.insertAdjacentHTML('beforeend', cardHtml);
-            }});
+            }} else {{
+                topTotals.forEach(rec => {{
+                    const cardHtml = `
+                        <div class="top-rec-list-item" style="--hover-glow-color: var(--accent-green); --hover-shadow-color: rgba(0, 230, 118, 0.15);" onclick="scrollToMatch('match-card-${{rec.matchup_id}}')">
+                            <div class="top-rec-item-left">
+                                <div class="top-rec-logo-container">
+                                    <img src="${{rec.logo_a}}" class="top-rec-logo" onerror="this.style.display='none'" />
+                                    <img src="${{rec.logo_b}}" class="top-rec-logo" onerror="this.style.display='none'" />
+                                </div>
+                                <div class="top-rec-item-info">
+                                    <span class="top-rec-item-match">${{rec.matchup_name}} • ${{rec.market_type}}</span>
+                                    <span class="top-rec-item-bet">${{rec.recommendation}}</span>
+                                </div>
+                            </div>
+                            <div class="top-rec-item-right">
+                                <span class="top-rec-item-roi" style="color: var(--accent-green); background: rgba(0, 230, 118, 0.12); border: 1px solid rgba(0, 230, 118, 0.25);">平均: ${{rec.roi}}%</span>
+                            </div>
+                        </div>
+                    `;
+                    totalsContainer.insertAdjacentHTML('beforeend', cardHtml);
+                }});
+            }}
         }}
 
         // 滾動並高亮特定卡片
         function scrollToMatch(id) {{
             const el = document.getElementById(id);
             if (el) {{
-                // 若卡片折合中，自動展開它
                 if (!el.classList.contains('expanded')) {{
                     el.classList.add('expanded');
                 }}
@@ -1428,16 +1459,16 @@ def generate_html_dashboard(matchups_data, top_5_recs, date_str):
 
             // 生成卡片 HTML
             filtered.forEach(m => {{
-                const doubleTags = m.double_positive.length > 0 ? `<span class="match-tag double-tag">🔥 雙向正面 (${{m.double_positive.length}})</span>` : '';
-                const opposingTags = m.opposing_trends.length > 0 ? `<span class="match-tag opposing-tag">🎯 一正一反 (${{m.opposing_trends.length}})</span>` : '';
+                const doubleTags = m.double_positive.length > 0 ? `<span class="match-tag double-tag">🔥 大小分總分 (${{m.double_positive.length}})</span>` : '';
+                const opposingTags = m.opposing_trends.length > 0 ? `<span class="match-tag opposing-tag">🎯 勝負/讓分盤 (${{m.opposing_trends.length}})</span>` : '';
                 
                 let recsHtml = '';
                 
-                // 如果有雙向正面推薦
-                if (m.double_positive.length > 0) {{
+                // 如果有大小分總分推薦，且當前頁籤為全部或大小分總分
+                if (m.double_positive.length > 0 && (currentTab === 'all' || currentTab === 'double')) {{
                     recsHtml += `
                         <div class="section-title">
-                            <span>🔥 大小分雙向正面推薦</span>
+                            <span>🔥 大小分總分黃金推薦</span>
                         </div>
                         <div class="rec-container">
                     `;
@@ -1445,7 +1476,7 @@ def generate_html_dashboard(matchups_data, top_5_recs, date_str):
                         recsHtml += `
                             <div class="rec-box double-box">
                                 <div class="rec-title-row">
-                                    <span class="rec-type-badge">${{rec.market_type}}</span>
+                                    <span class="rec-type-badge">大小分總分 • ${{rec.market_type}}</span>
                                     <span class="roi-badge">平均 ROI: ${{rec.avg_roi}}%</span>
                                 </div>
                                 <div class="rec-headline">${{rec.recommendation}}</div>
@@ -1456,11 +1487,11 @@ def generate_html_dashboard(matchups_data, top_5_recs, date_str):
                     recsHtml += `</div>`;
                 }}
                 
-                // 如果有一正一反推薦
-                if (m.opposing_trends.length > 0) {{
+                // 如果有勝負/讓分盤推薦，且當前頁籤為全部或勝負/讓分盤
+                if (m.opposing_trends.length > 0 && (currentTab === 'all' || currentTab === 'opposing')) {{
                     recsHtml += `
                         <div class="section-title">
-                            <span>🎯 勝負/讓分一正一反推薦</span>
+                            <span>🎯 勝負/讓分盤黃金推薦</span>
                         </div>
                         <div class="rec-container">
                     `;
@@ -1468,8 +1499,8 @@ def generate_html_dashboard(matchups_data, top_5_recs, date_str):
                         recsHtml += `
                             <div class="rec-box opposing-box">
                                 <div class="rec-title-row">
-                                    <span class="rec-type-badge">${{rec.market}}</span>
-                                    <span class="roi-badge" style="color: var(--accent-blue); background: rgba(0, 176, 255, 0.1);">ROI 差值: ${{rec.roi_diff}}%</span>
+                                    <span class="rec-type-badge">勝負/讓分盤 • ${{rec.market}}</span>
+                                    <span class="roi-badge" style="color: var(--accent-blue); background: rgba(0, 176, 255, 0.1); border: 1px solid rgba(0, 176, 255, 0.25);">ROI 差值: ${{rec.roi_diff}}%</span>
                                 </div>
                                 <div class="rec-headline">${{rec.recommendation}}</div>
                                 <div class="rec-desc">${{rec.confidence}}</div>
@@ -1483,7 +1514,7 @@ def generate_html_dashboard(matchups_data, top_5_recs, date_str):
                 if (m.double_positive.length === 0 && m.opposing_trends.length === 0) {{
                     recsHtml += `
                         <div style="padding: 10px 0; color: var(--text-muted); font-size: 13px; font-style: italic;">
-                            此賽事今日無符合篩選標準的「雙向正面」或「一正一反」黃金投注推薦。
+                            此賽事今日無符合篩選標準的黃金推薦投注組合。
                         </div>
                     `;
                 }}
@@ -1634,10 +1665,10 @@ def main():
         # 3. 標準化分類趨勢
         processed_trends = classify_and_process_trends(matchup_data)
         
-        # 4. 智能篩選媒合 (雙正面與一正一反)
+        # 4. 智能篩選媒合 (大小分與獨贏/讓分)
         double_pos, opposing = analyze_betting_recommendations(matchup_data, processed_trends)
         
-        print(f"  -> 篩選出 [雙向正面]: {len(double_pos)} 項 | [一正一反]: {len(opposing)} 盤口")
+        print(f"  -> 篩選出 [大小分總分]: {len(double_pos)} 項 | [勝負/讓分盤]: {len(opposing)} 盤口")
         
         all_matchups_data.append({
             'path': matchup_data['path'],
@@ -1652,19 +1683,21 @@ def main():
         
         time.sleep(1.0)
         
-    # 5. 彙整並計算所有對戰組合的 Top 5 推薦組合
-    all_recommendations = []
+    # 5. 彙整並分類所有的推薦組合
+    sides_recs = []
+    totals_recs = []
+    
     for matchup in all_matchups_data:
         m_id = matchup['path'].split('/')[-1]
         m_name = f"{matchup['team_a']} vs {matchup['team_b']}"
         
-        # 收集雙向正面推薦
+        # 收集大小分總分推薦 (原雙向正面)
         for rec in matchup['double_positive']:
-            all_recommendations.append({
+            totals_recs.append({
                 'matchup_id': m_id,
                 'matchup_name': m_name,
                 'type': 'double',
-                'type_zh': '🔥 雙向正面',
+                'type_zh': '大小分總分',
                 'market_type': rec['market_type'],
                 'recommendation': rec['recommendation'],
                 'confidence': rec['confidence'],
@@ -1674,14 +1707,14 @@ def main():
                 'details': f"雙方平均投報率: {rec['avg_roi']}%"
             })
             
-        # 收集一正一反推薦
+        # 收集勝負/讓分盤推薦 (原一正一反)
         for rec in matchup['opposing_trends']:
             logo_url = matchup['team_a_logo'] if rec['bet_on'] == matchup['team_a'] else matchup['team_b_logo']
-            all_recommendations.append({
+            sides_recs.append({
                 'matchup_id': m_id,
                 'matchup_name': m_name,
                 'type': 'opposing',
-                'type_zh': '🎯 一正一反',
+                'type_zh': '勝負/讓分盤',
                 'market_type': rec['market'],
                 'recommendation': rec['recommendation'],
                 'confidence': rec['confidence'],
@@ -1690,12 +1723,14 @@ def main():
                 'details': f"優勢隊投報率: {rec['strong_roi']}% (雙方差距: {rec['roi_diff']}% ROI)"
             })
             
-    # 依投報率 ROI 由大到小排序，取前 5 大最優投注推薦
-    top_5_recs = sorted(all_recommendations, key=lambda x: x['roi'], reverse=True)[:5]
-    print(f"\n[+] 成功計算出今日 Top 5 超高機率黃金推薦投注組合（含球隊 Logo）。")
+    # 分別對兩組推薦以投報率 ROI 由大到小排序，取各自的前 5 名 (Top 5)
+    top_5_sides = sorted(sides_recs, key=lambda x: x['roi'], reverse=True)[:5]
+    top_5_totals = sorted(totals_recs, key=lambda x: x['roi'], reverse=True)[:5]
+    
+    print(f"\n[+] 成功計算出今日「勝負/讓分盤」與「大小分總分」雙欄 Top 5 黃金投注推薦。")
     
     # 6. 生成動態互動式 HTML 數據儀表板
-    generate_html_dashboard(all_matchups_data, top_5_recs, date_str)
+    generate_html_dashboard(all_matchups_data, top_5_sides, top_5_totals, date_str)
     
     print("====================================================")
     print("                  抓取與分析完成！")
