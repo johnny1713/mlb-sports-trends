@@ -254,28 +254,41 @@ def analyze_betting_recommendations(matchup, processed_trends):
     a_under = [t for t in high_under_trends if t['team'] == team_a]
     b_under = [t for t in high_under_trends if t['team'] == team_b]
     
+    under_rec = None
     if a_under and b_under:
-        double_positive.append({
+        under_rec = {
             'market_type': 'Under (小分)',
             'recommendation': '買 Under (全場/首五局小分)',
             'confidence': f"雙正面強勢指標：{team_a} 擁有 {len(a_under)} 項 Under 趨勢，{team_b} 擁有 {len(b_under)} 項 Under 趨勢。",
             'team_a_trends': [t['text'] for t in a_under],
             'team_b_trends': [t['text'] for t in b_under],
             'avg_roi': round((sum(t['roi'] for t in a_under + b_under) / len(a_under + b_under)), 1)
-        })
+        }
         
     a_over = [t for t in high_over_trends if t['team'] == team_a]
     b_over = [t for t in high_over_trends if t['team'] == team_b]
     
+    over_rec = None
     if a_over and b_over:
-        double_positive.append({
+        over_rec = {
             'market_type': 'Over (大分)',
             'recommendation': '買 Over (全場/首五局大分)',
             'confidence': f"雙正面強勢指標：{team_a} 擁有 {len(a_over)} 項 Over 趨勢，{team_b} 擁有 {len(b_over)} 項 Over 趨勢。",
             'team_a_trends': [t['text'] for t in a_over],
             'team_b_trends': [t['text'] for t in b_over],
             'avg_roi': round((sum(t['roi'] for t in a_over + b_over) / len(a_over + b_over)), 1)
-        })
+        }
+        
+    # 如果同場比賽同時出現大分與小分推薦，僅保留投報率較高者，避免使用者混淆
+    if under_rec and over_rec:
+        if under_rec['avg_roi'] >= over_rec['avg_roi']:
+            double_positive.append(under_rec)
+        else:
+            double_positive.append(over_rec)
+    elif under_rec:
+        double_positive.append(under_rec)
+    elif over_rec:
+        double_positive.append(over_rec)
 
     # --- 2. 勝負/讓分盤趨勢媒合 (勝負盤/讓分盤) ---
     h2h_markets = ["Moneyline", "Run Line", "F5 Moneyline", "F5 Run Line"]
