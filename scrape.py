@@ -27,6 +27,51 @@ def fetch_url(url):
         print(f"  [錯誤] 無法抓取網頁 {url}: {e}")
         return None
 
+def parse_run_lines(html_str):
+    """
+    從 covers.com matchup picks 頁面 HTML 中解析兩隊的全場讓分 (Run Line) 與隊伍簡寫，
+    並判斷誰是讓分方 (-) 與受讓方 (+)。
+    """
+    try:
+        rl_indices = [m.start() for m in re.finditer(r'Game Line - Run Line - FT', html_str)]
+        if not rl_indices:
+            return None
+        
+        idx = rl_indices[0]
+        block = html_str[max(0, idx-1000):min(len(html_str), idx+2000)]
+        
+        team_a_match = re.search(r'class="other-over-odds th-label"[^>]*>\s*([A-Za-z0-9]+)\s*</', block, re.IGNORECASE)
+        team_b_match = re.search(r'class="other-under-odds th-label"[^>]*>\s*([A-Za-z0-9]+)\s*</', block, re.IGNORECASE)
+        
+        if not team_a_match or not team_b_match:
+            return None
+            
+        team_a_abbr = team_a_match.group(1).upper()
+        team_b_abbr = team_b_match.group(1).upper()
+        
+        post_rl = block[block.find("Game Line - Run Line - FT"):]
+        col_a_match = re.search(r'class="other-over-odds"[^>]*>.*?<div class="odds upper-block">.*?<span>\s*(.*?)\s*</span>', post_rl, re.DOTALL | re.IGNORECASE)
+        col_b_match = re.search(r'class="other-under-odds"[^>]*>.*?<div class="odds upper-block">.*?<span>\s*(.*?)\s*</span>', post_rl, re.DOTALL | re.IGNORECASE)
+        
+        if not col_a_match or not col_b_match:
+            return None
+            
+        spread_a = col_a_match.group(1).strip()
+        spread_b = col_b_match.group(1).strip()
+        
+        spread_a = html.unescape(spread_a).replace('&#x2B;', '+')
+        spread_b = html.unescape(spread_b).replace('&#x2B;', '+')
+        
+        return {
+            'team_a': team_a_abbr,
+            'team_b': team_b_abbr,
+            'spread_a': spread_a,
+            'spread_b': spread_b
+        }
+    except Exception as e:
+        print(f"  [警告] 提取讓分值時發生錯誤: {e}")
+        return None
+
 # ==========================================
 # 賽事抓取與路徑提取
 # ==========================================
@@ -125,12 +170,40 @@ def parse_matchup_details(matchup):
     away_logo = f"https://img.covers.com/covers/data/svg_logos/mlb/{matchup['away_short']}.svg" if matchup['away_short'] else ""
     home_logo = f"https://img.covers.com/covers/data/svg_logos/mlb/{matchup['home_short']}.svg" if matchup['home_short'] else ""
         
+    # 解析讓分與受讓狀態
+    parsed_spreads = parse_run_lines(html_content)
+    team_a_spread = parsed_spreads['spread_a'] if parsed_spreads else None
+    team_b_spread = parsed_spreads['spread_b'] if parsed_spreads else None
+    
+    def determine_side_term(spread):
+        if not spread:
+            return "讓分"  # 預設為讓分
+        spread = spread.strip()
+        if spread.startswith('-'):
+            return "讓分"
+        elif spread.startswith('+') or spread.startswith('&#x2B;'):
+            return "受讓"
+        else:
+            try:
+                val = float(spread)
+                if val < 0:
+                    return "讓分"
+                else:
+                    return "受讓"
+            except ValueError:
+                return "讓分"
+                
+    team_a_side = determine_side_term(team_a_spread)
+    team_b_side = determine_side_term(team_b_spread)
+        
     return {
         'path': matchup_path,
         'team_a': team_a, # 依照 Schema，通常為 Away 球隊 (客隊)
         'team_b': team_b, # 依照 Schema，通常為 Home 球隊 (主隊)
         'team_a_logo': away_logo,
         'team_b_logo': home_logo,
+        'team_a_side': team_a_side,
+        'team_b_side': team_b_side,
         'trends': raw_trends
     }
 
@@ -340,22 +413,29 @@ def analyze_betting_recommendations(matchup, processed_trends):
     
     market_zh_map = {
         'Moneyline': '獨贏',
-        'Run Line': '讓分或受讓',
-        'F5 Moneyline': '首五局獨贏',
-        'F5 Run Line': '首五局讓分或受讓'
+        'F5 Moneyline': '首五局獨贏'
     }
+    
+    team_a_side = matchup.get('team_a_side', '讓分')
+    team_b_side = matchup.get('team_b_side', '受讓')
     
     for m in h2h_markets:
         a_trends = [t for t in processed_trends if t['team'] == team_a and t['market'] == m]
         b_trends = [t for t in processed_trends if t['team'] == team_b and t['market'] == m]
-        
-        m_zh = market_zh_map.get(m, m)
         
         # 情況 A: A 隊極強 (High), B 隊極弱 (Low)
         a_strong = [t for t in a_trends if t['class'] == 'High' and (t['direction'] in ['Win', 'Cover'])]
         b_weak = [t for t in b_trends if t['class'] == 'Low' and (t['direction'] in ['Lose', 'Fail to Cover'])]
         
         if a_strong and b_weak:
+            # 動態解析該隊是讓分還是受讓
+            if m == 'Run Line':
+                m_zh = team_a_side
+            elif m == 'F5 Run Line':
+                m_zh = '首五局'
+            else:
+                m_zh = market_zh_map.get(m, m)
+                
             opposing_trends.append({
                 'market': m,
                 'market_zh': m_zh,
@@ -374,6 +454,14 @@ def analyze_betting_recommendations(matchup, processed_trends):
         a_weak = [t for t in a_trends if t['class'] == 'Low' and (t['direction'] in ['Lose', 'Fail to Cover'])]
         
         if b_strong and a_weak:
+            # 動態解析該隊是讓分還是受讓
+            if m == 'Run Line':
+                m_zh = team_b_side
+            elif m == 'F5 Run Line':
+                m_zh = '首五局'
+            else:
+                m_zh = market_zh_map.get(m, m)
+                
             opposing_trends.append({
                 'market': m,
                 'market_zh': m_zh,
