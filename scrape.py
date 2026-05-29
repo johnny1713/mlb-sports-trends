@@ -338,9 +338,18 @@ def analyze_betting_recommendations(matchup, processed_trends):
     # --- 2. 勝負/讓分盤趨勢媒合 (勝負盤/讓分盤) ---
     h2h_markets = ["Moneyline", "Run Line", "F5 Moneyline", "F5 Run Line"]
     
+    market_zh_map = {
+        'Moneyline': '獨贏',
+        'Run Line': '讓分或受讓',
+        'F5 Moneyline': '首五局獨贏',
+        'F5 Run Line': '首五局讓分或受讓'
+    }
+    
     for m in h2h_markets:
         a_trends = [t for t in processed_trends if t['team'] == team_a and t['market'] == m]
         b_trends = [t for t in processed_trends if t['team'] == team_b and t['market'] == m]
+        
+        m_zh = market_zh_map.get(m, m)
         
         # 情況 A: A 隊極強 (High), B 隊極弱 (Low)
         a_strong = [t for t in a_trends if t['class'] == 'High' and (t['direction'] in ['Win', 'Cover'])]
@@ -349,10 +358,11 @@ def analyze_betting_recommendations(matchup, processed_trends):
         if a_strong and b_weak:
             opposing_trends.append({
                 'market': m,
+                'market_zh': m_zh,
                 'bet_on': team_a,
                 'bet_against': team_b,
-                'recommendation': f"買 {team_a} {m}",
-                'confidence': f"黃金一正一反組合：{team_a} 在 {m} 表現極強（+{a_strong[0]['units']} Units），而對手 {team_b} 表現極差（{b_weak[0]['units']} Units）。",
+                'recommendation': f"買 {team_a} {m_zh}",
+                'confidence': f"黃金一正一反組合：{team_a} 在 {m_zh} 表現極強（+{a_strong[0]['units']} Units），而對手 {team_b} 表現極差（{b_weak[0]['units']} Units）。",
                 'strong_trend': a_strong[0]['text'],
                 'weak_trend': b_weak[0]['text'],
                 'roi_diff': a_strong[0]['roi'] - b_weak[0]['roi'],
@@ -366,10 +376,11 @@ def analyze_betting_recommendations(matchup, processed_trends):
         if b_strong and a_weak:
             opposing_trends.append({
                 'market': m,
+                'market_zh': m_zh,
                 'bet_on': team_b,
                 'bet_against': team_a,
-                'recommendation': f"買 {team_b} {m}",
-                'confidence': f"黃金一正一反組合：{team_b} 在 {m} 表現極強（+{b_strong[0]['units']} Units），而對手 {team_a} 表現極差（{a_weak[0]['units']} Units）。",
+                'recommendation': f"買 {team_b} {m_zh}",
+                'confidence': f"黃金一正一反組合：{team_b} 在 {m_zh} 表現極強（+{b_strong[0]['units']} Units），而對手 {team_a} 表現極差（{a_weak[0]['units']} Units）。",
                 'strong_trend': b_strong[0]['text'],
                 'weak_trend': a_weak[0]['text'],
                 'roi_diff': b_strong[0]['roi'] - a_weak[0]['roi'],
@@ -1829,7 +1840,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
                         recsHtml += `
                             <div class="rec-box opposing-box">
                                 <div class="rec-title-row">
-                                    <span class="rec-type-badge">勝負/讓分盤 • ${{rec.market}}</span>
+                                    <span class="rec-type-badge">勝負/讓分盤 • ${{rec.market_zh}}</span>
                                     <span class="roi-badge" style="color: var(--accent-blue); background: rgba(0, 176, 255, 0.1); border: 1px solid rgba(0, 176, 255, 0.25);">ROI 差值: ${{rec.roi_diff}}%</span>
                                 </div>
                                 <div class="rec-headline">${{rec.recommendation}}</div>
@@ -2045,7 +2056,7 @@ def main():
                 'matchup_name': m_name,
                 'type': 'opposing',
                 'type_zh': '勝負/讓分盤',
-                'market_type': rec['market'],
+                'market_type': rec['market_zh'],
                 'recommendation': rec['recommendation'],
                 'confidence': rec['confidence'],
                 'roi': rec['strong_roi'],
