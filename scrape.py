@@ -432,7 +432,7 @@ def analyze_betting_recommendations(matchup, processed_trends):
             if m == 'Run Line':
                 m_zh = team_a_side
             elif m == 'F5 Run Line':
-                m_zh = '首五局'
+                m_zh = f"首五局{team_a_side}"
             else:
                 m_zh = market_zh_map.get(m, m)
                 
@@ -458,7 +458,7 @@ def analyze_betting_recommendations(matchup, processed_trends):
             if m == 'Run Line':
                 m_zh = team_b_side
             elif m == 'F5 Run Line':
-                m_zh = '首五局'
+                m_zh = f"首五局{team_b_side}"
             else:
                 m_zh = market_zh_map.get(m, m)
                 
