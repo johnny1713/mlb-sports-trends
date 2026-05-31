@@ -222,6 +222,11 @@ def classify_and_process_trends(matchup):
     for trend in matchup['trends']:
         text = trend['text']
         text_lower = text.lower()
+        
+        # 排除所有首五局 (F5) 的趨勢，只保留全場的
+        if "1st five innings" in text_lower or " f5 " in text_lower or "first five" in text_lower or "f5" in text_lower:
+            continue
+            
         klass = trend['class']
         
         # 1. 判定該趨勢屬於哪支球隊
@@ -365,55 +370,11 @@ def analyze_betting_recommendations(matchup, processed_trends):
     elif over_full_rec:
         double_positive.append(over_full_rec)
         
-    # B. 首五局大小分 (First Five Innings Totals)
-    high_under_f5 = [t for t in processed_trends if t['class'] == 'High' and t['direction'] == 'Under' and t['market'] in ['F5 Game Total', 'F5 Team Total']]
-    high_over_f5 = [t for t in processed_trends if t['class'] == 'High' and t['direction'] == 'Over' and t['market'] in ['F5 Game Total', 'F5 Team Total']]
-    
-    a_under_f5 = [t for t in high_under_f5 if t['team'] == team_a]
-    b_under_f5 = [t for t in high_under_f5 if t['team'] == team_b]
-    
-    under_f5_rec = None
-    if a_under_f5 and b_under_f5:
-        under_f5_rec = {
-            'market_type': 'Under (首五局小分)',
-            'recommendation': '買 首五局小分 (F5 Under)',
-            'confidence': f"雙正面強勢指標：{team_a} 擁有 {len(a_under_f5)} 項首五局 Under 趨勢，{team_b} 擁有 {len(b_under_f5)} 項首五局 Under 趨勢。",
-            'team_a_trends': [t['text'] for t in a_under_f5],
-            'team_b_trends': [t['text'] for t in b_under_f5],
-            'avg_roi': round((sum(t['roi'] for t in a_under_f5 + b_under_f5) / len(a_under_f5 + b_under_f5)), 1)
-        }
-        
-    a_over_f5 = [t for t in high_over_f5 if t['team'] == team_a]
-    b_over_f5 = [t for t in high_over_f5 if t['team'] == team_b]
-    
-    over_f5_rec = None
-    if a_over_f5 and b_over_f5:
-        over_f5_rec = {
-            'market_type': 'Over (首五局大分)',
-            'recommendation': '買 首五局大分 (F5 Over)',
-            'confidence': f"雙正面強勢指標：{team_a} 擁有 {len(a_over_f5)} 項首五局 Over 趨勢，{team_b} 擁有 {len(b_over_f5)} 項首五局 Over 趨勢。",
-            'team_a_trends': [t['text'] for t in a_over_f5],
-            'team_b_trends': [t['text'] for t in b_over_f5],
-            'avg_roi': round((sum(t['roi'] for t in a_over_f5 + b_over_f5) / len(a_over_f5 + b_over_f5)), 1)
-        }
-        
-    # 首五局大小分避碰 (若同場首五局同時推薦大分與小分，只保留高 ROI 者)
-    if under_f5_rec and over_f5_rec:
-        if under_f5_rec['avg_roi'] >= over_f5_rec['avg_roi']:
-            double_positive.append(under_f5_rec)
-        else:
-            double_positive.append(over_f5_rec)
-    elif under_f5_rec:
-        double_positive.append(under_f5_rec)
-    elif over_f5_rec:
-        double_positive.append(over_f5_rec)
-
     # --- 2. 勝負/讓分盤趨勢媒合 (勝負盤/讓分盤) ---
-    h2h_markets = ["Moneyline", "Run Line", "F5 Moneyline", "F5 Run Line"]
+    h2h_markets = ["Moneyline", "Run Line"]
     
     market_zh_map = {
-        'Moneyline': '獨贏',
-        'F5 Moneyline': '首五局獨贏'
+        'Moneyline': '獨贏'
     }
     
     team_a_side = matchup.get('team_a_side', '讓分')
@@ -431,8 +392,6 @@ def analyze_betting_recommendations(matchup, processed_trends):
             # 動態解析該隊是讓分還是受讓
             if m == 'Run Line':
                 m_zh = team_a_side
-            elif m == 'F5 Run Line':
-                m_zh = f"首五局{team_a_side}"
             else:
                 m_zh = market_zh_map.get(m, m)
                 
@@ -457,8 +416,6 @@ def analyze_betting_recommendations(matchup, processed_trends):
             # 動態解析該隊是讓分還是受讓
             if m == 'Run Line':
                 m_zh = team_b_side
-            elif m == 'F5 Run Line':
-                m_zh = f"首五局{team_b_side}"
             else:
                 m_zh = market_zh_map.get(m, m)
                 
