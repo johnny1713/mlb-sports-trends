@@ -30,7 +30,7 @@ def fetch_url(url):
 def parse_run_lines(html_str):
     """
     從 covers.com matchup picks 頁面 HTML 中解析兩隊的全場讓分 (Run Line) 與隊伍簡寫，
-    並判斷誰是讓分方 (-) 與受讓方 (+)。
+    並判斷誰是讓分方 (-) 與受讓方 (+)。同時解析全場大小分總分盤口。
     """
     try:
         rl_indices = [m.start() for m in re.finditer(r'Game Line - Run Line - FT', html_str)]
@@ -62,14 +62,25 @@ def parse_run_lines(html_str):
         spread_a = html.unescape(spread_a).replace('&#x2B;', '+')
         spread_b = html.unescape(spread_b).replace('&#x2B;', '+')
         
+        # 解析全場大小總分盤口值
+        total_line = None
+        tot_indices = [m.start() for m in re.finditer(r'Game Line - Total - FT', html_str)]
+        if tot_indices:
+            idx_tot = tot_indices[0]
+            block_tot = html_str[idx_tot:idx_tot+1000]
+            tot_match = re.search(r'<span>\s*[ou](\d+(?:\.\d+)?)\s*</span>', block_tot, re.IGNORECASE)
+            if tot_match:
+                total_line = tot_match.group(1).strip()
+        
         return {
             'team_a': team_a_abbr,
             'team_b': team_b_abbr,
             'spread_a': spread_a,
-            'spread_b': spread_b
+            'spread_b': spread_b,
+            'total_line': total_line
         }
     except Exception as e:
-        print(f"  [警告] 提取讓分值時發生錯誤: {e}")
+        print(f"  [警告] 提取盤口讓分值與大小值時發生錯誤: {e}")
         return None
 
 # ==========================================
@@ -170,10 +181,11 @@ def parse_matchup_details(matchup):
     away_logo = f"https://img.covers.com/covers/data/svg_logos/mlb/{matchup['away_short']}.svg" if matchup['away_short'] else ""
     home_logo = f"https://img.covers.com/covers/data/svg_logos/mlb/{matchup['home_short']}.svg" if matchup['home_short'] else ""
         
-    # 解析讓分與受讓狀態
+    # 解析讓分、受讓與大小分總分盤口狀態
     parsed_spreads = parse_run_lines(html_content)
     team_a_spread = parsed_spreads['spread_a'] if parsed_spreads else None
     team_b_spread = parsed_spreads['spread_b'] if parsed_spreads else None
+    total_line = parsed_spreads['total_line'] if parsed_spreads else None
     
     def determine_side_term(spread):
         if not spread:
@@ -204,6 +216,9 @@ def parse_matchup_details(matchup):
         'team_b_logo': home_logo,
         'team_a_side': team_a_side,
         'team_b_side': team_b_side,
+        'team_a_spread': team_a_spread,
+        'team_b_spread': team_b_spread,
+        'total_line': total_line,
         'trends': raw_trends
     }
 
@@ -325,7 +340,8 @@ def analyze_betting_recommendations(matchup, processed_trends):
     double_positive = []
     opposing_trends = []
     
-    # --- 1. 大小分總分趨勢媒合 (分為「全場大小分」與「首五局大小分」) ---
+    # --- 1. 大小分總分趨勢媒合 (全場大小分) ---
+    total_line = matchup.get('total_line')
     
     # A. 全場大小分 (Full Game Totals)
     high_under_full = [t for t in processed_trends if t['class'] == 'High' and t['direction'] == 'Under' and t['market'] in ['Game Total', 'Team Total']]
@@ -337,8 +353,8 @@ def analyze_betting_recommendations(matchup, processed_trends):
     under_full_rec = None
     if a_under_full and b_under_full:
         under_full_rec = {
-            'market_type': 'Under (全場小分)',
-            'recommendation': '買 全場小分 (Game Under)',
+            'market_type': f"Under (小 {total_line})" if total_line else 'Under (全場小分)',
+            'recommendation': f"買 全場小分 (小 {total_line})" if total_line else '買 全場小分 (Game Under)',
             'confidence': f"雙正面強勢指標：{team_a} 擁有 {len(a_under_full)} 項全場 Under 趨勢，{team_b} 擁有 {len(b_under_full)} 項全場 Under 趨勢。",
             'team_a_trends': [t['text'] for t in a_under_full],
             'team_b_trends': [t['text'] for t in b_under_full],
@@ -351,8 +367,8 @@ def analyze_betting_recommendations(matchup, processed_trends):
     over_full_rec = None
     if a_over_full and b_over_full:
         over_full_rec = {
-            'market_type': 'Over (全場大分)',
-            'recommendation': '買 全場大分 (Game Over)',
+            'market_type': f"Over (大 {total_line})" if total_line else 'Over (全場大分)',
+            'recommendation': f"買 全場大分 (大 {total_line})" if total_line else '買 全場大分 (Game Over)',
             'confidence': f"雙正面強勢指標：{team_a} 擁有 {len(a_over_full)} 項全場 Over 趨勢，{team_b} 擁有 {len(b_over_full)} 項全場 Over 趨勢。",
             'team_a_trends': [t['text'] for t in a_over_full],
             'team_b_trends': [t['text'] for t in b_over_full],
@@ -379,6 +395,15 @@ def analyze_betting_recommendations(matchup, processed_trends):
     
     team_a_side = matchup.get('team_a_side', '讓分')
     team_b_side = matchup.get('team_b_side', '受讓')
+    team_a_spread = matchup.get('team_a_spread')
+    team_b_spread = matchup.get('team_b_spread')
+    
+    def get_spread_detail(spread, side_term):
+        if not spread:
+            return side_term
+        abs_val = spread.replace('-', '').replace('+', '').replace('&#x2B;', '').strip()
+        side_clean = "讓" if side_term == "讓分" else side_term
+        return f"{side_clean} {abs_val}"
     
     for m in h2h_markets:
         a_trends = [t for t in processed_trends if t['team'] == team_a and t['market'] == m]
@@ -389,9 +414,9 @@ def analyze_betting_recommendations(matchup, processed_trends):
         b_weak = [t for t in b_trends if t['class'] == 'Low' and (t['direction'] in ['Lose', 'Fail to Cover'])]
         
         if a_strong and b_weak:
-            # 動態解析該隊是讓分還是受讓
+            # 動態解析該隊是讓分還是受讓，並附上具體讓分值
             if m == 'Run Line':
-                m_zh = team_a_side
+                m_zh = get_spread_detail(team_a_spread, team_a_side)
             else:
                 m_zh = market_zh_map.get(m, m)
                 
@@ -413,9 +438,9 @@ def analyze_betting_recommendations(matchup, processed_trends):
         a_weak = [t for t in a_trends if t['class'] == 'Low' and (t['direction'] in ['Lose', 'Fail to Cover'])]
         
         if b_strong and a_weak:
-            # 動態解析該隊是讓分還是受讓
+            # 動態解析該隊是讓分還是受讓，並附上具體讓分值
             if m == 'Run Line':
-                m_zh = team_b_side
+                m_zh = get_spread_detail(team_b_spread, team_b_side)
             else:
                 m_zh = market_zh_map.get(m, m)
                 
