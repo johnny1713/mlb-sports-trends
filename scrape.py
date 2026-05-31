@@ -238,8 +238,10 @@ def classify_and_process_trends(matchup):
         text = trend['text']
         text_lower = text.lower()
         
-        # 排除所有首五局 (F5) 的趨勢，只保留全場的
+        # 排除所有首五局 (F5) 的趨勢與球隊大小分 (Team Total) 趨勢，只保留全場的
         if "1st five innings" in text_lower or " f5 " in text_lower or "first five" in text_lower or "f5" in text_lower:
+            continue
+        if "team total" in text_lower:
             continue
             
         klass = trend['class']
@@ -344,8 +346,8 @@ def analyze_betting_recommendations(matchup, processed_trends):
     total_line = matchup.get('total_line')
     
     # A. 全場大小分 (Full Game Totals)
-    high_under_full = [t for t in processed_trends if t['class'] == 'High' and t['direction'] == 'Under' and t['market'] in ['Game Total', 'Team Total']]
-    high_over_full = [t for t in processed_trends if t['class'] == 'High' and t['direction'] == 'Over' and t['market'] in ['Game Total', 'Team Total']]
+    high_under_full = [t for t in processed_trends if t['class'] == 'High' and t['direction'] == 'Under' and t['market'] == 'Game Total']
+    high_over_full = [t for t in processed_trends if t['class'] == 'High' and t['direction'] == 'Over' and t['market'] == 'Game Total']
     
     a_under_full = [t for t in high_under_full if t['team'] == team_a]
     b_under_full = [t for t in high_under_full if t['team'] == team_b]
