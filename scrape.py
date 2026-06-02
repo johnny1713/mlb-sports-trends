@@ -2055,20 +2055,24 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
 
                 [...highTrendsA, ...lowTrendsA].forEach(t => {{
                     const klassName = t.class === 'High' ? 'trend-high' : 'trend-low';
+                    // 總是保持原始英文，只清理重複的 Athletics Athletics 為 Athletics
+                    const cleanText = t.text.replace(/Athletics Athletics/g, "Athletics");
                     teamATrendsHtml += `
                         <li class="trend-item ${{klassName}}">
                             <span class="trend-class-dot"></span>
-                            <div>${{translateText(t.text)}}</div>
+                            <div>${{cleanText}}</div>
                         </li>
                     `;
                 }});
 
                 [...highTrendsB, ...lowTrendsB].forEach(t => {{
                     const klassName = t.class === 'High' ? 'trend-high' : 'trend-low';
+                    // 總是保持原始英文，只清理重複的 Athletics Athletics 為 Athletics
+                    const cleanText = t.text.replace(/Athletics Athletics/g, "Athletics");
                     teamBTrendsHtml += `
                         <li class="trend-item ${{klassName}}">
                             <span class="trend-class-dot"></span>
-                            <div>${{translateText(t.text)}}</div>
+                            <div>${{cleanText}}</div>
                         </li>
                     `;
                 }});
