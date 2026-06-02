@@ -1514,6 +1514,42 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
             font-size: 12px;
             letter-spacing: 0.5px;
         }}
+
+        /* 語言切換按鈕與排版 */
+        .header-actions {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }}
+
+        .lang-toggle-btn {{
+            font-size: 14px;
+            font-weight: 600;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(165, 180, 252, 0.05) 100%);
+            border: 1px solid rgba(165, 180, 252, 0.3);
+            padding: 8px 16px;
+            border-radius: 8px;
+            color: #a5b4fc;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }}
+
+        .lang-toggle-btn:hover {{
+            border-color: #a5b4fc;
+            color: #ffffff;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(165, 180, 252, 0.15) 100%);
+            box-shadow: 0 0 15px rgba(165, 180, 252, 0.2);
+            transform: translateY(-1px);
+        }}
+
+        .lang-toggle-btn:active {{
+            transform: translateY(1px);
+        }}
     </style>
 </head>
 <body>
@@ -1522,9 +1558,14 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
         <header>
             <div class="header-top">
                 <h1>MLB 每日賽事黃金趨勢篩選 <span>PRO v1.3</span></h1>
-                <div class="date-badge">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                    賽事日期：<strong>{display_date}</strong>
+                <div class="header-actions">
+                    <div class="date-badge">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        賽事日期：<strong>{display_date}</strong>
+                    </div>
+                    <button class="lang-toggle-btn" id="lang-toggle" onclick="toggleLanguage()">
+                        🌐 隊伍名稱：中文
+                    </button>
                 </div>
             </div>
             
@@ -1630,6 +1671,76 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
 
     <script>
         // ==========================================
+        // MLB 隊伍名稱中英文對照字典
+        // ==========================================
+        const teamTranslations = {{
+            "Arizona Diamondbacks": "亞利桑那響尾蛇",
+            "Atlanta Braves": "亞特蘭大勇士",
+            "Baltimore Orioles": "巴爾的摩金鶯",
+            "Boston Red Sox": "波士頓紅襪",
+            "Chicago Cubs": "芝加哥小熊",
+            "Chicago White Sox": "芝加哥白襪",
+            "Cincinnati Reds": "辛辛那提紅人",
+            "Cleveland Guardians": "克里夫蘭守護者",
+            "Colorado Rockies": "科羅拉多落磯",
+            "Detroit Tigers": "底特律老虎",
+            "Houston Astros": "休士頓太空人",
+            "Kansas City Royals": "堪薩斯皇家",
+            "Los Angeles Angels": "洛杉磯天使",
+            "Los Angeles Dodgers": "洛杉磯道奇",
+            "Miami Marlins": "邁阿密馬林魚",
+            "Milwaukee Brewers": "密爾瓦基釀酒人",
+            "Minnesota Twins": "明尼蘇達雙城",
+            "New York Mets": "紐約大都會",
+            "New York Yankees": "紐約洋基",
+            "Athletics Athletics": "奧克蘭運動家",
+            "Athletics": "奧克蘭運動家",
+            "Oakland Athletics": "奧克蘭運動家",
+            "Philadelphia Phillies": "費城費城人",
+            "Pittsburgh Pirates": "匹茲堡海盜",
+            "San Diego Padres": "聖地牙哥教士",
+            "San Francisco Giants": "舊金山巨人",
+            "Seattle Mariners": "西雅圖水手",
+            "St. Louis Cardinals": "聖路易紅雀",
+            "Tampa Bay Rays": "坦帕灣光芒",
+            "Texas Rangers": "德州遊騎兵",
+            "Toronto Blue Jays": "多倫多藍鳥",
+            "Washington Nationals": "華盛頓國民"
+        }};
+
+        let currentLanguage = 'zh'; // 預設使用中文
+
+        // 中英文切換輔助函式
+        function translateText(text) {{
+            if (!text) return text;
+            if (currentLanguage === 'en') {{
+                // 英文模式下，將重複的 Athletics Athletics 整理為 Athletics
+                return text.replace(/Athletics Athletics/g, "Athletics");
+            }}
+            let translated = text;
+            const sortedKeys = Object.keys(teamTranslations).sort((a, b) => b.length - a.length);
+            for (const key of sortedKeys) {{
+                const regex = new RegExp(key, 'g');
+                translated = translated.replace(regex, teamTranslations[key]);
+            }}
+            return translated;
+        }}
+
+        // 切換語言按鈕點擊事件
+        function toggleLanguage() {{
+            currentLanguage = currentLanguage === 'zh' ? 'en' : 'zh';
+            const btn = document.getElementById('lang-toggle');
+            if (btn) {{
+                btn.innerHTML = `🌐 隊伍名稱：${{currentLanguage === 'zh' ? '中文' : 'English'}}`;
+            }}
+            
+            // 重新渲染所有內容
+            renderAiTop3();
+            renderTopLists();
+            renderMatchups();
+        }}
+
+        // ==========================================
         // 核心前端邏輯 (Core Frontend Script)
         // ==========================================
         let allMatchups = [];
@@ -1700,16 +1811,16 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
                         <div class="ai-card-rank">#0${{rankNum}}</div>
                         <div class="ai-card-header">
                             <span class="ai-card-tag ${{tagClass}}">${{tagText}}</span>
-                            <span class="ai-card-match">${{rec.matchup_name}}</span>
+                            <span class="ai-card-match">${{translateText(rec.matchup_name)}}</span>
                         </div>
                         <div>
-                            <div class="ai-card-bet">${{rec.recommendation}}</div>
+                            <div class="ai-card-bet">${{translateText(rec.recommendation)}}</div>
                         </div>
                         <div class="ai-card-logos">
                             ${{logosHtml}}
                         </div>
                         <div class="ai-card-rationale">
-                            ${{rec.rationale}}
+                            ${{translateText(rec.rationale)}}
                         </div>
                         <div class="ai-card-footer">
                             <span class="ai-card-roi-label">${{roiLabel}}</span>
@@ -1755,8 +1866,8 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
                                     <img src="${{rec.logo}}" class="top-rec-logo" onerror="this.style.display='none'" />
                                 </div>
                                 <div class="top-rec-item-info">
-                                    <span class="top-rec-item-match">${{rec.matchup_name}} • ${{rec.market_type}}</span>
-                                    <span class="top-rec-item-bet">${{rec.recommendation}}</span>
+                                    <span class="top-rec-item-match">${{translateText(rec.matchup_name)}} • ${{rec.market_type}}</span>
+                                    <span class="top-rec-item-bet">${{translateText(rec.recommendation)}}</span>
                                 </div>
                             </div>
                             <div class="top-rec-item-right">
@@ -1790,8 +1901,8 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
                                     <img src="${{rec.logo_b}}" class="top-rec-logo" onerror="this.style.display='none'" />
                                 </div>
                                 <div class="top-rec-item-info">
-                                    <span class="top-rec-item-match">${{rec.matchup_name}} • ${{rec.market_type}}</span>
-                                    <span class="top-rec-item-bet">${{rec.recommendation}}</span>
+                                    <span class="top-rec-item-match">${{translateText(rec.matchup_name)}} • ${{rec.market_type}}</span>
+                                    <span class="top-rec-item-bet">${{translateText(rec.recommendation)}}</span>
                                 </div>
                             </div>
                             <div class="top-rec-item-right">
@@ -1851,8 +1962,9 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
                 
                 // 2. 搜尋字詞篩選
                 if (searchQuery) {{
-                    const title = (m.team_a + " vs " + m.team_b).toLowerCase();
-                    if (!title.includes(searchQuery)) return false;
+                    const titleEn = (m.team_a + " vs " + m.team_b).toLowerCase();
+                    const titleZh = (translateText(m.team_a) + " vs " + translateText(m.team_b)).toLowerCase();
+                    if (!titleEn.includes(searchQuery) && !titleZh.includes(searchQuery)) return false;
                 }}
                 
                 return true;
@@ -1892,8 +2004,8 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
                                     <span class="rec-type-badge">大小分總分 • ${{rec.market_type}}</span>
                                     <span class="roi-badge">平均 ROI: ${{rec.avg_roi}}%</span>
                                 </div>
-                                <div class="rec-headline">${{rec.recommendation}}</div>
-                                <div class="rec-desc">${{rec.confidence}}</div>
+                                <div class="rec-headline">${{translateText(rec.recommendation)}}</div>
+                                <div class="rec-desc">${{translateText(rec.confidence)}}</div>
                             </div>
                         `;
                     }});
@@ -1915,8 +2027,8 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
                                     <span class="rec-type-badge">勝負/讓分盤 • ${{rec.market_zh}}</span>
                                     <span class="roi-badge" style="color: var(--accent-blue); background: rgba(0, 176, 255, 0.1); border: 1px solid rgba(0, 176, 255, 0.25);">ROI 差值: ${{rec.roi_diff}}%</span>
                                 </div>
-                                <div class="rec-headline">${{rec.recommendation}}</div>
-                                <div class="rec-desc">${{rec.confidence}}</div>
+                                <div class="rec-headline">${{translateText(rec.recommendation)}}</div>
+                                <div class="rec-desc">${{translateText(rec.confidence)}}</div>
                             </div>
                         `;
                     }});
@@ -1946,7 +2058,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
                     teamATrendsHtml += `
                         <li class="trend-item ${{klassName}}">
                             <span class="trend-class-dot"></span>
-                            <div>${{t.text}}</div>
+                            <div>${{translateText(t.text)}}</div>
                         </li>
                     `;
                 }});
@@ -1956,7 +2068,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
                     teamBTrendsHtml += `
                         <li class="trend-item ${{klassName}}">
                             <span class="trend-class-dot"></span>
-                            <div>${{t.text}}</div>
+                            <div>${{translateText(t.text)}}</div>
                         </li>
                     `;
                 }});
@@ -1971,12 +2083,12 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
                             <div class="teams-versus">
                                 <span class="team-name-badge">
                                     <img src="${{m.team_a_logo}}" class="team-logo" onerror="this.style.display='none'" />
-                                    ${{m.team_a}}
+                                    ${{translateText(m.team_a)}}
                                 </span>
                                 <span class="vs-text">vs</span>
                                 <span class="team-name-badge">
                                     <img src="${{m.team_b_logo}}" class="team-logo" onerror="this.style.display='none'" />
-                                    ${{m.team_b}}
+                                    ${{translateText(m.team_b)}}
                                 </span>
                             </div>
                             <div class="match-tags">
@@ -2000,7 +2112,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
                                     <div class="team-trends-col">
                                         <h4>
                                             <img src="${{m.team_a_logo}}" class="team-logo" style="width: 24px; height: 24px; border-radius: 6px; padding: 2px;" onerror="this.style.display='none'" />
-                                            ${{m.team_a}} 趨勢數據
+                                            ${{translateText(m.team_a)}} 趨勢數據
                                         </h4>
                                         <ul class="trend-list">
                                             ${{teamATrendsHtml}}
@@ -2009,7 +2121,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
                                     <div class="team-trends-col">
                                         <h4>
                                             <img src="${{m.team_b_logo}}" class="team-logo" style="width: 24px; height: 24px; border-radius: 6px; padding: 2px;" onerror="this.style.display='none'" />
-                                            ${{m.team_b}} 趨勢數據
+                                            ${{translateText(m.team_b)}} 趨勢數據
                                         </h4>
                                         <ul class="trend-list">
                                             ${{teamBTrendsHtml}}
