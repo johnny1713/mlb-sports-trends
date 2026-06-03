@@ -1557,6 +1557,69 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
         .lang-toggle-btn:active {{
             transform: translateY(1px);
         }}
+
+        /* 搜尋清除按鈕 */
+        .search-clear-btn {{
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s ease;
+            border-radius: 4px;
+            z-index: 5;
+        }}
+        
+        .search-clear-btn:hover {{
+            color: var(--text-primary);
+        }}
+
+        /* 回到頂部懸浮按鈕 */
+        .back-to-top {{
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: rgba(22, 31, 48, 0.85);
+            border: 1px solid rgba(165, 180, 252, 0.25);
+            color: #a5b4fc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+        }}
+
+        .back-to-top.show {{
+            opacity: 1;
+            visibility: visible;
+        }}
+
+        .back-to-top:hover {{
+            border-color: #a5b4fc;
+            color: #ffffff;
+            background: rgba(99, 102, 241, 0.3);
+            box-shadow: 0 0 15px rgba(165, 180, 252, 0.4);
+            transform: translateY(-2px);
+        }}
+
+        .back-to-top:active {{
+            transform: translateY(1px);
+        }}
     </style>
 </head>
 <body>
@@ -1649,6 +1712,9 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             <div class="search-wrapper">
                 <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                 <input type="text" class="search-input" id="search-box" placeholder="搜尋球隊名稱..." oninput="handleSearch()">
+                <button class="search-clear-btn" id="search-clear" onclick="clearSearch()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
             </div>
         </div>
 
@@ -1657,6 +1723,11 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             <!-- 賽事卡片將由此處經由 Javascript 動態渲染 -->
         </div>
     </div>
+
+    <!-- 回到頂部按鈕 -->
+    <button class="back-to-top" id="back-to-top-btn" onclick="scrollToTop()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+    </button>
 
     <footer>
         數據抓取自 covers.com • 本地動態儀表板 • 僅供分析參考，請理性投注
@@ -1952,10 +2023,49 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             renderMatchups();
         }}
 
-        // 搜尋隊伍名稱
+        // 搜尋隊伍名稱與清除按鈕處理
         function handleSearch() {{
-            searchQuery = document.getElementById('search-box').value.trim().toLowerCase();
+            const box = document.getElementById('search-box');
+            const clearBtn = document.getElementById('search-clear');
+            searchQuery = box.value.trim().toLowerCase();
+            if (clearBtn) {{
+                clearBtn.style.display = searchQuery ? 'flex' : 'none';
+            }}
             renderMatchups();
+        }}
+
+        // 清除搜尋框內容
+        function clearSearch() {{
+            const box = document.getElementById('search-box');
+            const clearBtn = document.getElementById('search-clear');
+            if (box) {{
+                box.value = '';
+            }}
+            if (clearBtn) {{
+                clearBtn.style.display = 'none';
+            }}
+            searchQuery = '';
+            renderMatchups();
+        }}
+
+        // 監聽滾動以顯示/隱藏「回到頂部」按鈕
+        window.addEventListener('scroll', () => {{
+            const btn = document.getElementById('back-to-top-btn');
+            if (btn) {{
+                if (window.scrollY > 400) {{
+                    btn.classList.add('show');
+                }} else {{
+                    btn.classList.remove('show');
+                }}
+            }}
+        }});
+
+        // 平滑滾動到頂部
+        function scrollToTop() {{
+            window.scrollTo({{
+                top: 0,
+                behavior: 'smooth'
+            }});
         }}
 
         // 展開/收合卡片摺疊區
