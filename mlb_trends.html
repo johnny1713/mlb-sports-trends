@@ -1227,7 +1227,7 @@
             "Washington Nationals": "華盛頓國民"
         };
 
-        let currentLanguage = 'zh'; // 預設使用中文
+        let currentLanguage = localStorage.getItem('mlb_trends_lang') || 'zh'; // 從 localStorage 載入使用者偏好，預設中文
 
         // 中英文切換輔助函式
         function translateText(text) {
@@ -1248,6 +1248,7 @@
         // 切換語言按鈕點擊事件
         function toggleLanguage() {
             currentLanguage = currentLanguage === 'zh' ? 'en' : 'zh';
+            localStorage.setItem('mlb_trends_lang', currentLanguage); // 儲存偏好
             const btn = document.getElementById('lang-toggle');
             if (btn) {
                 btn.innerHTML = `🌐 隊伍名稱：${currentLanguage === 'zh' ? '中文' : 'English'}`;
@@ -1271,6 +1272,12 @@
 
         // 初始化加載數據
         window.addEventListener('DOMContentLoaded', () => {
+            // 根據儲存的偏好語言更新按鈕文字
+            const btn = document.getElementById('lang-toggle');
+            if (btn) {
+                btn.innerHTML = `🌐 隊伍名稱：${currentLanguage === 'zh' ? '中文' : 'English'}`;
+            }
+
             const rawData = document.getElementById('matchups-data').textContent;
             const rawSides = document.getElementById('top-sides-data').textContent;
             const rawTotals = document.getElementById('top-totals-data').textContent;

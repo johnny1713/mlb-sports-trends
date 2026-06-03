@@ -10,9 +10,10 @@ from datetime import datetime
 # ==========================================
 # 網路請求模組與防擋策略
 # ==========================================
-def fetch_url(url):
+def fetch_url(url, max_retries=3, backoff_factor=1.5):
     """
     使用自訂瀏覽器標頭發送 HTTP 請求，防止被 covers.com 封鎖。
+    支援重試機制以提高網路抓取的穩定性。
     """
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -20,12 +21,18 @@ def fetch_url(url):
         'Accept-Language': 'en-US,en;q=0.9,zh-TW;q=0.8,zh;q=0.7'
     }
     req = urllib.request.Request(url, headers=headers)
-    try:
-        with urllib.request.urlopen(req, timeout=15) as response:
-            return response.read().decode('utf-8', errors='ignore')
-    except Exception as e:
-        print(f"  [錯誤] 無法抓取網頁 {url}: {e}")
-        return None
+    for attempt in range(max_retries):
+        try:
+            with urllib.request.urlopen(req, timeout=15) as response:
+                return response.read().decode('utf-8', errors='ignore')
+        except Exception as e:
+            if attempt < max_retries - 1:
+                sleep_time = backoff_factor ** attempt
+                print(f"  [警告] 抓取 {url} 失敗 ({e})，將在 {sleep_time:.1f} 秒後進行第 {attempt+2} 次重試...")
+                time.sleep(sleep_time)
+            else:
+                print(f"  [錯誤] 在嘗試 {max_retries} 次後仍無法抓取網頁 {url}: {e}")
+                return None
 
 def parse_run_lines(html_str):
     """
@@ -1708,7 +1715,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             "Washington Nationals": "華盛頓國民"
         }};
 
-        let currentLanguage = 'zh'; // 預設使用中文
+        let currentLanguage = localStorage.getItem('mlb_trends_lang') || 'zh'; // 從 localStorage 載入使用者偏好，預設中文
 
         // 中英文切換輔助函式
         function translateText(text) {{
@@ -1729,6 +1736,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
         // 切換語言按鈕點擊事件
         function toggleLanguage() {{
             currentLanguage = currentLanguage === 'zh' ? 'en' : 'zh';
+            localStorage.setItem('mlb_trends_lang', currentLanguage); // 儲存偏好
             const btn = document.getElementById('lang-toggle');
             if (btn) {{
                 btn.innerHTML = `🌐 隊伍名稱：${{currentLanguage === 'zh' ? '中文' : 'English'}}`;
@@ -1752,6 +1760,12 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
 
         // 初始化加載數據
         window.addEventListener('DOMContentLoaded', () => {{
+            // 根據儲存的偏好語言更新按鈕文字
+            const btn = document.getElementById('lang-toggle');
+            if (btn) {{
+                btn.innerHTML = `🌐 隊伍名稱：${{currentLanguage === 'zh' ? '中文' : 'English'}}`;
+            }}
+
             const rawData = document.getElementById('matchups-data').textContent;
             const rawSides = document.getElementById('top-sides-data').textContent;
             const rawTotals = document.getElementById('top-totals-data').textContent;
