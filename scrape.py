@@ -464,7 +464,7 @@ def analyze_betting_recommendations(matchup, processed_trends):
 # ==========================================
 # 質感中文化 HTML 儀表板文件生成器
 # ==========================================
-def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, date_str):
+def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, date_str):
     """
     將爬取與運算後的結果導出為一個極具質感的本機互動式繁體中文 HTML 網頁。
     """
@@ -477,7 +477,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
     matchups_json = json.dumps(matchups_data, ensure_ascii=False)
     top_sides_json = json.dumps(top_5_sides, ensure_ascii=False)
     top_totals_json = json.dumps(top_5_totals, ensure_ascii=False)
-    top_ai_json = json.dumps(top_3_ai, ensure_ascii=False)
+    top_ai_json = json.dumps(top_5_ai, ensure_ascii=False)
     
     html_template = f"""<!DOCTYPE html>
 <html lang="zh-TW">
@@ -1314,7 +1314,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
         }}
 
         /* ==========================================
-           AI 精選推薦專區 (AI Top 3 Section)
+           AI 精選推薦專區 (AI Top 5 Section)
            ========================================== */
         .ai-section {{
             margin-bottom: 45px;
@@ -1595,8 +1595,8 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
             </div>
         </header>
 
-        <!-- 今日 AI 精選 Top 3 推薦專區 -->
-        <section class="ai-section" id="ai-top3-section">
+        <!-- 今日 AI 精選 Top 5 推薦專區 -->
+        <section class="ai-section" id="ai-top5-section">
             <!-- 由 JS 動態渲染 -->
         </section>
 
@@ -1735,7 +1735,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
             }}
             
             // 重新渲染所有內容
-            renderAiTop3();
+            renderAiTop5();
             renderTopLists();
             renderMatchups();
         }}
@@ -1762,7 +1762,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
                 topTotals = JSON.parse(rawTotals);
                 topAi = JSON.parse(rawAi);
                 
-                renderAiTop3();
+                renderAiTop5();
                 renderTopLists();
                 renderMatchups();
             }} catch(e) {{
@@ -1777,9 +1777,9 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
             }}
         }});
 
-        // 渲染今日 AI 精選 Top 3 推薦
-        function renderAiTop3() {{
-            const section = document.getElementById('ai-top3-section');
+        // 渲染今日 AI 精選 Top 5 推薦
+        function renderAiTop5() {{
+            const section = document.getElementById('ai-top5-section');
             if (!section) return;
             
             if (topAi.length === 0) {{
@@ -1833,7 +1833,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_3_ai, 
             section.innerHTML = `
                 <div class="ai-title-row">
                     <h2 class="ai-main-title">
-                        🤖 今日 AI 智慧精選 Top 3 黃金推薦
+                        🤖 今日 AI 智慧精選 Top 5 黃金推薦
                     </h2>
                     <span class="ai-badge-glow">AI OPTIMIZED</span>
                 </div>
@@ -2307,13 +2307,13 @@ def main():
             'rationale': f"雙向強勢指標！兩隊近期在 {r['market_type']} 盤口高度吻合，歷史平均投報率達 {r['roi']}%，大/小分走勢非常清晰。"
         })
         
-    top_3_ai = sorted(ai_candidates, key=lambda x: x['roi'], reverse=True)[:3]
+    top_5_ai = sorted(ai_candidates, key=lambda x: x['roi'], reverse=True)[:5]
     
     print(f"\n[+] 成功計算出今日「勝負/讓分盤」與「大小分總分」雙欄 Top 5 黃金投注推薦。")
-    print(f"[+] 成功計算出今日「AI 推薦 Top 3」精選：{len(top_3_ai)} 項組合。")
+    print(f"[+] 成功計算出今日「AI 推薦 Top 5」精選：{len(top_5_ai)} 項組合。")
     
     # 6. 生成動態互動式 HTML 數據儀表板
-    generate_html_dashboard(all_matchups_data, top_5_sides, top_5_totals, top_3_ai, date_str)
+    generate_html_dashboard(all_matchups_data, top_5_sides, top_5_totals, top_5_ai, date_str)
     
     print("====================================================")
     print("                  抓取與分析完成！")
