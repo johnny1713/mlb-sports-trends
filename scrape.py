@@ -1001,6 +1001,22 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             gap: 20px;
         }}
 
+        .match-meta-left {{
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }}
+
+        .match-time-sub {{
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: 2px;
+        }}
+
         .teams-versus {{
             display: flex;
             align-items: center;
@@ -2176,8 +2192,8 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                 const doubleTags = m.double_positive.length > 0 ? `<span class="match-tag double-tag">🔥 大小分總分 (\${{m.double_positive.length}})</span>` : '';
                 const opposingTags = m.opposing_trends.length > 0 ? `<span class="match-tag opposing-tag">🎯 勝負/讓分盤 (\${{m.opposing_trends.length}})</span>` : '';
                 const dayGameTag = m.is_day_game 
-                    ? `<span class="match-tag day-game-tag">⚠️ \${{currentLanguage === 'zh' ? '下午場' : 'Day Game'}} (\${{m.game_time}})</span>` 
-                    : `<span class="match-tag night-game-tag">🕒 \${{m.game_time}}</span>`;
+                    ? `<span class="match-tag day-game-tag">\u26a0\ufe0f \${{currentLanguage === 'zh' ? '\u4e0b\u5348\u5834' : 'Day Game'}}</span>` 
+                    : '';
                 
                 let dayGameBanner = '';
                 if (m.is_day_game) {{
@@ -2284,7 +2300,8 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                 const cardHtml = `
                     <div class="match-card" id="match-card-\${{m.path.split('/').pop()}}">
                         <div class="match-header">
-                            <div class="teams-versus">
+                            <div class="match-meta-left">
+                                <div class="teams-versus">
                                 <span class="team-name-badge">
                                     <img src="\${{m.team_a_logo}}" class="team-logo" onerror="this.style.display='none'" />
                                     \${{translateText(m.team_a)}}
@@ -2294,6 +2311,8 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                                     <img src="\${{m.team_b_logo}}" class="team-logo" onerror="this.style.display='none'" />
                                     \${{translateText(m.team_b)}}
                                 </span>
+                            </div>
+                                <div class="match-time-sub">\U0001f552 \${{m.game_time}}</div>
                             </div>
                             <div class="match-tags">
                                 \${{dayGameTag}}
