@@ -93,9 +93,27 @@ def parse_run_lines(html_str):
 # ==========================================
 # 賽事抓取與路徑提取
 # ==========================================
+def is_day_game(time_str):
+    """
+    根據美東時間 (ET) 判定是否為下午場。
+    如果包含 AM，或者包含 PM 且小時在 12, 1, 2, 3, 4 內，則判定為下午場（即 12:00 PM - 4:59 PM ET）。
+    """
+    if not time_str or time_str == "None":
+        return False
+    time_str = time_str.upper()
+    if "AM" in time_str:
+        return True
+    match = re.search(r'(\d+):', time_str)
+    if match:
+        hour = int(match.group(1))
+        if hour in [12, 1, 2, 3, 4]:
+            return True
+    return False
+
 def get_matchups_data(date_str=None):
     """
     抓取 MLB 每日賽事列表，並提取當日所有獨特的對戰頁面 ID、路徑與球隊 Logo 縮寫。
+    同時解析開賽時間，並判定是否為下午場。
     """
     base_url = 'https://www.covers.com/sports/mlb/matchups'
     if date_str:
@@ -110,8 +128,8 @@ def get_matchups_data(date_str=None):
         print("[錯誤] 無法獲取賽事列表，請檢查網路連線。")
         return []
         
-    # 尋找所有包含 gamebox class 的 article 標籤
-    article_pattern = re.compile(r'<article\s+([^>]*class="[^"]*gamebox[^"]*"[^>]*)>', re.IGNORECASE | re.DOTALL)
+    # 尋找整個 article 標籤 block 以便從中提取開賽時間
+    article_pattern = re.compile(r'(<article\s+[^>]*class="[^"]*gamebox[^"]*"[^>]*>.*?</article>)', re.IGNORECASE | re.DOTALL)
     articles = article_pattern.findall(html_content)
     
     matchups = []
@@ -129,14 +147,20 @@ def get_matchups_data(date_str=None):
         away_short = away_short_match.group(1).lower() if away_short_match else ""
         home_short = home_short_match.group(1).lower() if home_short_match else ""
         
+        # 提取開賽時間
+        time_match = re.search(r'class="[^"]*preGame-time[^"]*"[^>]*>\s*(.*?)\s*</', art, re.IGNORECASE | re.DOTALL)
+        game_time = time_match.group(1).strip() if time_match else "None"
+        
         matchups.append({
             'id': game_id,
             'path': f"/sport/baseball/mlb/matchup/{game_id}",
             'away_short': away_short,
-            'home_short': home_short
+            'home_short': home_short,
+            'game_time': game_time,
+            'is_day_game': is_day_game(game_time)
         })
         
-    print(f"[+] 成功從賽事列表解析到 {len(matchups)} 場對戰與球隊 Logo 縮寫。")
+    print(f"[+] 成功從賽事列表解析到 {len(matchups)} 場對戰與其開賽時間。")
     return matchups
 
 # ==========================================
@@ -226,7 +250,9 @@ def parse_matchup_details(matchup):
         'team_a_spread': team_a_spread,
         'team_b_spread': team_b_spread,
         'total_line': total_line,
-        'trends': raw_trends
+        'trends': raw_trends,
+        'game_time': matchup.get('game_time', 'None'),
+        'is_day_game': matchup.get('is_day_game', False)
     }
 
 def classify_and_process_trends(matchup):
@@ -1041,6 +1067,65 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             color: var(--accent-blue);
         }}
 
+        .match-tag.day-game-tag {{
+            background: rgba(251, 191, 36, 0.12);
+            border: 1px solid rgba(251, 191, 36, 0.35);
+            color: #fbbf24;
+            text-shadow: 0 0 8px rgba(251, 191, 36, 0.2);
+        }}
+
+        .match-tag.night-game-tag {{
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }}
+
+        .day-game-tag-ai {{
+            background: rgba(251, 191, 36, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }}
+
+        /* 下午場警示橫幅 */
+        .day-game-banner {{
+            background: linear-gradient(90deg, rgba(251, 191, 36, 0.08) 0%, rgba(251, 191, 36, 0.02) 100%);
+            border: 1px solid rgba(251, 191, 36, 0.2);
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }}
+
+        .day-game-icon {{
+            font-size: 18px;
+            color: #fbbf24;
+            margin-top: 1px;
+            display: inline-block;
+            animation: warning-pulse 2s infinite alternate;
+        }}
+
+        @keyframes warning-pulse {{
+            0% {{ transform: scale(1); filter: drop-shadow(0 0 1px rgba(251, 191, 36, 0.4)); }}
+            100% {{ transform: scale(1.1); filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.8)); }}
+        }}
+
+        .day-game-text {{
+            font-size: 13px;
+            color: #e5e7eb;
+            line-height: 1.6;
+        }}
+
+        .day-game-text strong {{
+            color: #fbbf24;
+        }}
+
         /* 核心推薦區域 */
         .match-body {{
             padding: 28px;
@@ -1786,13 +1871,11 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             "Washington Nationals": "華盛頓國民"
         }};
 
-        let currentLanguage = localStorage.getItem('mlb_trends_lang') || 'zh'; // 從 localStorage 載入使用者偏好，預設中文
+        let currentLanguage = localStorage.getItem('mlb_trends_lang') || 'zh';
 
-        // 中英文切換輔助函式
         function translateText(text) {{
             if (!text) return text;
             if (currentLanguage === 'en') {{
-                // 英文模式下，將重複的 Athletics Athletics 整理為 Athletics
                 return text.replace(/Athletics Athletics/g, "Athletics");
             }}
             let translated = text;
@@ -1804,24 +1887,19 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             return translated;
         }}
 
-        // 切換語言按鈕點擊事件
         function toggleLanguage() {{
             currentLanguage = currentLanguage === 'zh' ? 'en' : 'zh';
-            localStorage.setItem('mlb_trends_lang', currentLanguage); // 儲存偏好
+            localStorage.setItem('mlb_trends_lang', currentLanguage);
             const btn = document.getElementById('lang-toggle');
             if (btn) {{
                 btn.innerHTML = `🌐 隊伍名稱：${{currentLanguage === 'zh' ? '中文' : 'English'}}`;
             }}
             
-            // 重新渲染所有內容
             renderAiTop5();
             renderTopLists();
             renderMatchups();
         }}
 
-        // ==========================================
-        // 核心前端邏輯 (Core Frontend Script)
-        // ==========================================
         let allMatchups = [];
         let topSides = [];
         let topTotals = [];
@@ -1829,9 +1907,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
         let currentTab = 'all';
         let searchQuery = '';
 
-        // 初始化加載數據
         window.addEventListener('DOMContentLoaded', () => {{
-            // 根據儲存的偏好語言更新按鈕文字
             const btn = document.getElementById('lang-toggle');
             if (btn) {{
                 btn.innerHTML = `🌐 隊伍名稱：${{currentLanguage === 'zh' ? '中文' : 'English'}}`;
@@ -1862,7 +1938,6 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             }}
         }});
 
-        // 渲染今日 AI 精選 Top 5 推薦
         function renderAiTop5() {{
             const section = document.getElementById('ai-top5-section');
             if (!section) return;
@@ -1891,11 +1966,16 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                     `;
                 }}
                 
+                const dayGameBadge = rec.is_day_game 
+                    ? `<span class="ai-card-tag day-game-tag-ai">⚠️ ${{currentLanguage === 'zh' ? '下午場' : 'Day Game'}}</span>` 
+                    : '';
+                
                 cardsHtml += `
                     <div class="ai-card" onclick="scrollToMatch('match-card-${{rec.matchup_id}}')">
                         <div class="ai-card-rank">#0${{rankNum}}</div>
                         <div class="ai-card-header">
                             <span class="ai-card-tag ${{tagClass}}">${{tagText}}</span>
+                            ${{dayGameBadge}}
                             <span class="ai-card-match">${{translateText(rec.matchup_name)}}</span>
                         </div>
                         <div>
@@ -1928,20 +2008,12 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             `;
         }}
 
-        // 渲染頂部兩欄 Top 5 黃金投注推薦
         function renderTopLists() {{
-            // 1. 渲染「勝負/讓分盤」Top 5
             const sidesContainer = document.getElementById('top-sides-container');
             sidesContainer.innerHTML = '';
             
             if (topSides.length === 0) {{
-                sidesContainer.innerHTML = `
-                    <div class="no-data-card" style="padding: 24px;">
-                        <p style="font-size: 13px; color: var(--text-muted); font-style: italic;">
-                            今日暫無符合篩選標準的「勝負/讓分盤」推薦組合。
-                        </p>
-                    </div>
-                `;
+                sidesContainer.innerHTML = `<div class="no-data-card" style="padding: 24px;"><p style="font-size: 13px; color: var(--text-muted); font-style: italic;">今日暫無符合篩選標準的「勝負/讓分盤」推薦組合。</p></div>`;
             }} else {{
                 topSides.forEach(rec => {{
                     const cardHtml = `
@@ -1951,7 +2023,10 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                                     <img src="${{rec.logo}}" class="top-rec-logo" onerror="this.style.display='none'" />
                                 </div>
                                 <div class="top-rec-item-info">
-                                    <span class="top-rec-item-match">${{translateText(rec.matchup_name)}} • ${{rec.market_type}}</span>
+                                    <span class="top-rec-item-match">
+                                        ${{translateText(rec.matchup_name)}} • ${{rec.market_type}}
+                                        ${{rec.is_day_game ? `<span style="color: #fbbf24; font-weight: 700; margin-left: 6px;">⚠️ ${{currentLanguage === 'zh' ? '下午場' : 'Day Game'}}</span>` : ''}}
+                                    </span>
                                     <span class="top-rec-item-bet">${{translateText(rec.recommendation)}}</span>
                                 </div>
                             </div>
@@ -1964,18 +2039,11 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                 }});
             }}
 
-            // 2. 渲染「大小分總分」Top 5
             const totalsContainer = document.getElementById('top-totals-container');
             totalsContainer.innerHTML = '';
             
             if (topTotals.length === 0) {{
-                totalsContainer.innerHTML = `
-                    <div class="no-data-card" style="padding: 24px;">
-                        <p style="font-size: 13px; color: var(--text-muted); font-style: italic;">
-                            今日暫無符合篩選標準的「大小分總分」推薦組合。
-                        </p>
-                    </div>
-                `;
+                totalsContainer.innerHTML = `<div class="no-data-card" style="padding: 24px;"><p style="font-size: 13px; color: var(--text-muted); font-style: italic;">今日暫無符合篩選標準的「大小分總分」推薦組合。</p></div>`;
             }} else {{
                 topTotals.forEach(rec => {{
                     const cardHtml = `
@@ -1986,7 +2054,10 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                                     <img src="${{rec.logo_b}}" class="top-rec-logo" onerror="this.style.display='none'" />
                                 </div>
                                 <div class="top-rec-item-info">
-                                    <span class="top-rec-item-match">${{translateText(rec.matchup_name)}} • ${{rec.market_type}}</span>
+                                    <span class="top-rec-item-match">
+                                        ${{translateText(rec.matchup_name)}} • ${{rec.market_type}}
+                                        ${{rec.is_day_game ? `<span style="color: #fbbf24; font-weight: 700; margin-left: 6px;">⚠️ ${{currentLanguage === 'zh' ? '下午場' : 'Day Game'}}</span>` : ''}}
+                                    </span>
                                     <span class="top-rec-item-bet">${{translateText(rec.recommendation)}}</span>
                                 </div>
                             </div>
@@ -2000,7 +2071,6 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             }}
         }}
 
-        // 滾動並高亮特定卡片
         function scrollToMatch(id) {{
             const el = document.getElementById(id);
             if (el) {{
@@ -2078,13 +2148,10 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             const container = document.getElementById('matchups-container');
             container.innerHTML = '';
             
-            // 篩選數據
             const filtered = allMatchups.filter(m => {{
-                // 1. 頁籤篩選
                 if (currentTab === 'double' && m.double_positive.length === 0) return false;
                 if (currentTab === 'opposing' && m.opposing_trends.length === 0) return false;
                 
-                // 2. 搜尋字詞篩選
                 if (searchQuery) {{
                     const titleEn = (m.team_a + " vs " + m.team_b).toLowerCase();
                     const titleZh = (translateText(m.team_a) + " vs " + translateText(m.team_b)).toLowerCase();
@@ -2094,7 +2161,6 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                 return true;
             }});
 
-            // 若無對應數據
             if (filtered.length === 0) {{
                 container.innerHTML = `
                     <div class="no-data-card">
@@ -2106,14 +2172,30 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                 return;
             }}
 
-            // 生成卡片 HTML
             filtered.forEach(m => {{
-                const doubleTags = m.double_positive.length > 0 ? `<span class="match-tag double-tag">🔥 大小分總分 (${{m.double_positive.length}})</span>` : '';
-                const opposingTags = m.opposing_trends.length > 0 ? `<span class="match-tag opposing-tag">🎯 勝負/讓分盤 (${{m.opposing_trends.length}})</span>` : '';
+                const doubleTags = m.double_positive.length > 0 ? `<span class="match-tag double-tag">🔥 大小分總分 (\${{m.double_positive.length}})</span>` : '';
+                const opposingTags = m.opposing_trends.length > 0 ? `<span class="match-tag opposing-tag">🎯 勝負/讓分盤 (\${{m.opposing_trends.length}})</span>` : '';
+                const dayGameTag = m.is_day_game 
+                    ? `<span class="match-tag day-game-tag">⚠️ \${{currentLanguage === 'zh' ? '下午場' : 'Day Game'}} (\${{m.game_time}})</span>` 
+                    : `<span class="match-tag night-game-tag">🕒 \${{m.game_time}}</span>`;
+                
+                let dayGameBanner = '';
+                if (m.is_day_game) {{
+                    const bannerText = currentLanguage === 'zh' 
+                        ? '<strong>此賽事為下午場 (Day Game)</strong>：開賽時間約為當地時間 13:00~14:00。下午場由於球員生理時鐘、陣容輪替(主力休息、備用捕手先發)與牛棚調度等變數極多，盤口<strong>極易開出反邊</strong>，建議<strong>避開</strong>或考慮<strong>反下</strong>。'
+                        : '<strong>This is a Day Game</strong>: Scheduled around 1:00 PM - 2:00 PM local time. Day games have high volatility due to circadian rhythm shifts, lineup rotations (resting stars/starting backup catchers), and bullpen fatigue. They are <strong>prone to upset/reverse results</strong>. Consider <strong>avoiding</strong> or <strong>betting against</strong> the trend.';
+                    dayGameBanner = `
+                        <div class="day-game-banner">
+                            <span class="day-game-icon">⚠️</span>
+                            <div class="day-game-text">
+                                \${{bannerText}}
+                            </div>
+                        </div>
+                    `;
+                }}
                 
                 let recsHtml = '';
                 
-                // 如果有大小分總分推薦，且當前頁籤為全部或大小分總分
                 if (m.double_positive.length > 0 && (currentTab === 'all' || currentTab === 'double')) {{
                     recsHtml += `
                         <div class="section-title">
@@ -2125,18 +2207,17 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                         recsHtml += `
                             <div class="rec-box double-box">
                                 <div class="rec-title-row">
-                                    <span class="rec-type-badge">大小分總分 • ${{rec.market_type}}</span>
-                                    <span class="roi-badge">平均 ROI: ${{rec.avg_roi}}%</span>
+                                    <span class="rec-type-badge">大小分總分 • \${{rec.market_type}}</span>
+                                    <span class="roi-badge">平均 ROI: \dots{{rec.avg_roi}}%</span>
                                 </div>
-                                <div class="rec-headline">${{translateText(rec.recommendation)}}</div>
-                                <div class="rec-desc">${{translateText(rec.confidence)}}</div>
+                                <div class="rec-headline">\${{translateText(rec.recommendation)}}</div>
+                                <div class="rec-desc">\${{translateText(rec.confidence)}}</div>
                             </div>
                         `;
                     }});
                     recsHtml += `</div>`;
                 }}
                 
-                // 如果有勝負/讓分盤推薦，且當前頁籤為全部或勝負/讓分盤
                 if (m.opposing_trends.length > 0 && (currentTab === 'all' || currentTab === 'opposing')) {{
                     recsHtml += `
                         <div class="section-title">
@@ -2148,18 +2229,17 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                         recsHtml += `
                             <div class="rec-box opposing-box">
                                 <div class="rec-title-row">
-                                    <span class="rec-type-badge">勝負/讓分盤 • ${{rec.market_zh}}</span>
-                                    <span class="roi-badge" style="color: var(--accent-blue); background: rgba(0, 176, 255, 0.1); border: 1px solid rgba(0, 176, 255, 0.25);">ROI 差值: ${{rec.roi_diff}}%</span>
+                                    <span class="rec-type-badge">勝負/讓分盤 • \${{rec.market_zh}}</span>
+                                    <span class="roi-badge" style="color: var(--accent-blue); background: rgba(0, 176, 255, 0.1); border: 1px solid rgba(0, 176, 255, 0.25);">ROI 差值: \dots{{rec.roi_diff}}%</span>
                                 </div>
-                                <div class="rec-headline">${{translateText(rec.recommendation)}}</div>
-                                <div class="rec-desc">${{translateText(rec.confidence)}}</div>
+                                <div class="rec-headline">\${{translateText(rec.recommendation)}}</div>
+                                <div class="rec-desc">\${{translateText(rec.confidence)}}</div>
                             </div>
                         `;
                     }});
                     recsHtml += `</div>`;
                 }}
 
-                // 如果兩個都沒有
                 if (m.double_positive.length === 0 && m.opposing_trends.length === 0) {{
                     recsHtml += `
                         <div style="padding: 10px 0; color: var(--text-muted); font-size: 13px; font-style: italic;">
@@ -2168,7 +2248,6 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                     `;
                 }}
 
-                // 生成對戰詳細數據清單
                 let teamATrendsHtml = '';
                 let teamBTrendsHtml = '';
                 
@@ -2179,24 +2258,22 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
 
                 [...highTrendsA, ...lowTrendsA].forEach(t => {{
                     const klassName = t.class === 'High' ? 'trend-high' : 'trend-low';
-                    // 總是保持原始英文，只清理重複的 Athletics Athletics 為 Athletics
                     const cleanText = t.text.replace(/Athletics Athletics/g, "Athletics");
                     teamATrendsHtml += `
-                        <li class="trend-item ${{klassName}}">
+                        <li class="trend-item \${{klassName}}">
                             <span class="trend-class-dot"></span>
-                            <div>${{cleanText}}</div>
+                            <div>\${{cleanText}}</div>
                         </li>
                     `;
                 }});
 
                 [...highTrendsB, ...lowTrendsB].forEach(t => {{
                     const klassName = t.class === 'High' ? 'trend-high' : 'trend-low';
-                    // 總是保持原始英文，只清理重複的 Athletics Athletics 為 Athletics
                     const cleanText = t.text.replace(/Athletics Athletics/g, "Athletics");
                     teamBTrendsHtml += `
-                        <li class="trend-item ${{klassName}}">
+                        <li class="trend-item \${{klassName}}">
                             <span class="trend-class-dot"></span>
-                            <div>${{cleanText}}</div>
+                            <div>\${{cleanText}}</div>
                         </li>
                     `;
                 }});
@@ -2205,31 +2282,30 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                 if (!teamBTrendsHtml) teamBTrendsHtml = '<li class="trend-item" style="color: var(--text-muted);">無趨勢數據</li>';
 
                 const cardHtml = `
-                    <div class="match-card" id="match-card-${{m.path.split('/').pop()}}">
-                        <!-- 卡片頂部對戰 -->
+                    <div class="match-card" id="match-card-\${{m.path.split('/').pop()}}">
                         <div class="match-header">
                             <div class="teams-versus">
                                 <span class="team-name-badge">
-                                    <img src="${{m.team_a_logo}}" class="team-logo" onerror="this.style.display='none'" />
-                                    ${{translateText(m.team_a)}}
+                                    <img src="\${{m.team_a_logo}}" class="team-logo" onerror="this.style.display='none'" />
+                                    \${{translateText(m.team_a)}}
                                 </span>
                                 <span class="vs-text">vs</span>
                                 <span class="team-name-badge">
-                                    <img src="${{m.team_b_logo}}" class="team-logo" onerror="this.style.display='none'" />
-                                    ${{translateText(m.team_b)}}
+                                    <img src="\${{m.team_b_logo}}" class="team-logo" onerror="this.style.display='none'" />
+                                    \${{translateText(m.team_b)}}
                                 </span>
                             </div>
                             <div class="match-tags">
-                                ${{doubleTags}}
-                                ${{opposingTags}}
+                                \${{dayGameTag}}
+                                \${{doubleTags}}
+                                \${{opposingTags}}
                             </div>
                         </div>
                         
-                        <!-- 核心推薦區域 -->
                         <div class="match-body">
-                            ${{recsHtml}}
+                            \${{dayGameBanner}}
+                            \${{recsHtml}}
                             
-                            <!-- 摺疊按鈕與收合詳情 -->
                             <button class="details-trigger" onclick="toggleExpand(this.closest('.match-card'))">
                                 <span>顯示該賽事完整詳細趨勢數據 (High / Low Trends)</span>
                                 <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" fill="none"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -2239,20 +2315,20 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                                 <div class="accordion-inner">
                                     <div class="team-trends-col">
                                         <h4>
-                                            <img src="${{m.team_a_logo}}" class="team-logo" style="width: 24px; height: 24px; border-radius: 6px; padding: 2px;" onerror="this.style.display='none'" />
-                                            ${{translateText(m.team_a)}} 趨勢數據
+                                            <img src="\${{m.team_a_logo}}" class="team-logo" style="width: 24px; height: 24px; border-radius: 6px; padding: 2px;" onerror="this.style.display='none'" />
+                                            \${{translateText(m.team_a)}} 趨勢數據
                                         </h4>
                                         <ul class="trend-list">
-                                            ${{teamATrendsHtml}}
+                                            \${{teamATrendsHtml}}
                                         </ul>
                                     </div>
                                     <div class="team-trends-col">
                                         <h4>
-                                            <img src="${{m.team_b_logo}}" class="team-logo" style="width: 24px; height: 24px; border-radius: 6px; padding: 2px;" onerror="this.style.display='none'" />
-                                            ${{translateText(m.team_b)}} 趨勢數據
+                                            <img src="\${{m.team_b_logo}}" class="team-logo" style="width: 24px; height: 24px; border-radius: 6px; padding: 2px;" onerror="this.style.display='none'" />
+                                            \${{translateText(m.team_b)}} 趨勢數據
                                         </h4>
                                         <ul class="trend-list">
-                                            ${{teamBTrendsHtml}}
+                                            \${{teamBTrendsHtml}}
                                         </ul>
                                     </div>
                                 </div>
@@ -2263,19 +2339,20 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                 container.insertAdjacentHTML('beforeend', cardHtml);
             }});
         }}
+
     </script>
 </body>
 </html>
 """
     # 寫入 HTML 檔案
-    output_filename = "mlb_trends.html"
-    try:
-        with open(output_filename, "w", encoding="utf-8") as f:
-            f.write(html_template)
-        print(f"\n[+] 成功生成繁體中文 HTML 互動儀表板：{output_filename}")
-        print(f"[*] 您可以按兩下打開 `{output_filename}` 在瀏覽器中檢視今日的黃金推薦賽事！\n")
-    except Exception as e:
-        print(f"[錯誤] 無法寫入 HTML 儀表板文件: {e}")
+    output_filenames = ["mlb_trends.html", "index.html"]
+    for output_filename in output_filenames:
+        try:
+            with open(output_filename, "w", encoding="utf-8") as f:
+                f.write(html_template)
+            print(f"[+] 成功生成繁體中文 HTML 互動儀表板：{output_filename}")
+        except Exception as e:
+            print(f"[錯誤] 無法寫入 HTML 儀表板文件 {output_filename}: {e}")
 
 # ==========================================
 # 主流程控制
@@ -2331,7 +2408,9 @@ def main():
             'team_b_logo': matchup_data['team_b_logo'],
             'processed_trends': processed_trends,
             'double_positive': double_pos,
-            'opposing_trends': opposing
+            'opposing_trends': opposing,
+            'game_time': matchup_data['game_time'],
+            'is_day_game': matchup_data['is_day_game']
         })
         
         time.sleep(1.0)
@@ -2357,7 +2436,9 @@ def main():
                 'roi': rec['avg_roi'],
                 'logo_a': matchup['team_a_logo'],
                 'logo_b': matchup['team_b_logo'],
-                'details': f"雙方平均投報率: {rec['avg_roi']}%"
+                'details': f"雙方平均投報率: {rec['avg_roi']}%",
+                'is_day_game': matchup['is_day_game'],
+                'game_time': matchup['game_time']
             })
             
         # 收集勝負/讓分盤推薦 (原一正一反)
@@ -2375,7 +2456,9 @@ def main():
                 'roi_diff': rec['roi_diff'],
                 'bet_on': rec['bet_on'],
                 'logo': logo_url,
-                'details': f"優勢隊投報率: {rec['strong_roi']}% (雙方差距: {rec['roi_diff']}% ROI)"
+                'details': f"優勢隊投報率: {rec['strong_roi']}% (雙方差距: {rec['roi_diff']}% ROI)",
+                'is_day_game': matchup['is_day_game'],
+                'game_time': matchup['game_time']
             })
             
     # 分別對兩組推薦以投報率 ROI 由大到小排序，取各自的前 5 名 (Top 5)
@@ -2413,7 +2496,9 @@ def main():
             'bet_on': r['bet_on'],
             'logo_a': r['logo'],
             'logo_b': None,
-            'rationale': f"黃金對立組合！優勢隊 {r['bet_on']} 歷史投報率達 {r['roi']}%，且雙方 ROI 差距達 {r['roi_diff']}%，戰績勢力差距顯著。"
+            'rationale': f"黃金對立組合！優勢隊 {r['bet_on']} 歷史投報率達 {r['roi']}%，且雙方 ROI 差距達 {r['roi_diff']}%，戰績勢力差距顯著。",
+            'is_day_game': r['is_day_game'],
+            'game_time': r['game_time']
         })
         
     for r in totals_recs:
@@ -2428,7 +2513,9 @@ def main():
             'roi': r['roi'],
             'logo_a': r['logo_a'],
             'logo_b': r['logo_b'],
-            'rationale': f"雙向強勢指標！兩隊近期在 {r['market_type']} 盤口高度吻合，歷史平均投報率達 {r['roi']}%，大/小分走勢非常清晰。"
+            'rationale': f"雙向強勢指標！兩隊近期在 {r['market_type']} 盤口高度吻合，歷史平均投報率達 {r['roi']}%，大/小分走勢非常清晰。",
+            'is_day_game': r['is_day_game'],
+            'game_time': r['game_time']
         })
         
     top_5_ai = sorted(ai_candidates, key=lambda x: x['roi'], reverse=True)[:5]
