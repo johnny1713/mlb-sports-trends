@@ -2189,10 +2189,10 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             }}
 
             filtered.forEach(m => {{
-                const doubleTags = m.double_positive.length > 0 ? `<span class="match-tag double-tag">🔥 大小分總分 (\${{m.double_positive.length}})</span>` : '';
-                const opposingTags = m.opposing_trends.length > 0 ? `<span class="match-tag opposing-tag">🎯 勝負/讓分盤 (\${{m.opposing_trends.length}})</span>` : '';
+                const doubleTags = m.double_positive.length > 0 ? `<span class="match-tag double-tag">🔥 大小分總分 (${{m.double_positive.length}})</span>` : '';
+                const opposingTags = m.opposing_trends.length > 0 ? `<span class="match-tag opposing-tag">🎯 勝負/讓分盤 (${{m.opposing_trends.length}})</span>` : '';
                 const dayGameTag = m.is_day_game 
-                    ? `<span class="match-tag day-game-tag">\u26a0\ufe0f \${{currentLanguage === 'zh' ? '\u4e0b\u5348\u5834' : 'Day Game'}}</span>` 
+                    ? `<span class="match-tag day-game-tag">\u26a0\ufe0f ${{currentLanguage === 'zh' ? '\u4e0b\u5348\u5834' : 'Day Game'}}</span>` 
                     : '';
                 
                 let dayGameBanner = '';
@@ -2204,7 +2204,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                         <div class="day-game-banner">
                             <span class="day-game-icon">⚠️</span>
                             <div class="day-game-text">
-                                \${{bannerText}}
+                                ${{bannerText}}
                             </div>
                         </div>
                     `;
@@ -2223,11 +2223,11 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                         recsHtml += `
                             <div class="rec-box double-box">
                                 <div class="rec-title-row">
-                                    <span class="rec-type-badge">大小分總分 • \${{rec.market_type}}</span>
+                                    <span class="rec-type-badge">大小分總分 • ${{rec.market_type}}</span>
                                     <span class="roi-badge">平均 ROI: \dots{{rec.avg_roi}}%</span>
                                 </div>
-                                <div class="rec-headline">\${{translateText(rec.recommendation)}}</div>
-                                <div class="rec-desc">\${{translateText(rec.confidence)}}</div>
+                                <div class="rec-headline">${{translateText(rec.recommendation)}}</div>
+                                <div class="rec-desc">${{translateText(rec.confidence)}}</div>
                             </div>
                         `;
                     }});
@@ -2245,11 +2245,11 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                         recsHtml += `
                             <div class="rec-box opposing-box">
                                 <div class="rec-title-row">
-                                    <span class="rec-type-badge">勝負/讓分盤 • \${{rec.market_zh}}</span>
+                                    <span class="rec-type-badge">勝負/讓分盤 • ${{rec.market_zh}}</span>
                                     <span class="roi-badge" style="color: var(--accent-blue); background: rgba(0, 176, 255, 0.1); border: 1px solid rgba(0, 176, 255, 0.25);">ROI 差值: \dots{{rec.roi_diff}}%</span>
                                 </div>
-                                <div class="rec-headline">\${{translateText(rec.recommendation)}}</div>
-                                <div class="rec-desc">\${{translateText(rec.confidence)}}</div>
+                                <div class="rec-headline">${{translateText(rec.recommendation)}}</div>
+                                <div class="rec-desc">${{translateText(rec.confidence)}}</div>
                             </div>
                         `;
                     }});
@@ -2276,9 +2276,9 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                     const klassName = t.class === 'High' ? 'trend-high' : 'trend-low';
                     const cleanText = t.text.replace(/Athletics Athletics/g, "Athletics");
                     teamATrendsHtml += `
-                        <li class="trend-item \${{klassName}}">
+                        <li class="trend-item ${{klassName}}">
                             <span class="trend-class-dot"></span>
-                            <div>\${{cleanText}}</div>
+                            <div>${{cleanText}}</div>
                         </li>
                     `;
                 }});
@@ -2287,9 +2287,9 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                     const klassName = t.class === 'High' ? 'trend-high' : 'trend-low';
                     const cleanText = t.text.replace(/Athletics Athletics/g, "Athletics");
                     teamBTrendsHtml += `
-                        <li class="trend-item \${{klassName}}">
+                        <li class="trend-item ${{klassName}}">
                             <span class="trend-class-dot"></span>
-                            <div>\${{cleanText}}</div>
+                            <div>${{cleanText}}</div>
                         </li>
                     `;
                 }});
@@ -2298,32 +2298,32 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                 if (!teamBTrendsHtml) teamBTrendsHtml = '<li class="trend-item" style="color: var(--text-muted);">無趨勢數據</li>';
 
                 const cardHtml = `
-                    <div class="match-card" id="match-card-\${{m.path.split('/').pop()}}">
+                    <div class="match-card" id="match-card-${{m.path.split('/').pop()}}">
                         <div class="match-header">
                             <div class="match-meta-left">
                                 <div class="teams-versus">
                                 <span class="team-name-badge">
-                                    <img src="\${{m.team_a_logo}}" class="team-logo" onerror="this.style.display='none'" />
-                                    \${{translateText(m.team_a)}}
+                                    <img src="${{m.team_a_logo}}" class="team-logo" onerror="this.style.display='none'" />
+                                    ${{translateText(m.team_a)}}
                                 </span>
                                 <span class="vs-text">vs</span>
                                 <span class="team-name-badge">
-                                    <img src="\${{m.team_b_logo}}" class="team-logo" onerror="this.style.display='none'" />
-                                    \${{translateText(m.team_b)}}
+                                    <img src="${{m.team_b_logo}}" class="team-logo" onerror="this.style.display='none'" />
+                                    ${{translateText(m.team_b)}}
                                 </span>
                             </div>
-                                <div class="match-time-sub">\U0001f552 \${{m.game_time}}</div>
+                                <div class="match-time-sub">\U0001f552 ${{m.game_time}}</div>
                             </div>
                             <div class="match-tags">
-                                \${{dayGameTag}}
-                                \${{doubleTags}}
-                                \${{opposingTags}}
+                                ${{dayGameTag}}
+                                ${{doubleTags}}
+                                ${{opposingTags}}
                             </div>
                         </div>
                         
                         <div class="match-body">
-                            \${{dayGameBanner}}
-                            \${{recsHtml}}
+                            ${{dayGameBanner}}
+                            ${{recsHtml}}
                             
                             <button class="details-trigger" onclick="toggleExpand(this.closest('.match-card'))">
                                 <span>顯示該賽事完整詳細趨勢數據 (High / Low Trends)</span>
@@ -2334,20 +2334,20 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                                 <div class="accordion-inner">
                                     <div class="team-trends-col">
                                         <h4>
-                                            <img src="\${{m.team_a_logo}}" class="team-logo" style="width: 24px; height: 24px; border-radius: 6px; padding: 2px;" onerror="this.style.display='none'" />
-                                            \${{translateText(m.team_a)}} 趨勢數據
+                                            <img src="${{m.team_a_logo}}" class="team-logo" style="width: 24px; height: 24px; border-radius: 6px; padding: 2px;" onerror="this.style.display='none'" />
+                                            ${{translateText(m.team_a)}} 趨勢數據
                                         </h4>
                                         <ul class="trend-list">
-                                            \${{teamATrendsHtml}}
+                                            ${{teamATrendsHtml}}
                                         </ul>
                                     </div>
                                     <div class="team-trends-col">
                                         <h4>
-                                            <img src="\${{m.team_b_logo}}" class="team-logo" style="width: 24px; height: 24px; border-radius: 6px; padding: 2px;" onerror="this.style.display='none'" />
-                                            \${{translateText(m.team_b)}} 趨勢數據
+                                            <img src="${{m.team_b_logo}}" class="team-logo" style="width: 24px; height: 24px; border-radius: 6px; padding: 2px;" onerror="this.style.display='none'" />
+                                            ${{translateText(m.team_b)}} 趨勢數據
                                         </h4>
                                         <ul class="trend-list">
-                                            \${{teamBTrendsHtml}}
+                                            ${{teamBTrendsHtml}}
                                         </ul>
                                     </div>
                                 </div>
