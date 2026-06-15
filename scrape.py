@@ -2224,7 +2224,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                             <div class="rec-box double-box">
                                 <div class="rec-title-row">
                                     <span class="rec-type-badge">大小分總分 • ${{rec.market_type}}</span>
-                                    <span class="roi-badge">平均 ROI: \dots{{rec.avg_roi}}%</span>
+                                    <span class="roi-badge">平均 ROI: ${{rec.avg_roi}}%</span>
                                 </div>
                                 <div class="rec-headline">${{translateText(rec.recommendation)}}</div>
                                 <div class="rec-desc">${{translateText(rec.confidence)}}</div>
@@ -2246,7 +2246,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                             <div class="rec-box opposing-box">
                                 <div class="rec-title-row">
                                     <span class="rec-type-badge">勝負/讓分盤 • ${{rec.market_zh}}</span>
-                                    <span class="roi-badge" style="color: var(--accent-blue); background: rgba(0, 176, 255, 0.1); border: 1px solid rgba(0, 176, 255, 0.25);">ROI 差值: \dots{{rec.roi_diff}}%</span>
+                                    <span class="roi-badge" style="color: var(--accent-blue); background: rgba(0, 176, 255, 0.1); border: 1px solid rgba(0, 176, 255, 0.25);">ROI 差值: ${{rec.roi_diff}}%</span>
                                 </div>
                                 <div class="rec-headline">${{translateText(rec.recommendation)}}</div>
                                 <div class="rec-desc">${{translateText(rec.confidence)}}</div>
