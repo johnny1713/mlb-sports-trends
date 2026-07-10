@@ -122,19 +122,29 @@ def is_day_game(time_str):
             return True
     return False
 
-def get_matchups_data(date_str=None):
+def get_eastern_today():
     """
-    抓取 MLB 每日賽事列表，並提取當日所有獨特的對戰頁面 ID、路徑與球隊 Logo 縮寫。
+    取得美東時間今天的日期字串 (YYYY-MM-DD)。
+    covers.com 預設頁在美東凌晨仍顯示前一日已完賽的賽事，必須明確帶
+    selectedDate 參數才能穩定抓到當天 (美東) 尚未開打的賽事。
+    """
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
+    except Exception:
+        # 無時區資料庫時以 UTC-4 (美東夏令時間) 近似，MLB 賽季均在夏令時間內
+        from datetime import timezone, timedelta
+        return (datetime.now(timezone.utc) - timedelta(hours=4)).strftime("%Y-%m-%d")
+
+def get_matchups_data(date_str):
+    """
+    抓取 MLB 指定日期 (美東) 賽事列表，並提取當日所有獨特的對戰頁面 ID、路徑與球隊 Logo 縮寫。
     同時解析開賽時間，並判定是否為下午場。
     """
     base_url = 'https://www.covers.com/sports/mlb/matchups'
-    if date_str:
-        target_url = f"{base_url}?date={date_str}"
-        print(f"[*] 正在抓取指定日期 {date_str} 的賽事列表...")
-    else:
-        target_url = base_url
-        print("[*] 正在抓取今日的 MLB 賽事列表...")
-        
+    target_url = f"{base_url}?selectedDate={date_str}"
+    print(f"[*] 正在抓取 {date_str} (美東日期) 的賽事列表...")
+
     html_content = fetch_url(target_url)
     if not html_content:
         print("[錯誤] 無法獲取賽事列表，請檢查網路連線。")
@@ -159,9 +169,9 @@ def get_matchups_data(date_str=None):
         away_short = away_short_match.group(1).lower() if away_short_match else ""
         home_short = home_short_match.group(1).lower() if home_short_match else ""
         
-        # 提取開賽時間
-        time_match = re.search(r'class="[^"]*preGame-time[^"]*"[^>]*>\s*(.*?)\s*</', art, re.IGNORECASE | re.DOTALL)
-        game_time = time_match.group(1).strip() if time_match else "None"
+        # 提取開賽時間 (新版面格式如 "Fri, Jul 10 6:40 PM ET"，取時間部分)
+        time_match = re.search(r'(\d{1,2}:\d{2}\s*[AP]M)\s*ET', art, re.IGNORECASE)
+        game_time = f"{time_match.group(1)} ET" if time_match else "None"
         
         matchups.append({
             'id': game_id,
@@ -2554,7 +2564,11 @@ def main():
                 if not re.match(r'^\d{4}-\d{2}-\d{2}$', date_str):
                     print("[警告] 指定的日期格式不正確，應為 YYYY-MM-DD。將採用今日賽事。")
                     date_str = None
-                    
+
+    # 未指定日期時，明確採用「美東今天」，避免 covers.com 預設頁回傳前一日已完賽賽事
+    if not date_str:
+        date_str = get_eastern_today()
+
     # 1. 抓取對戰清單與球隊縮寫
     matchups_list = get_matchups_data(date_str)
     if not matchups_list:
