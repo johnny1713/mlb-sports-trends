@@ -2,8 +2,9 @@ name: MLB Trends Daily Scraper
 
 on:
   schedule:
-    # 每天台灣時間下午 6:00 (UTC 10:00) 自動在雲端執行抓取
-    - cron: '0 10 * * *'
+    # 每天台灣時間晚上 10:00 (UTC 14:00 = 美東早上 10:00) 自動在雲端執行抓取。
+    # covers.com 的趨勢是賽前漸進發佈的，美東太早抓會拿到大量空白趨勢。
+    - cron: '0 14 * * *'
   workflow_dispatch: # 允許您在 GitHub 網頁上手動點擊按鈕，立即強制執行抓取
 
 jobs:

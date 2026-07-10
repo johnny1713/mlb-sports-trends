@@ -291,6 +291,9 @@ def classify_and_process_trends(matchup):
     # 提取數值的正規表達式
     units_pattern = re.compile(r'([+-]?\d+(?:\.\d+)?)\s+Units', re.IGNORECASE)
     roi_pattern = re.compile(r'([+-]?\d+(?:\.\d+)?)%\s+ROI', re.IGNORECASE)
+    # 樣本數格式一: "in 32 of their last 45 games" -> 樣本 45 場
+    of_last_pattern = re.compile(r'\b\d+\s+of\s+(?:their|the)\s+last\s+(\d+)', re.IGNORECASE)
+    # 樣本數格式二: 戰績 "7-2" -> 樣本 9 場
     record_pattern = re.compile(r'\b(\d+)-(\d+)\b')
 
     for trend in matchup['trends']:
@@ -331,14 +334,21 @@ def classify_and_process_trends(matchup):
                     team_match = team_a
                     team_confident = False
 
-        # 2. 提取 Units、ROI 與樣本場次數 (戰績如 7-2 代表 9 場樣本)
+        # 2. 提取 Units、ROI 與樣本場次數
         units_match = units_pattern.search(text)
         roi_match = roi_pattern.search(text)
-        record_match = record_pattern.search(text)
 
         units = float(units_match.group(1)) if units_match else 0.0
         roi = round(float(roi_match.group(1)), 1) if roi_match else 0
-        sample = (int(record_match.group(1)) + int(record_match.group(2))) if record_match else None
+
+        of_last_match = of_last_pattern.search(text)
+        record_match = record_pattern.search(text)
+        if of_last_match:
+            sample = int(of_last_match.group(1))
+        elif record_match:
+            sample = int(record_match.group(1)) + int(record_match.group(2))
+        else:
+            sample = None
         
         # 3. 判定盤口市場 (Market)。F5 與 Team Total 趨勢已在前面排除，這裡只會是全場市場
         market = "Other"
