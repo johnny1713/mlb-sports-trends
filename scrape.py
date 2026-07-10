@@ -136,22 +136,29 @@ def parse_run_lines(html_str):
 # ==========================================
 # 賽事抓取與路徑提取
 # ==========================================
-def is_day_game(time_str):
+# 主場城市相對美東 (ET) 的時差。MLB 賽季均在夏令時間；亞利桑那不實施夏令，夏季等同太平洋時間。
+# 未列出的球隊 (美東球隊) 時差為 0。
+HOME_TZ_OFFSET = {
+    'chc': -1, 'chw': -1, 'hou': -1, 'kc': -1, 'mil': -1, 'min': -1, 'stl': -1, 'tex': -1,  # 中部
+    'col': -2,                                                                               # 山區
+    'az': -3, 'ath': -3, 'laa': -3, 'lad': -3, 'sd': -3, 'sea': -3, 'sf': -3,               # 太平洋/亞利桑那
+}
+
+def is_day_game(time_str, home_short=""):
     """
-    根據美東時間 (ET) 判定是否為下午場。
-    如果包含 AM，或者包含 PM 且小時在 12, 1, 2, 3, 4 內，則判定為下午場（即 12:00 PM - 4:59 PM ET）。
+    以「主場當地時間」判定是否為下午場：covers 提供的開賽時間為 ET，
+    依主場球隊時區換算後，當地 17:00 前開打即視為下午場。
     """
     if not time_str or time_str == "None":
         return False
-    time_str = time_str.upper()
-    if "AM" in time_str:
-        return True
-    match = re.search(r'(\d+):', time_str)
-    if match:
-        hour = int(match.group(1))
-        if hour in [12, 1, 2, 3, 4]:
-            return True
-    return False
+    m = re.search(r'(\d{1,2}):(\d{2})\s*([AP]M)', time_str.upper())
+    if not m:
+        return False
+    hour = int(m.group(1)) % 12
+    if m.group(3) == 'PM':
+        hour += 12
+    local_hour = hour + HOME_TZ_OFFSET.get(home_short, 0)
+    return local_hour < 17
 
 def get_eastern_today():
     """
@@ -210,7 +217,7 @@ def get_matchups_data(date_str):
             'away_short': away_short,
             'home_short': home_short,
             'game_time': game_time,
-            'is_day_game': is_day_game(game_time)
+            'is_day_game': is_day_game(game_time, home_short)
         })
         
     print(f"[+] 成功從賽事列表解析到 {len(matchups)} 場對戰與其開賽時間。")
