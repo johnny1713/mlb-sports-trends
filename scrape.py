@@ -1549,6 +1549,18 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             letter-spacing: 0.5px;
         }}
 
+        /* 下界判讀說明列 */
+        .score-legend {{
+            font-size: 12.5px;
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-bottom: 20px;
+            line-height: 1.7;
+        }}
+
         .ai-cards-grid {{
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -2172,6 +2184,19 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             }}
         }});
 
+        // 依「保守命中率下界」強弱回傳顏色：綠 >=55 強 / 黃 50~55 普通 / 灰 <50 弱
+        function scoreColor(s) {{
+            if (s >= 55) return 'var(--accent-green)';
+            if (s >= 50) return '#ffd200';
+            return 'var(--text-muted)';
+        }}
+
+        function scoreBadgeStyle(s) {{
+            if (s >= 55) return 'color: var(--accent-green); background: rgba(0, 230, 118, 0.12); border: 1px solid rgba(0, 230, 118, 0.25);';
+            if (s >= 50) return 'color: #ffd200; background: rgba(255, 210, 0, 0.1); border: 1px solid rgba(255, 210, 0, 0.25);';
+            return 'color: var(--text-muted); background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color);';
+        }}
+
         function renderAiTop5() {{
             const section = document.getElementById('ai-top5-section');
             if (!section) return;
@@ -2223,7 +2248,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                         </div>
                         <div class="ai-card-footer">
                             <span class="ai-card-roi-label">${{roiLabel}}</span>
-                            <span class="ai-card-roi-val">${{rec.score}}%</span>
+                            <span class="ai-card-roi-val" style="color: ${{scoreColor(rec.score)}}">${{rec.score}}%</span>
                         </div>
                     </div>
                 `;
@@ -2235,6 +2260,12 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                         🤖 今日 AI 智慧精選 Top 5 黃金推薦
                     </h2>
                     <span class="ai-badge-glow">AI OPTIMIZED</span>
+                </div>
+                <div class="score-legend">
+                    📖 下界怎麼看：<span style="color: var(--accent-green); font-weight: 700;">≥55% 強訊號</span> ·
+                    <span style="color: #ffd200; font-weight: 700;">50~55% 普通</span> ·
+                    <span style="color: var(--text-muted); font-weight: 700;">&lt;50% 僅供參考</span>
+                    （已依樣本數扣除運氣水分的保守命中率）
                 </div>
                 <div class="ai-cards-grid">
                     ${{cardsHtml}}
@@ -2265,7 +2296,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                                 </div>
                             </div>
                             <div class="top-rec-item-right">
-                                <span class="top-rec-item-roi" style="color: var(--accent-blue); background: rgba(0, 176, 255, 0.12); border: 1px solid rgba(0, 176, 255, 0.25);">下界: ${{rec.score}}%</span>
+                                <span class="top-rec-item-roi" style="${{scoreBadgeStyle(rec.score)}}">下界: ${{rec.score}}%</span>
                             </div>
                         </div>
                     `;
@@ -2296,7 +2327,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                                 </div>
                             </div>
                             <div class="top-rec-item-right">
-                                <span class="top-rec-item-roi" style="color: var(--accent-green); background: rgba(0, 230, 118, 0.12); border: 1px solid rgba(0, 230, 118, 0.25);">下界: ${{rec.score}}%</span>
+                                <span class="top-rec-item-roi" style="${{scoreBadgeStyle(rec.score)}}">下界: ${{rec.score}}%</span>
                             </div>
                         </div>
                     `;
@@ -2442,7 +2473,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                             <div class="rec-box double-box">
                                 <div class="rec-title-row">
                                     <span class="rec-type-badge">大小分總分 • ${{rec.market_type}}</span>
-                                    <span class="roi-badge">過盤: ${{rec.hit_detail}} | 下界: ${{rec.score}}%</span>
+                                    <span class="roi-badge" style="${{scoreBadgeStyle(rec.score)}}">過盤: ${{rec.hit_detail}} | 下界: ${{rec.score}}%</span>
                                 </div>
                                 <div class="rec-headline">${{translateText(rec.recommendation)}}</div>
                                 <div class="rec-desc">${{translateText(rec.confidence)}}</div>
@@ -2464,7 +2495,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                             <div class="rec-box opposing-box">
                                 <div class="rec-title-row">
                                     <span class="rec-type-badge">勝負/讓分盤 • ${{rec.market_zh}}</span>
-                                    <span class="roi-badge" style="color: var(--accent-blue); background: rgba(0, 176, 255, 0.1); border: 1px solid rgba(0, 176, 255, 0.25);">過盤: ${{rec.hit_detail}} | 下界: ${{rec.score}}%</span>
+                                    <span class="roi-badge" style="${{scoreBadgeStyle(rec.score)}}">過盤: ${{rec.hit_detail}} | 下界: ${{rec.score}}%</span>
                                 </div>
                                 <div class="rec-headline">${{translateText(rec.recommendation)}}</div>
                                 <div class="rec-desc">${{translateText(rec.confidence)}}</div>
