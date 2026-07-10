@@ -36,9 +36,6 @@
 *   [**scrape.py**](file:///C:/Users/johnn/OneDrive/桌面/Projects/sports/scrape.py)：爬蟲、數據處理、推薦媒合、AI 精選與 HTML Dashboard 生成的核心程式。
 *   [**index.html**](file:///C:/Users/johnn/OneDrive/桌面/Projects/sports/index.html)：由腳本自動生成的繁體中文化互動式網頁儀表板（GitHub Pages 亦直接使用此檔）。
 *   [**search_cache_picks.py**](file:///C:/Users/johnn/OneDrive/桌面/Projects/sports/search_cache_picks.py)：開發過程中用於測試與優化 HTML 趨勢解析與正則表達式的輔助腳本。
-*   [**task.md**](file:///C:/Users/johnn/OneDrive/桌面/Projects/sports/task.md)：任務開發進度追蹤清單，記錄了所有已完成的 Bug 修復與新功能。
-*   [**walkthrough.md**](file:///C:/Users/johnn/OneDrive/桌面/Projects/sports/walkthrough.md)：專案開發成果亮點與實測紀錄詳細文檔。
-*   [**implementation_plan.md**](file:///C:/Users/johnn/OneDrive/桌面/Projects/sports/implementation_plan.md)：初期設計規劃與實作策略文檔。
 
 ---
 
