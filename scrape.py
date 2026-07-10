@@ -892,7 +892,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             padding-top: 30px;
         }}
 
-        /* 分類頁籤 */
+        /* 分類頁籤 (窄螢幕可橫向滑動，不爆版) */
         .tabs {{
             display: flex;
             background: rgba(255, 255, 255, 0.03);
@@ -900,6 +900,14 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             padding: 4px;
             border-radius: 12px;
             gap: 4px;
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }}
+
+        .tabs::-webkit-scrollbar {{
+            display: none;
         }}
 
         .tab-btn {{
@@ -916,6 +924,8 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             display: flex;
             align-items: center;
             gap: 8px;
+            white-space: nowrap;
+            flex-shrink: 0;
         }}
 
         .tab-btn:hover {{
@@ -1741,6 +1751,110 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
 
         .back-to-top:active {{
             transform: translateY(1px);
+        }}
+
+        /* ==========================================
+           手機版優化 (Mobile Optimizations)
+           ========================================== */
+        /* 觸控按壓回饋 (hover 效果在觸控裝置無作用) */
+        .ai-card:active,
+        .stats-card:active,
+        .rec-box:active,
+        .top-rec-item:active {{
+            transform: scale(0.985);
+        }}
+
+        .tab-btn:active {{
+            transform: scale(0.96);
+        }}
+
+        @media (max-width: 768px) {{
+            .container {{
+                padding: 0 14px;
+            }}
+
+            header {{
+                padding: 24px 0 14px 0;
+                margin-bottom: 20px;
+            }}
+
+            h1 {{
+                font-size: 22px;
+            }}
+
+            /* 統計卡壓縮成一列三格，讓 AI 精選更早出現 */
+            .stats-grid {{
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+                margin-top: 20px;
+            }}
+
+            .stats-card {{
+                flex-direction: column-reverse;
+                align-items: center;
+                text-align: center;
+                gap: 6px;
+                padding: 14px 8px;
+            }}
+
+            .stats-icon {{
+                width: 32px;
+                height: 32px;
+                border-radius: 9px;
+                font-size: 15px;
+            }}
+
+            .stats-info h3 {{
+                font-size: 11px;
+                margin-bottom: 4px;
+            }}
+
+            .stats-info p {{
+                font-size: 22px;
+            }}
+
+            /* 縮減層層疊加的留白 */
+            .ai-section {{
+                padding: 16px;
+                border-radius: 18px;
+            }}
+
+            .ai-card,
+            .rec-box {{
+                padding: 16px;
+            }}
+
+            .top-section {{
+                margin-bottom: 32px;
+            }}
+
+            /* 篩選列固定在頂端，捲動時可直接切換分類與搜尋 */
+            .controls-bar {{
+                position: sticky;
+                top: 0;
+                z-index: 50;
+                background: rgba(8, 12, 20, 0.92);
+                backdrop-filter: blur(14px);
+                -webkit-backdrop-filter: blur(14px);
+                border-top: none;
+                border-bottom: 1px solid var(--border-color);
+                padding: 12px 14px;
+                margin: 0 -14px 20px -14px;
+                gap: 10px;
+            }}
+
+            .tabs {{
+                width: 100%;
+            }}
+
+            .tab-btn {{
+                padding: 9px 14px;
+                font-size: 13px;
+            }}
+
+            .search-wrapper {{
+                max-width: 100%;
+            }}
         }}
     </style>
 </head>
