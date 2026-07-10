@@ -11,15 +11,6 @@ from datetime import datetime
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
 
-def trend_score(t):
-    """
-    勝負/讓分盤用：以樣本數對 ROI 做收縮加權 score = ROI × (樣本數 / (樣本數 + 10))。
-    樣本越少，分數越向 0 收縮，避免「最近 4 場 3-1、ROI 80%」這種小樣本趨勢霸榜。
-    無法解析樣本數時保守以 5 場計。
-    """
-    sample = t.get('sample') or 5
-    return t['roi'] * (sample / (sample + 10.0))
-
 def wilson_lower_bound(wins, n, z=1.28):
     """
     命中率的 Wilson 信賴下界 (z=1.28 約為單尾 90%，排序常用值)。
@@ -33,21 +24,31 @@ def wilson_lower_bound(wins, n, z=1.28):
     margin = z * math.sqrt((p * (1 - p) + z * z / (4 * n)) / n)
     return (centre - margin) / denom
 
-def totals_trend_score(t):
+def hit_lb(t):
     """
-    大小分用：大小分兩邊賠率幾乎固定 (約 -110)，命中率高即賺錢，
-    故以 Wilson 命中率下界換算成「保守期望 ROI」(%)：
-        期望 ROI = (1.909 × 下界 - 1) × 100
-    使其與勝負盤的 ROI 加權分數在同一單位上可比較。
-    無法解析勝場數時，以 -110 賠率從 ROI 反推命中率後套用同一公式，維持同尺度。
+    趨勢「過盤命中率」的 Wilson 下界 (0~1)，全系統統一的排序依據。
+    無法解析勝場/樣本時以 5 場 50% 保守估計。
     """
     wins, n = t.get('wins'), t.get('sample')
     if wins is None or not n:
-        n = n or 5
-        p = min(max((t['roi'] + 100.0) / 190.9, 0.0), 1.0)
-        wins = p * n
-    lb = wilson_lower_bound(wins, n)
-    return (1.909 * lb - 1.0) * 100
+        return wilson_lower_bound(2.5, 5)
+    return wilson_lower_bound(wins, n)
+
+def fail_lb(t):
+    """
+    反向命中率 (該隊「不過盤」機率) 的 Wilson 下界，用於評估弱勢對手趨勢。
+    """
+    wins, n = t.get('wins'), t.get('sample')
+    if wins is None or not n:
+        return wilson_lower_bound(2.5, 5)
+    return wilson_lower_bound(n - wins, n)
+
+def fmt_hit(t):
+    """把趨勢的過盤紀錄格式化成 '32/45 (71%)'；無法解析時退回 Units 描述。"""
+    wins, n = t.get('wins'), t.get('sample')
+    if wins is None or not n:
+        return f"{t['units']:+g} Units"
+    return f"{wins}/{n} ({round(wins / n * 100)}%)"
 
 # ==========================================
 # 網路請求模組與防擋策略
@@ -440,7 +441,7 @@ def analyze_betting_recommendations(matchup, processed_trends):
     double_positive = []
     opposing_trends = []
 
-    # 推薦媒合只採用：(a) 隊伍歸屬可信 (b) 樣本數達門檻 (無法解析樣本者保留但由 trend_score 收縮權重)
+    # 推薦媒合只採用：(a) 隊伍歸屬可信 (b) 樣本數達門檻 (無法解析樣本者保留但由 hit_lb 保守估計壓低)
     usable_trends = [
         t for t in processed_trends
         if t.get('team_confident', True)
@@ -465,8 +466,8 @@ def analyze_betting_recommendations(matchup, processed_trends):
             'confidence': f"雙正面強勢指標：{team_a} 擁有 {len(a_under_full)} 項全場 Under 趨勢，{team_b} 擁有 {len(b_under_full)} 項全場 Under 趨勢。",
             'team_a_trends': [t['text'] for t in a_under_full],
             'team_b_trends': [t['text'] for t in b_under_full],
-            'avg_roi': round((sum(t['roi'] for t in a_under_full + b_under_full) / len(a_under_full + b_under_full)), 1),
-            'score': round((sum(totals_trend_score(t) for t in a_under_full + b_under_full) / len(a_under_full + b_under_full)), 1)
+            'hit_detail': " + ".join(fmt_hit(t) for t in a_under_full + b_under_full),
+            'score': round((sum(hit_lb(t) for t in a_under_full + b_under_full) / len(a_under_full + b_under_full)) * 100, 1)
         }
         
     a_over_full = [t for t in high_over_full if t['team'] == team_a]
@@ -480,8 +481,8 @@ def analyze_betting_recommendations(matchup, processed_trends):
             'confidence': f"雙正面強勢指標：{team_a} 擁有 {len(a_over_full)} 項全場 Over 趨勢，{team_b} 擁有 {len(b_over_full)} 項全場 Over 趨勢。",
             'team_a_trends': [t['text'] for t in a_over_full],
             'team_b_trends': [t['text'] for t in b_over_full],
-            'avg_roi': round((sum(t['roi'] for t in a_over_full + b_over_full) / len(a_over_full + b_over_full)), 1),
-            'score': round((sum(totals_trend_score(t) for t in a_over_full + b_over_full) / len(a_over_full + b_over_full)), 1)
+            'hit_detail': " + ".join(fmt_hit(t) for t in a_over_full + b_over_full),
+            'score': round((sum(hit_lb(t) for t in a_over_full + b_over_full) / len(a_over_full + b_over_full)) * 100, 1)
         }
 
     # 全場大小分避碰 (若同場全場同時推薦大分與小分，只保留加權分數高者)
@@ -518,54 +519,52 @@ def analyze_betting_recommendations(matchup, processed_trends):
         a_trends = [t for t in usable_trends if t['team'] == team_a and t['market'] == m]
         b_trends = [t for t in usable_trends if t['team'] == team_b and t['market'] == m]
 
-        # 情況 A: A 隊極強 (High), B 隊極弱 (Low)。以加權分數挑最具代表性的趨勢
-        a_strong = sorted([t for t in a_trends if t['class'] == 'High' and (t['direction'] in ['Win', 'Cover'])], key=trend_score, reverse=True)
-        b_weak = sorted([t for t in b_trends if t['class'] == 'Low' and (t['direction'] in ['Lose', 'Fail to Cover'])], key=trend_score)
-        
+        # 情況 A: A 隊極強 (High), B 隊極弱 (Low)。以命中率下界挑最具代表性的趨勢
+        a_strong = sorted([t for t in a_trends if t['class'] == 'High' and (t['direction'] in ['Win', 'Cover'])], key=hit_lb, reverse=True)
+        b_weak = sorted([t for t in b_trends if t['class'] == 'Low' and (t['direction'] in ['Lose', 'Fail to Cover'])], key=fail_lb, reverse=True)
+
         if a_strong and b_weak:
             # 動態解析該隊是讓分還是受讓，並附上具體讓分值
             if m == 'Run Line':
                 m_zh = get_spread_detail(team_a_spread, team_a_side)
             else:
                 m_zh = market_zh_map.get(m, m)
-                
+
             opposing_trends.append({
                 'market': m,
                 'market_zh': m_zh,
                 'bet_on': team_a,
                 'bet_against': team_b,
                 'recommendation': f"買 {team_a} {m_zh}",
-                'confidence': f"黃金一正一反組合：{team_a} 在 {m_zh} 表現極強（+{a_strong[0]['units']} Units），而對手 {team_b} 表現極差（{b_weak[0]['units']} Units）。",
+                'confidence': f"黃金一正一反組合：{team_a} 在 {m_zh} 近期過盤 {fmt_hit(a_strong[0])}，而對手 {team_b} 僅 {fmt_hit(b_weak[0])}。",
                 'strong_trend': a_strong[0]['text'],
                 'weak_trend': b_weak[0]['text'],
-                'roi_diff': round(a_strong[0]['roi'] - b_weak[0]['roi'], 1),
-                'strong_roi': a_strong[0]['roi'],
-                'score': round(trend_score(a_strong[0]), 1)
+                'hit_detail': f"{fmt_hit(a_strong[0])} vs 對手 {fmt_hit(b_weak[0])}",
+                'score': round((hit_lb(a_strong[0]) + fail_lb(b_weak[0])) / 2 * 100, 1)
             })
             
-        # 情況 B: B 隊極強 (High), A 隊極弱 (Low)。以加權分數挑最具代表性的趨勢
-        b_strong = sorted([t for t in b_trends if t['class'] == 'High' and (t['direction'] in ['Win', 'Cover'])], key=trend_score, reverse=True)
-        a_weak = sorted([t for t in a_trends if t['class'] == 'Low' and (t['direction'] in ['Lose', 'Fail to Cover'])], key=trend_score)
-        
+        # 情況 B: B 隊極強 (High), A 隊極弱 (Low)。以命中率下界挑最具代表性的趨勢
+        b_strong = sorted([t for t in b_trends if t['class'] == 'High' and (t['direction'] in ['Win', 'Cover'])], key=hit_lb, reverse=True)
+        a_weak = sorted([t for t in a_trends if t['class'] == 'Low' and (t['direction'] in ['Lose', 'Fail to Cover'])], key=fail_lb, reverse=True)
+
         if b_strong and a_weak:
             # 動態解析該隊是讓分還是受讓，並附上具體讓分值
             if m == 'Run Line':
                 m_zh = get_spread_detail(team_b_spread, team_b_side)
             else:
                 m_zh = market_zh_map.get(m, m)
-                
+
             opposing_trends.append({
                 'market': m,
                 'market_zh': m_zh,
                 'bet_on': team_b,
                 'bet_against': team_a,
                 'recommendation': f"買 {team_b} {m_zh}",
-                'confidence': f"黃金一正一反組合：{team_b} 在 {m_zh} 表現極強（+{b_strong[0]['units']} Units），而對手 {team_a} 表現極差（{a_weak[0]['units']} Units）。",
+                'confidence': f"黃金一正一反組合：{team_b} 在 {m_zh} 近期過盤 {fmt_hit(b_strong[0])}，而對手 {team_a} 僅 {fmt_hit(a_weak[0])}。",
                 'strong_trend': b_strong[0]['text'],
                 'weak_trend': a_weak[0]['text'],
-                'roi_diff': round(b_strong[0]['roi'] - a_weak[0]['roi'], 1),
-                'strong_roi': b_strong[0]['roi'],
-                'score': round(trend_score(b_strong[0]), 1)
+                'hit_detail': f"{fmt_hit(b_strong[0])} vs 對手 {fmt_hit(a_weak[0])}",
+                'score': round((hit_lb(b_strong[0]) + fail_lb(a_weak[0])) / 2 * 100, 1)
             })
             
     return double_positive, opposing_trends
@@ -2187,7 +2186,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                 const rankNum = idx + 1;
                 const tagClass = rec.type === 'opposing' ? 'side-tag' : 'total-tag';
                 const tagText = rec.type === 'opposing' ? '🎯 勝負/讓分' : '🔥 大小總分';
-                const roiLabel = rec.type === 'opposing' ? '優勢隊投報率' : '平均投報率';
+                const roiLabel = '保守命中率下界';
                 
                 let logosHtml = '';
                 if (rec.logo_b) {{
@@ -2224,7 +2223,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                         </div>
                         <div class="ai-card-footer">
                             <span class="ai-card-roi-label">${{roiLabel}}</span>
-                            <span class="ai-card-roi-val">${{rec.roi}}%</span>
+                            <span class="ai-card-roi-val">${{rec.score}}%</span>
                         </div>
                     </div>
                 `;
@@ -2266,7 +2265,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                                 </div>
                             </div>
                             <div class="top-rec-item-right">
-                                <span class="top-rec-item-roi" style="color: var(--accent-blue); background: rgba(0, 176, 255, 0.12); border: 1px solid rgba(0, 176, 255, 0.25);">ROI: ${{rec.roi}}%</span>
+                                <span class="top-rec-item-roi" style="color: var(--accent-blue); background: rgba(0, 176, 255, 0.12); border: 1px solid rgba(0, 176, 255, 0.25);">下界: ${{rec.score}}%</span>
                             </div>
                         </div>
                     `;
@@ -2297,7 +2296,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                                 </div>
                             </div>
                             <div class="top-rec-item-right">
-                                <span class="top-rec-item-roi" style="color: var(--accent-green); background: rgba(0, 230, 118, 0.12); border: 1px solid rgba(0, 230, 118, 0.25);">平均: ${{rec.roi}}%</span>
+                                <span class="top-rec-item-roi" style="color: var(--accent-green); background: rgba(0, 230, 118, 0.12); border: 1px solid rgba(0, 230, 118, 0.25);">下界: ${{rec.score}}%</span>
                             </div>
                         </div>
                     `;
@@ -2443,7 +2442,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                             <div class="rec-box double-box">
                                 <div class="rec-title-row">
                                     <span class="rec-type-badge">大小分總分 • ${{rec.market_type}}</span>
-                                    <span class="roi-badge">平均 ROI: ${{rec.avg_roi}}%</span>
+                                    <span class="roi-badge">過盤: ${{rec.hit_detail}} | 下界: ${{rec.score}}%</span>
                                 </div>
                                 <div class="rec-headline">${{translateText(rec.recommendation)}}</div>
                                 <div class="rec-desc">${{translateText(rec.confidence)}}</div>
@@ -2465,7 +2464,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                             <div class="rec-box opposing-box">
                                 <div class="rec-title-row">
                                     <span class="rec-type-badge">勝負/讓分盤 • ${{rec.market_zh}}</span>
-                                    <span class="roi-badge" style="color: var(--accent-blue); background: rgba(0, 176, 255, 0.1); border: 1px solid rgba(0, 176, 255, 0.25);">ROI 差值: ${{rec.roi_diff}}%</span>
+                                    <span class="roi-badge" style="color: var(--accent-blue); background: rgba(0, 176, 255, 0.1); border: 1px solid rgba(0, 176, 255, 0.25);">過盤: ${{rec.hit_detail}} | 下界: ${{rec.score}}%</span>
                                 </div>
                                 <div class="rec-headline">${{translateText(rec.recommendation)}}</div>
                                 <div class="rec-desc">${{translateText(rec.confidence)}}</div>
@@ -2675,11 +2674,11 @@ def main():
                 'market_type': rec['market_type'],
                 'recommendation': rec['recommendation'],
                 'confidence': rec['confidence'],
-                'roi': rec['avg_roi'],
                 'score': rec['score'],
+                'hit_detail': rec['hit_detail'],
                 'logo_a': matchup['team_a_logo'],
                 'logo_b': matchup['team_b_logo'],
-                'details': f"雙方平均投報率: {rec['avg_roi']}%",
+                'details': f"過盤紀錄: {rec['hit_detail']}",
                 'is_day_game': matchup['is_day_game'],
                 'game_time': matchup['game_time']
             })
@@ -2695,21 +2694,20 @@ def main():
                 'market_type': rec['market_zh'],
                 'recommendation': rec['recommendation'],
                 'confidence': rec['confidence'],
-                'roi': rec['strong_roi'],
                 'score': rec['score'],
-                'roi_diff': rec['roi_diff'],
+                'hit_detail': rec['hit_detail'],
                 'bet_on': rec['bet_on'],
                 'logo': logo_url,
-                'details': f"優勢隊投報率: {rec['strong_roi']}% (雙方差距: {rec['roi_diff']}% ROI)",
+                'details': f"過盤紀錄: {rec['hit_detail']}",
                 'is_day_game': matchup['is_day_game'],
                 'game_time': matchup['game_time']
             })
             
-    # 分別對兩組推薦以「樣本數加權分數」由大到小排序，取各自的前 5 名 (Top 5)
+    # 分別對兩組推薦以「命中率 Wilson 下界」由大到小排序，取各自的前 5 名 (Top 5)
     top_5_sides = sorted(sides_recs, key=lambda x: x['score'], reverse=True)[:5]
     top_5_totals = sorted(totals_recs, key=lambda x: x['score'], reverse=True)[:5]
-    
-    # 5.5 計算「今日 AI 推薦 Top 3」 (智慧過濾方向衝突，依 ROI 排序)
+
+    # 5.5 計算「今日 AI 推薦 Top 5」 (智慧過濾方向衝突，依命中率下界排序)
     conflicting_matchups = set()
     matchup_bet_teams = {}
     for r in sides_recs:
@@ -2735,13 +2733,12 @@ def main():
             'market_type': r['market_type'],
             'recommendation': r['recommendation'],
             'confidence': r['confidence'],
-            'roi': r['roi'],
             'score': r['score'],
-            'roi_diff': r['roi_diff'],
+            'hit_detail': r['hit_detail'],
             'bet_on': r['bet_on'],
             'logo_a': r['logo'],
             'logo_b': None,
-            'rationale': f"黃金對立組合！優勢隊 {r['bet_on']} 歷史投報率達 {r['roi']}%，且雙方 ROI 差距達 {r['roi_diff']}%，戰績勢力差距顯著。",
+            'rationale': f"黃金對立組合！優勢隊 {r['bet_on']} 近期過盤 {r['hit_detail']}，保守命中率下界 {r['score']}%，強弱差距顯著。",
             'is_day_game': r['is_day_game'],
             'game_time': r['game_time']
         })
@@ -2755,11 +2752,11 @@ def main():
             'market_type': r['market_type'],
             'recommendation': r['recommendation'],
             'confidence': r['confidence'],
-            'roi': r['roi'],
             'score': r['score'],
+            'hit_detail': r['hit_detail'],
             'logo_a': r['logo_a'],
             'logo_b': r['logo_b'],
-            'rationale': f"雙向強勢指標！兩隊近期在 {r['market_type']} 盤口高度吻合，歷史平均投報率達 {r['roi']}%，大/小分走勢非常清晰。",
+            'rationale': f"雙向強勢指標！兩隊近期在 {r['market_type']} 盤口高度吻合，過盤紀錄 {r['hit_detail']}，保守命中率下界 {r['score']}%。",
             'is_day_game': r['is_day_game'],
             'game_time': r['game_time']
         })

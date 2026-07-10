@@ -1597,7 +1597,7 @@
                 const rankNum = idx + 1;
                 const tagClass = rec.type === 'opposing' ? 'side-tag' : 'total-tag';
                 const tagText = rec.type === 'opposing' ? '🎯 勝負/讓分' : '🔥 大小總分';
-                const roiLabel = rec.type === 'opposing' ? '優勢隊投報率' : '平均投報率';
+                const roiLabel = '保守命中率下界';
                 
                 let logosHtml = '';
                 if (rec.logo_b) {
@@ -1634,7 +1634,7 @@
                         </div>
                         <div class="ai-card-footer">
                             <span class="ai-card-roi-label">${roiLabel}</span>
-                            <span class="ai-card-roi-val">${rec.roi}%</span>
+                            <span class="ai-card-roi-val">${rec.score}%</span>
                         </div>
                     </div>
                 `;
@@ -1676,7 +1676,7 @@
                                 </div>
                             </div>
                             <div class="top-rec-item-right">
-                                <span class="top-rec-item-roi" style="color: var(--accent-blue); background: rgba(0, 176, 255, 0.12); border: 1px solid rgba(0, 176, 255, 0.25);">ROI: ${rec.roi}%</span>
+                                <span class="top-rec-item-roi" style="color: var(--accent-blue); background: rgba(0, 176, 255, 0.12); border: 1px solid rgba(0, 176, 255, 0.25);">下界: ${rec.score}%</span>
                             </div>
                         </div>
                     `;
@@ -1707,7 +1707,7 @@
                                 </div>
                             </div>
                             <div class="top-rec-item-right">
-                                <span class="top-rec-item-roi" style="color: var(--accent-green); background: rgba(0, 230, 118, 0.12); border: 1px solid rgba(0, 230, 118, 0.25);">平均: ${rec.roi}%</span>
+                                <span class="top-rec-item-roi" style="color: var(--accent-green); background: rgba(0, 230, 118, 0.12); border: 1px solid rgba(0, 230, 118, 0.25);">下界: ${rec.score}%</span>
                             </div>
                         </div>
                     `;
@@ -1853,7 +1853,7 @@
                             <div class="rec-box double-box">
                                 <div class="rec-title-row">
                                     <span class="rec-type-badge">大小分總分 • ${rec.market_type}</span>
-                                    <span class="roi-badge">平均 ROI: ${rec.avg_roi}%</span>
+                                    <span class="roi-badge">過盤: ${rec.hit_detail} | 下界: ${rec.score}%</span>
                                 </div>
                                 <div class="rec-headline">${translateText(rec.recommendation)}</div>
                                 <div class="rec-desc">${translateText(rec.confidence)}</div>
@@ -1875,7 +1875,7 @@
                             <div class="rec-box opposing-box">
                                 <div class="rec-title-row">
                                     <span class="rec-type-badge">勝負/讓分盤 • ${rec.market_zh}</span>
-                                    <span class="roi-badge" style="color: var(--accent-blue); background: rgba(0, 176, 255, 0.1); border: 1px solid rgba(0, 176, 255, 0.25);">ROI 差值: ${rec.roi_diff}%</span>
+                                    <span class="roi-badge" style="color: var(--accent-blue); background: rgba(0, 176, 255, 0.1); border: 1px solid rgba(0, 176, 255, 0.25);">過盤: ${rec.hit_detail} | 下界: ${rec.score}%</span>
                                 </div>
                                 <div class="rec-headline">${translateText(rec.recommendation)}</div>
                                 <div class="rec-desc">${translateText(rec.confidence)}</div>
