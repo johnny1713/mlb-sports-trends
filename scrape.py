@@ -7,6 +7,18 @@ import os
 import sys
 from datetime import datetime
 
+# 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
+MIN_TREND_SAMPLE = 8
+
+def trend_score(t):
+    """
+    以樣本數對 ROI 做收縮加權：score = ROI × (樣本數 / (樣本數 + 10))。
+    樣本越少，分數越向 0 收縮，避免「最近 4 場 3-1、ROI 80%」這種小樣本趨勢霸榜。
+    無法解析樣本數時保守以 5 場計。
+    """
+    sample = t.get('sample') or 5
+    return t['roi'] * (sample / (sample + 10.0))
+
 # ==========================================
 # 網路請求模組與防擋策略
 # ==========================================
@@ -190,7 +202,10 @@ def parse_matchup_details(matchup):
         title_match = re.search(r'<title[^>]*>(.*?)</title>', html_content, re.IGNORECASE)
         if title_match:
             title_text = html.unescape(title_match.group(1).strip())
-            vs_match = re.search(r'(.*?)\s+vs\s+([^\s]+)', title_text)
+            # 隊名可能是多個單字 (如 Red Sox、Blue Jays)，比對到常見標題結尾詞或分隔符為止
+            vs_match = re.search(
+                r"([A-Za-z0-9 .']+?)\s+vs\.?\s+([A-Za-z0-9 .']+?)(?=\s*(?:Predictions?|Picks?|Odds|Betting|Preview|Matchup|[|,–—-]|$))",
+                title_text, re.IGNORECASE)
             if vs_match:
                 team_a = vs_match.group(1).strip()
                 team_b = vs_match.group(2).strip()
@@ -265,21 +280,23 @@ def classify_and_process_trends(matchup):
     
     # 提取數值的正規表達式
     units_pattern = re.compile(r'([+-]?\d+(?:\.\d+)?)\s+Units', re.IGNORECASE)
-    roi_pattern = re.compile(r'([+-]?\d+)%\s+ROI', re.IGNORECASE)
-    
+    roi_pattern = re.compile(r'([+-]?\d+(?:\.\d+)?)%\s+ROI', re.IGNORECASE)
+    record_pattern = re.compile(r'\b(\d+)-(\d+)\b')
+
     for trend in matchup['trends']:
         text = trend['text']
         text_lower = text.lower()
-        
+
         # 排除所有首五局 (F5) 的趨勢與球隊大小分 (Team Total) 趨勢，只保留全場的
-        if "1st five innings" in text_lower or " f5 " in text_lower or "first five" in text_lower or "f5" in text_lower:
+        if re.search(r'\bf5\b', text_lower) or "1st five" in text_lower or "first five" in text_lower:
             continue
         if "team total" in text_lower:
             continue
             
         klass = trend['class']
         
-        # 1. 判定該趨勢屬於哪支球隊
+        # 1. 判定該趨勢屬於哪支球隊 (無法確定歸屬時標記為不可信，不參與推薦媒合)
+        team_confident = True
         if team_a.lower() in text_lower:
             team_match = team_a
         elif team_b.lower() in text_lower:
@@ -302,34 +319,25 @@ def classify_and_process_trends(matchup):
                     team_match = team_b
                 else:
                     team_match = team_a
+                    team_confident = False
 
-        # 2. 提取 Units 與 ROI
+        # 2. 提取 Units、ROI 與樣本場次數 (戰績如 7-2 代表 9 場樣本)
         units_match = units_pattern.search(text)
         roi_match = roi_pattern.search(text)
-        
+        record_match = record_pattern.search(text)
+
         units = float(units_match.group(1)) if units_match else 0.0
-        roi = int(roi_match.group(1)) if roi_match else 0
+        roi = round(float(roi_match.group(1)), 1) if roi_match else 0
+        sample = (int(record_match.group(1)) + int(record_match.group(2))) if record_match else None
         
-        # 3. 判定盤口市場 (Market)
+        # 3. 判定盤口市場 (Market)。F5 與 Team Total 趨勢已在前面排除，這裡只會是全場市場
         market = "Other"
-        if "1st five innings (f5)" in text_lower or " f5 " in text_lower:
-            if "team total" in text_lower:
-                market = "F5 Team Total"
-            elif "game total" in text_lower:
-                market = "F5 Game Total"
-            elif "moneyline" in text_lower:
-                market = "F5 Moneyline"
-            elif "run line" in text_lower or "runline" in text_lower:
-                market = "F5 Run Line"
-        else:
-            if "team total" in text_lower:
-                market = "Team Total"
-            elif "game total" in text_lower:
-                market = "Game Total"
-            elif "moneyline" in text_lower:
-                market = "Moneyline"
-            elif "run line" in text_lower or "runline" in text_lower:
-                market = "Run Line"
+        if "game total" in text_lower:
+            market = "Game Total"
+        elif "moneyline" in text_lower:
+            market = "Moneyline"
+        elif "run line" in text_lower or "runline" in text_lower:
+            market = "Run Line"
                 
         # 4. 判定趨勢方向 (Direction)
         direction = "Unknown"
@@ -350,12 +358,14 @@ def classify_and_process_trends(matchup):
                 
         processed_trends.append({
             'team': team_match,
+            'team_confident': team_confident,
             'class': klass,
             'text': text,
             'market': market,
             'direction': direction,
             'units': units,
-            'roi': roi
+            'roi': roi,
+            'sample': sample
         })
         
     return processed_trends
@@ -371,16 +381,23 @@ def analyze_betting_recommendations(matchup, processed_trends):
     """
     team_a = matchup['team_a']
     team_b = matchup['team_b']
-    
+
     double_positive = []
     opposing_trends = []
-    
+
+    # 推薦媒合只採用：(a) 隊伍歸屬可信 (b) 樣本數達門檻 (無法解析樣本者保留但由 trend_score 收縮權重)
+    usable_trends = [
+        t for t in processed_trends
+        if t.get('team_confident', True)
+        and not (t.get('sample') is not None and t['sample'] < MIN_TREND_SAMPLE)
+    ]
+
     # --- 1. 大小分總分趨勢媒合 (全場大小分) ---
     total_line = matchup.get('total_line')
-    
+
     # A. 全場大小分 (Full Game Totals)
-    high_under_full = [t for t in processed_trends if t['class'] == 'High' and t['direction'] == 'Under' and t['market'] == 'Game Total']
-    high_over_full = [t for t in processed_trends if t['class'] == 'High' and t['direction'] == 'Over' and t['market'] == 'Game Total']
+    high_under_full = [t for t in usable_trends if t['class'] == 'High' and t['direction'] == 'Under' and t['market'] == 'Game Total']
+    high_over_full = [t for t in usable_trends if t['class'] == 'High' and t['direction'] == 'Over' and t['market'] == 'Game Total']
     
     a_under_full = [t for t in high_under_full if t['team'] == team_a]
     b_under_full = [t for t in high_under_full if t['team'] == team_b]
@@ -393,7 +410,8 @@ def analyze_betting_recommendations(matchup, processed_trends):
             'confidence': f"雙正面強勢指標：{team_a} 擁有 {len(a_under_full)} 項全場 Under 趨勢，{team_b} 擁有 {len(b_under_full)} 項全場 Under 趨勢。",
             'team_a_trends': [t['text'] for t in a_under_full],
             'team_b_trends': [t['text'] for t in b_under_full],
-            'avg_roi': round((sum(t['roi'] for t in a_under_full + b_under_full) / len(a_under_full + b_under_full)), 1)
+            'avg_roi': round((sum(t['roi'] for t in a_under_full + b_under_full) / len(a_under_full + b_under_full)), 1),
+            'score': round((sum(trend_score(t) for t in a_under_full + b_under_full) / len(a_under_full + b_under_full)), 1)
         }
         
     a_over_full = [t for t in high_over_full if t['team'] == team_a]
@@ -407,12 +425,13 @@ def analyze_betting_recommendations(matchup, processed_trends):
             'confidence': f"雙正面強勢指標：{team_a} 擁有 {len(a_over_full)} 項全場 Over 趨勢，{team_b} 擁有 {len(b_over_full)} 項全場 Over 趨勢。",
             'team_a_trends': [t['text'] for t in a_over_full],
             'team_b_trends': [t['text'] for t in b_over_full],
-            'avg_roi': round((sum(t['roi'] for t in a_over_full + b_over_full) / len(a_over_full + b_over_full)), 1)
+            'avg_roi': round((sum(t['roi'] for t in a_over_full + b_over_full) / len(a_over_full + b_over_full)), 1),
+            'score': round((sum(trend_score(t) for t in a_over_full + b_over_full) / len(a_over_full + b_over_full)), 1)
         }
-        
-    # 全場大小分避碰 (若同場全場同時推薦大分與小分，只保留高 ROI 者)
+
+    # 全場大小分避碰 (若同場全場同時推薦大分與小分，只保留加權分數高者)
     if under_full_rec and over_full_rec:
-        if under_full_rec['avg_roi'] >= over_full_rec['avg_roi']:
+        if under_full_rec['score'] >= over_full_rec['score']:
             double_positive.append(under_full_rec)
         else:
             double_positive.append(over_full_rec)
@@ -441,12 +460,12 @@ def analyze_betting_recommendations(matchup, processed_trends):
         return f"{side_clean} {abs_val}"
     
     for m in h2h_markets:
-        a_trends = [t for t in processed_trends if t['team'] == team_a and t['market'] == m]
-        b_trends = [t for t in processed_trends if t['team'] == team_b and t['market'] == m]
-        
-        # 情況 A: A 隊極強 (High), B 隊極弱 (Low)
-        a_strong = [t for t in a_trends if t['class'] == 'High' and (t['direction'] in ['Win', 'Cover'])]
-        b_weak = [t for t in b_trends if t['class'] == 'Low' and (t['direction'] in ['Lose', 'Fail to Cover'])]
+        a_trends = [t for t in usable_trends if t['team'] == team_a and t['market'] == m]
+        b_trends = [t for t in usable_trends if t['team'] == team_b and t['market'] == m]
+
+        # 情況 A: A 隊極強 (High), B 隊極弱 (Low)。以加權分數挑最具代表性的趨勢
+        a_strong = sorted([t for t in a_trends if t['class'] == 'High' and (t['direction'] in ['Win', 'Cover'])], key=trend_score, reverse=True)
+        b_weak = sorted([t for t in b_trends if t['class'] == 'Low' and (t['direction'] in ['Lose', 'Fail to Cover'])], key=trend_score)
         
         if a_strong and b_weak:
             # 動態解析該隊是讓分還是受讓，並附上具體讓分值
@@ -464,13 +483,14 @@ def analyze_betting_recommendations(matchup, processed_trends):
                 'confidence': f"黃金一正一反組合：{team_a} 在 {m_zh} 表現極強（+{a_strong[0]['units']} Units），而對手 {team_b} 表現極差（{b_weak[0]['units']} Units）。",
                 'strong_trend': a_strong[0]['text'],
                 'weak_trend': b_weak[0]['text'],
-                'roi_diff': a_strong[0]['roi'] - b_weak[0]['roi'],
-                'strong_roi': a_strong[0]['roi']
+                'roi_diff': round(a_strong[0]['roi'] - b_weak[0]['roi'], 1),
+                'strong_roi': a_strong[0]['roi'],
+                'score': round(trend_score(a_strong[0]), 1)
             })
             
-        # 情況 B: B 隊極強 (High), A 隊極弱 (Low)
-        b_strong = [t for t in b_trends if t['class'] == 'High' and (t['direction'] in ['Win', 'Cover'])]
-        a_weak = [t for t in a_trends if t['class'] == 'Low' and (t['direction'] in ['Lose', 'Fail to Cover'])]
+        # 情況 B: B 隊極強 (High), A 隊極弱 (Low)。以加權分數挑最具代表性的趨勢
+        b_strong = sorted([t for t in b_trends if t['class'] == 'High' and (t['direction'] in ['Win', 'Cover'])], key=trend_score, reverse=True)
+        a_weak = sorted([t for t in a_trends if t['class'] == 'Low' and (t['direction'] in ['Lose', 'Fail to Cover'])], key=trend_score)
         
         if b_strong and a_weak:
             # 動態解析該隊是讓分還是受讓，並附上具體讓分值
@@ -488,8 +508,9 @@ def analyze_betting_recommendations(matchup, processed_trends):
                 'confidence': f"黃金一正一反組合：{team_b} 在 {m_zh} 表現極強（+{b_strong[0]['units']} Units），而對手 {team_a} 表現極差（{a_weak[0]['units']} Units）。",
                 'strong_trend': b_strong[0]['text'],
                 'weak_trend': a_weak[0]['text'],
-                'roi_diff': b_strong[0]['roi'] - a_weak[0]['roi'],
-                'strong_roi': b_strong[0]['roi']
+                'roi_diff': round(b_strong[0]['roi'] - a_weak[0]['roi'], 1),
+                'strong_roi': b_strong[0]['roi'],
+                'score': round(trend_score(b_strong[0]), 1)
             })
             
     return double_positive, opposing_trends
@@ -1884,10 +1905,40 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             "Tampa Bay Rays": "坦帕灣光芒",
             "Texas Rangers": "德州遊騎兵",
             "Toronto Blue Jays": "多倫多藍鳥",
-            "Washington Nationals": "華盛頓國民"
+            "Washington Nationals": "華盛頓國民",
+            "Diamondbacks": "亞利桑那響尾蛇",
+            "Braves": "亞特蘭大勇士",
+            "Orioles": "巴爾的摩金鶯",
+            "Red Sox": "波士頓紅襪",
+            "Cubs": "芝加哥小熊",
+            "White Sox": "芝加哥白襪",
+            "Reds": "辛辛那提紅人",
+            "Guardians": "克里夫蘭守護者",
+            "Rockies": "科羅拉多落磯",
+            "Tigers": "底特律老虎",
+            "Astros": "休士頓太空人",
+            "Royals": "堪薩斯皇家",
+            "Angels": "洛杉磯天使",
+            "Dodgers": "洛杉磯道奇",
+            "Marlins": "邁阿密馬林魚",
+            "Brewers": "密爾瓦基釀酒人",
+            "Twins": "明尼蘇達雙城",
+            "Mets": "紐約大都會",
+            "Yankees": "紐約洋基",
+            "Phillies": "費城費城人",
+            "Pirates": "匹茲堡海盜",
+            "Padres": "聖地牙哥教士",
+            "Giants": "舊金山巨人",
+            "Mariners": "西雅圖水手",
+            "Cardinals": "聖路易紅雀",
+            "Rays": "坦帕灣光芒",
+            "Rangers": "德州遊騎兵",
+            "Blue Jays": "多倫多藍鳥",
+            "Nationals": "華盛頓國民"
         }};
 
-        let currentLanguage = localStorage.getItem('mlb_trends_lang') || 'zh';
+        // 每次載入固定預設繁體中文 (不記憶上次切換，避免曾切過英文後預設變英文)
+        let currentLanguage = 'zh';
 
         function translateText(text) {{
             if (!text) return text;
@@ -1905,7 +1956,6 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
 
         function toggleLanguage() {{
             currentLanguage = currentLanguage === 'zh' ? 'en' : 'zh';
-            localStorage.setItem('mlb_trends_lang', currentLanguage);
             const btn = document.getElementById('lang-toggle');
             if (btn) {{
                 btn.innerHTML = `🌐 隊伍名稱：${{currentLanguage === 'zh' ? '中文' : 'English'}}`;
@@ -2364,7 +2414,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
 </html>
 """
     # 寫入 HTML 檔案
-    output_filenames = ["mlb_trends.html", "index.html"]
+    output_filenames = ["index.html"]
     for output_filename in output_filenames:
         try:
             with open(output_filename, "w", encoding="utf-8") as f:
@@ -2453,6 +2503,7 @@ def main():
                 'recommendation': rec['recommendation'],
                 'confidence': rec['confidence'],
                 'roi': rec['avg_roi'],
+                'score': rec['score'],
                 'logo_a': matchup['team_a_logo'],
                 'logo_b': matchup['team_b_logo'],
                 'details': f"雙方平均投報率: {rec['avg_roi']}%",
@@ -2472,6 +2523,7 @@ def main():
                 'recommendation': rec['recommendation'],
                 'confidence': rec['confidence'],
                 'roi': rec['strong_roi'],
+                'score': rec['score'],
                 'roi_diff': rec['roi_diff'],
                 'bet_on': rec['bet_on'],
                 'logo': logo_url,
@@ -2480,9 +2532,9 @@ def main():
                 'game_time': matchup['game_time']
             })
             
-    # 分別對兩組推薦以投報率 ROI 由大到小排序，取各自的前 5 名 (Top 5)
-    top_5_sides = sorted(sides_recs, key=lambda x: x['roi'], reverse=True)[:5]
-    top_5_totals = sorted(totals_recs, key=lambda x: x['roi'], reverse=True)[:5]
+    # 分別對兩組推薦以「樣本數加權分數」由大到小排序，取各自的前 5 名 (Top 5)
+    top_5_sides = sorted(sides_recs, key=lambda x: x['score'], reverse=True)[:5]
+    top_5_totals = sorted(totals_recs, key=lambda x: x['score'], reverse=True)[:5]
     
     # 5.5 計算「今日 AI 推薦 Top 3」 (智慧過濾方向衝突，依 ROI 排序)
     conflicting_matchups = set()
@@ -2511,6 +2563,7 @@ def main():
             'recommendation': r['recommendation'],
             'confidence': r['confidence'],
             'roi': r['roi'],
+            'score': r['score'],
             'roi_diff': r['roi_diff'],
             'bet_on': r['bet_on'],
             'logo_a': r['logo'],
@@ -2530,6 +2583,7 @@ def main():
             'recommendation': r['recommendation'],
             'confidence': r['confidence'],
             'roi': r['roi'],
+            'score': r['score'],
             'logo_a': r['logo_a'],
             'logo_b': r['logo_b'],
             'rationale': f"雙向強勢指標！兩隊近期在 {r['market_type']} 盤口高度吻合，歷史平均投報率達 {r['roi']}%，大/小分走勢非常清晰。",
@@ -2537,7 +2591,7 @@ def main():
             'game_time': r['game_time']
         })
         
-    top_5_ai = sorted(ai_candidates, key=lambda x: x['roi'], reverse=True)[:5]
+    top_5_ai = sorted(ai_candidates, key=lambda x: x['score'], reverse=True)[:5]
     
     print(f"\n[+] 成功計算出今日「勝負/讓分盤」與「大小分總分」雙欄 Top 5 黃金投注推薦。")
     print(f"[+] 成功計算出今日「AI 推薦 Top 5」精選：{len(top_5_ai)} 項組合。")
