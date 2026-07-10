@@ -2,6 +2,7 @@ import urllib.request
 import re
 import html
 import json
+import math
 import time
 import os
 import sys
@@ -12,12 +13,41 @@ MIN_TREND_SAMPLE = 8
 
 def trend_score(t):
     """
-    以樣本數對 ROI 做收縮加權：score = ROI × (樣本數 / (樣本數 + 10))。
+    勝負/讓分盤用：以樣本數對 ROI 做收縮加權 score = ROI × (樣本數 / (樣本數 + 10))。
     樣本越少，分數越向 0 收縮，避免「最近 4 場 3-1、ROI 80%」這種小樣本趨勢霸榜。
     無法解析樣本數時保守以 5 場計。
     """
     sample = t.get('sample') or 5
     return t['roi'] * (sample / (sample + 10.0))
+
+def wilson_lower_bound(wins, n, z=1.28):
+    """
+    命中率的 Wilson 信賴下界 (z=1.28 約為單尾 90%，排序常用值)。
+    同樣命中率下樣本越大下界越高，小樣本的高命中率會被自動壓低，不需手調參數。
+    """
+    if not n:
+        return 0.0
+    p = wins / n
+    denom = 1 + z * z / n
+    centre = p + z * z / (2 * n)
+    margin = z * math.sqrt((p * (1 - p) + z * z / (4 * n)) / n)
+    return (centre - margin) / denom
+
+def totals_trend_score(t):
+    """
+    大小分用：大小分兩邊賠率幾乎固定 (約 -110)，命中率高即賺錢，
+    故以 Wilson 命中率下界換算成「保守期望 ROI」(%)：
+        期望 ROI = (1.909 × 下界 - 1) × 100
+    使其與勝負盤的 ROI 加權分數在同一單位上可比較。
+    無法解析勝場數時，以 -110 賠率從 ROI 反推命中率後套用同一公式，維持同尺度。
+    """
+    wins, n = t.get('wins'), t.get('sample')
+    if wins is None or not n:
+        n = n or 5
+        p = min(max((t['roi'] + 100.0) / 190.9, 0.0), 1.0)
+        wins = p * n
+    lb = wilson_lower_bound(wins, n)
+    return (1.909 * lb - 1.0) * 100
 
 # ==========================================
 # 網路請求模組與防擋策略
@@ -291,9 +321,9 @@ def classify_and_process_trends(matchup):
     # 提取數值的正規表達式
     units_pattern = re.compile(r'([+-]?\d+(?:\.\d+)?)\s+Units', re.IGNORECASE)
     roi_pattern = re.compile(r'([+-]?\d+(?:\.\d+)?)%\s+ROI', re.IGNORECASE)
-    # 樣本數格式一: "in 32 of their last 45 games" -> 樣本 45 場
-    of_last_pattern = re.compile(r'\b\d+\s+of\s+(?:their|the)\s+last\s+(\d+)', re.IGNORECASE)
-    # 樣本數格式二: 戰績 "7-2" -> 樣本 9 場
+    # 樣本數格式一: "in 32 of their last 45 games" -> 32 勝 / 樣本 45 場
+    of_last_pattern = re.compile(r'\b(\d+)\s+of\s+(?:their|the)\s+last\s+(\d+)', re.IGNORECASE)
+    # 樣本數格式二: 戰績 "7-2" -> 7 勝 / 樣本 9 場
     record_pattern = re.compile(r'\b(\d+)-(\d+)\b')
 
     for trend in matchup['trends']:
@@ -344,11 +374,15 @@ def classify_and_process_trends(matchup):
         of_last_match = of_last_pattern.search(text)
         record_match = record_pattern.search(text)
         if of_last_match:
-            sample = int(of_last_match.group(1))
+            wins = int(of_last_match.group(1))
+            sample = int(of_last_match.group(2))
+            if wins > sample:
+                wins, sample = None, None
         elif record_match:
-            sample = int(record_match.group(1)) + int(record_match.group(2))
+            wins = int(record_match.group(1))
+            sample = wins + int(record_match.group(2))
         else:
-            sample = None
+            wins, sample = None, None
         
         # 3. 判定盤口市場 (Market)。F5 與 Team Total 趨勢已在前面排除，這裡只會是全場市場
         market = "Other"
@@ -385,6 +419,7 @@ def classify_and_process_trends(matchup):
             'direction': direction,
             'units': units,
             'roi': roi,
+            'wins': wins,
             'sample': sample
         })
         
@@ -431,7 +466,7 @@ def analyze_betting_recommendations(matchup, processed_trends):
             'team_a_trends': [t['text'] for t in a_under_full],
             'team_b_trends': [t['text'] for t in b_under_full],
             'avg_roi': round((sum(t['roi'] for t in a_under_full + b_under_full) / len(a_under_full + b_under_full)), 1),
-            'score': round((sum(trend_score(t) for t in a_under_full + b_under_full) / len(a_under_full + b_under_full)), 1)
+            'score': round((sum(totals_trend_score(t) for t in a_under_full + b_under_full) / len(a_under_full + b_under_full)), 1)
         }
         
     a_over_full = [t for t in high_over_full if t['team'] == team_a]
@@ -446,7 +481,7 @@ def analyze_betting_recommendations(matchup, processed_trends):
             'team_a_trends': [t['text'] for t in a_over_full],
             'team_b_trends': [t['text'] for t in b_over_full],
             'avg_roi': round((sum(t['roi'] for t in a_over_full + b_over_full) / len(a_over_full + b_over_full)), 1),
-            'score': round((sum(trend_score(t) for t in a_over_full + b_over_full) / len(a_over_full + b_over_full)), 1)
+            'score': round((sum(totals_trend_score(t) for t in a_over_full + b_over_full) / len(a_over_full + b_over_full)), 1)
         }
 
     # 全場大小分避碰 (若同場全場同時推薦大分與小分，只保留加權分數高者)
