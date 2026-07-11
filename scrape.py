@@ -2218,7 +2218,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                 const rankNum = idx + 1;
                 const tagClass = rec.type === 'opposing' ? 'side-tag' : 'total-tag';
                 const tagText = rec.type === 'opposing' ? '🎯 勝負/讓分' : '🔥 大小總分';
-                const roiLabel = '保守命中率下界';
+                const roiLabel = '保守命中率';
                 
                 let logosHtml = '';
                 if (rec.logo_b) {{
@@ -2269,10 +2269,10 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                     <span class="ai-badge-glow">AI OPTIMIZED</span>
                 </div>
                 <div class="score-legend">
-                    📖 下界怎麼看：<span style="color: var(--accent-green); font-weight: 700;">≥55% 強訊號</span> ·
+                    📖 保守命中率怎麼看：<span style="color: var(--accent-green); font-weight: 700;">≥55% 強訊號</span> ·
                     <span style="color: #ffd200; font-weight: 700;">50~55% 普通</span> ·
                     <span style="color: var(--text-muted); font-weight: 700;">&lt;50% 僅供參考</span>
-                    （已依樣本數扣除運氣水分的保守命中率）
+                    （過盤率已依樣本數扣除運氣水分，小樣本會被自動壓低）
                 </div>
                 <div class="ai-cards-grid">
                     ${{cardsHtml}}
@@ -2303,7 +2303,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                                 </div>
                             </div>
                             <div class="top-rec-item-right">
-                                <span class="top-rec-item-roi" style="${{scoreBadgeStyle(rec.score)}}">下界: ${{rec.score}}%</span>
+                                <span class="top-rec-item-roi" style="${{scoreBadgeStyle(rec.score)}}">保守 ${{rec.score}}%</span>
                             </div>
                         </div>
                     `;
@@ -2334,7 +2334,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                                 </div>
                             </div>
                             <div class="top-rec-item-right">
-                                <span class="top-rec-item-roi" style="${{scoreBadgeStyle(rec.score)}}">下界: ${{rec.score}}%</span>
+                                <span class="top-rec-item-roi" style="${{scoreBadgeStyle(rec.score)}}">保守 ${{rec.score}}%</span>
                             </div>
                         </div>
                     `;
@@ -2480,7 +2480,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                             <div class="rec-box double-box">
                                 <div class="rec-title-row">
                                     <span class="rec-type-badge">大小分總分 • ${{rec.market_type}}</span>
-                                    <span class="roi-badge" style="${{scoreBadgeStyle(rec.score)}}">過盤: ${{rec.hit_detail}} | 下界: ${{rec.score}}%</span>
+                                    <span class="roi-badge" style="${{scoreBadgeStyle(rec.score)}}">過盤: ${{rec.hit_detail}} | 保守 ${{rec.score}}%</span>
                                 </div>
                                 <div class="rec-headline">${{translateText(rec.recommendation)}}</div>
                                 <div class="rec-desc">${{translateText(rec.confidence)}}</div>
@@ -2502,7 +2502,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                             <div class="rec-box opposing-box">
                                 <div class="rec-title-row">
                                     <span class="rec-type-badge">勝負/讓分盤 • ${{rec.market_zh}}</span>
-                                    <span class="roi-badge" style="${{scoreBadgeStyle(rec.score)}}">過盤: ${{rec.hit_detail}} | 下界: ${{rec.score}}%</span>
+                                    <span class="roi-badge" style="${{scoreBadgeStyle(rec.score)}}">過盤: ${{rec.hit_detail}} | 保守 ${{rec.score}}%</span>
                                 </div>
                                 <div class="rec-headline">${{translateText(rec.recommendation)}}</div>
                                 <div class="rec-desc">${{translateText(rec.confidence)}}</div>
@@ -2776,7 +2776,7 @@ def main():
             'bet_on': r['bet_on'],
             'logo_a': r['logo'],
             'logo_b': None,
-            'rationale': f"黃金對立組合！優勢隊 {r['bet_on']} 近期過盤 {r['hit_detail']}，保守命中率下界 {r['score']}%，強弱差距顯著。",
+            'rationale': f"黃金對立組合！優勢隊 {r['bet_on']} 近期過盤 {r['hit_detail']}，保守命中率 {r['score']}%，強弱差距顯著。",
             'is_day_game': r['is_day_game'],
             'game_time': r['game_time']
         })
@@ -2794,7 +2794,7 @@ def main():
             'hit_detail': r['hit_detail'],
             'logo_a': r['logo_a'],
             'logo_b': r['logo_b'],
-            'rationale': f"雙向強勢指標！兩隊近期在 {r['market_type']} 盤口高度吻合，過盤紀錄 {r['hit_detail']}，保守命中率下界 {r['score']}%。",
+            'rationale': f"雙向強勢指標！兩隊近期在 {r['market_type']} 盤口高度吻合，過盤紀錄 {r['hit_detail']}，保守命中率 {r['score']}%。",
             'is_day_game': r['is_day_game'],
             'game_time': r['game_time']
         })
