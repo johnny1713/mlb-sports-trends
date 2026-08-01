@@ -271,6 +271,15 @@ def parse_matchup_details(matchup):
             'text': cleaned_text
         })
         
+    # 2.5 提取 Recent Form 趨勢 (與 ROI Trends 不同來源，每場固定 8 條)
+    #     這些是 covers 從大量條件切片中挑出的連勝紀錄，樣本僅 4~9 場且多為全勝，
+    #     屬於選擇偏誤下的產物，只作參考顯示，絕不列入評分排序。
+    recent_form = []
+    for raw in re.findall(r'class="single-form-trend"[^>]*>(.*?)</p>', html_content, re.DOTALL):
+        cleaned = re.sub(r'<[^>]*>', '', html.unescape(raw)).strip()
+        if cleaned:
+            recent_form.append(cleaned)
+
     # 建立 Logo SVG 連結
     away_logo = f"https://img.covers.com/covers/data/svg_logos/mlb/{matchup['away_short']}.svg" if matchup['away_short'] else ""
     home_logo = f"https://img.covers.com/covers/data/svg_logos/mlb/{matchup['home_short']}.svg" if matchup['home_short'] else ""
@@ -314,6 +323,7 @@ def parse_matchup_details(matchup):
         'team_b_spread': team_b_spread,
         'total_line': total_line,
         'trends': raw_trends,
+        'recent_form': recent_form,
         'game_time': matchup.get('game_time', 'None'),
         'is_day_game': matchup.get('is_day_game', False)
     }
@@ -436,6 +446,170 @@ def classify_and_process_trends(matchup):
 # ==========================================
 # 智能趨勢篩選演算法 (核心投注推薦邏輯)
 # ==========================================
+# Recent Form 條件片語的中譯表。依字串長度由長到短比對，避免短語先吃掉長語。
+# 語料來自 2026-08-01 實抓的 64 條趨勢，句型高度模板化。
+RF_PHRASES = [
+    ('when their opponent scores 2 runs or less in their previous game', '對手前一場得分 ≤2 時'),
+    ('when their opponent scores 5 runs or more in their previous game', '對手前一場得分 ≥5 時'),
+    ('when their opponent allows 5 runs or more in their previous game', '對手前一場失分 ≥5 時'),
+    ('following a Quality Start in his last appearance', '上一場優質先發之後'),
+    ('after allowing 2 runs or less in their previous game', '前一場失分 ≤2 之後'),
+    ('after scoring 2 runs or less in their previous game', '前一場得分 ≤2 之後'),
+    ('after scoring 5 runs or more in their previous game', '前一場得分 ≥5 之後'),
+    ('vs. a team with a winning record', '對戰勝率過五成的球隊'),
+    ('vs. a team with a losing record', '對戰勝率不到五成的球隊'),
+    ('vs. a right-handed starter', '對戰右投先發'),
+    ('vs. a left-handed starter', '對戰左投先發'),
+    ('vs. National League East', '對戰國聯東區'),
+    ('vs. National League West', '對戰國聯西區'),
+    ('vs. National League Central', '對戰國聯中區'),
+    ('vs. American League East', '對戰美聯東區'),
+    ('vs. American League West', '對戰美聯西區'),
+    ('vs. American League Central', '對戰美聯中區'),
+    ('during game 1 of a series', '系列賽首戰'),
+    ('during game 2 of a series', '系列賽第 2 戰'),
+    ('during game 3 of a series', '系列賽第 3 戰'),
+    ('during game 4 of a series', '系列賽第 4 戰'),
+    ('as a home underdog', '主場冷門時'),
+    ('as a road underdog', '客場冷門時'),
+    ('as a home favorite', '主場熱門時'),
+    ('as a road favorite', '客場熱門時'),
+    ('with 5 days of rest', '休息 5 天時'),
+    ('behind home plate', '擔任主審時'),
+    ('as an underdog', '冷門時'),
+    ('as a favorite', '熱門時'),
+    ('interleague', '跨聯盟'),
+    ('home games', '主場'),
+    ('road games', '客場'),
+    # 單位字（games/starts）會先被抽走，因此「home games」可能只剩下「home」
+    ('home', '主場'),
+    ('road', '客場'),
+    ('on grass', '草地球場'),
+    ('overall', '整體'),
+    ('in Baltimore', '在巴爾的摩'),
+    ('in Cleveland', '在克里夫蘭'),
+]
+
+RECORD_RE = re.compile(r'\b(\d+)-(\d+)(?:-(\d+))?\b')
+
+
+def _translate_rf_condition(text):
+    """把 Recent Form 的條件片語轉成中文；未知片語原樣保留（英文），不隱藏資訊。"""
+    out = text.strip()
+    if not out:
+        return ''
+    # 譯文以 \x00 包住，標出片語邊界；否則「前一場失分 ≤2 之後」這種
+    # 片語內部本來就有的空白，會被下面的頓號規則誤判成片語分隔。
+    for en, zh in RF_PHRASES:
+        out = out.replace(en, f'\x00{zh}\x00')
+    out = re.sub(r'\x00\s+\x00', '\x00、\x00', out)
+    out = out.replace('\x00', '')
+    out = re.sub(r'\s{2,}', ' ', out).strip()
+    return out
+
+
+def parse_recent_form(raw_list):
+    """
+    解析 Recent Form 句型，輸出結構化資料供前端顯示。
+
+    這些趨勢是 covers 從大量條件切片中挑出的連勝紀錄（實測 64 條有 60 條 0 敗、
+    樣本僅 4~9 場），屬於選擇偏誤產物：套用 Wilson 下界會全部 >=55%，
+    一旦混入排序就會淹沒真正有樣本厚度的 ROI 趨勢。故僅作參考顯示，不計分。
+    """
+    items = []
+    for raw in raw_list:
+        text = html.unescape(raw).strip().rstrip('.')
+        side = None
+        head_token = None  # 句子主體：Over/Under、球隊、或主客隊
+
+        m = re.match(r'^(Over|Under)\s+is\s+([\d\-]+)\s+in\s+(.*)$', text, re.IGNORECASE)
+        if m:
+            side = m.group(1).capitalize()
+            record, scope = m.group(2), m.group(3)
+        else:
+            m = re.match(r'^(.+?)\s+(?:are|is)\s+([\d\-]+)\s+in\s+(.*)$', text)
+            if not m:
+                items.append({'raw': text, 'zh': text, 'side': None, 'sample': 0, 'record': ''})
+                continue
+            head_token, record, scope = m.group(1).strip(), m.group(2), m.group(3)
+
+        rm = RECORD_RE.search(record)
+        wins, losses, pushes = (int(rm.group(1)), int(rm.group(2)), int(rm.group(3) or 0)) if rm else (0, 0, 0)
+        sample = wins + losses + pushes
+
+        # 拆出「<主體> last N <單位> <條件>」
+        sm = re.match(r"^(.*?)\s*last\s+(\d+)\s*(.*)$", scope)
+        if sm:
+            subject_raw, n, descriptor = sm.group(1).strip(), int(sm.group(2)), sm.group(3).strip()
+        else:
+            subject_raw, n, descriptor = '', sample, scope
+
+        # 單位：starts 代表投手先發，meetings 代表兩隊交手。
+        # 單位字不一定在開頭（如 "interleague games"），必須全句搜尋。
+        if re.search(r'\bstarts\b', descriptor):
+            unit, descriptor = '次先發', re.sub(r'\bstarts\b', '', descriptor, count=1)
+        elif re.search(r'\bmeetings\b', descriptor):
+            unit, descriptor = '次交手', re.sub(r'\bmeetings\b', '', descriptor, count=1)
+        elif re.search(r'\bgames\b', descriptor):
+            unit, descriptor = '場', re.sub(r'\bgames\b', '', descriptor, count=1)
+        else:
+            unit = '場'
+        descriptor = re.sub(r'\s{2,}', ' ', descriptor).strip()
+
+        # 主體分類：投手/主審會用所有格（covers 省略撇號，如 "Gausmans"）
+        is_person = unit == '次先發' or 'behind home plate' in descriptor
+        subject_label = ''
+        if subject_raw.lower() in ('the', 'their', ''):
+            subject_label = '兩隊' if unit == '次交手' else ''
+        elif is_person:
+            name = subject_raw[:-1] if subject_raw.endswith("'") else re.sub(r's$', '', subject_raw)
+            subject_label = f"{'主審' if 'behind home plate' in descriptor else '投手'} {name}"
+        else:
+            # 球隊簡稱保留原文，交由前端字典依語言設定翻譯
+            subject_label = f'@@{subject_raw}@@'
+
+        cond = _translate_rf_condition(descriptor)
+        if head_token in ('Home team', 'Road team'):
+            head_zh = '主隊' if head_token == 'Home team' else '客隊'
+        elif side:
+            head_zh = '大分' if side == 'Over' else '小分'
+        else:
+            head_zh = f'@@{head_token}@@' if head_token else ''
+
+        scope_zh = f'{subject_label} 最近 {n} {unit}' if subject_label else f'最近 {n} {unit}'
+        zh = f'{head_zh} {record}｜{scope_zh}'
+        if cond:
+            zh += f'（{cond}）'
+
+        items.append({
+            'raw': text,
+            'zh': zh,
+            'side': side,          # 'Over' / 'Under' / None
+            'record': record,
+            'sample': sample,
+            'losses': losses,
+        })
+    return items
+
+
+def recent_form_lean(items):
+    """
+    計算該場 Recent Form 的大小分方向傾斜，僅在明顯一面倒時回傳方向。
+
+    實測 8 場中有 5 場同時出現 Over 與 Under 的連勝（同一場兩個相反方向都「全勝」），
+    足證這些切片多為雜訊，故門檻設在淨差 >= 3 才視為有傾向。
+    """
+    over = sum(1 for t in items if t.get('side') == 'Over')
+    under = sum(1 for t in items if t.get('side') == 'Under')
+    diff = over - under
+    lean = None
+    if diff >= 3:
+        lean = 'Over'
+    elif diff <= -3:
+        lean = 'Under'
+    return {'over': over, 'under': under, 'lean': lean}
+
+
 def analyze_betting_recommendations(matchup, processed_trends):
     """
     根據用戶要求的兩種核心趨勢演算法進行媒合：
@@ -468,6 +642,7 @@ def analyze_betting_recommendations(matchup, processed_trends):
     under_full_rec = None
     if a_under_full and b_under_full:
         under_full_rec = {
+            'direction': 'Under',  # 供前端與 Recent Form 方向比對（同向/反向標記用）
             'market_type': f"Under (小 {total_line})" if total_line else 'Under (全場小分)',
             'recommendation': f"買 全場小分 (小 {total_line})" if total_line else '買 全場小分 (Game Under)',
             'confidence': f"雙正面強勢指標：{team_a} 擁有 {len(a_under_full)} 項全場 Under 趨勢，{team_b} 擁有 {len(b_under_full)} 項全場 Under 趨勢。",
@@ -483,6 +658,7 @@ def analyze_betting_recommendations(matchup, processed_trends):
     over_full_rec = None
     if a_over_full and b_over_full:
         over_full_rec = {
+            'direction': 'Over',  # 供前端與 Recent Form 方向比對（同向/反向標記用）
             'market_type': f"Over (大 {total_line})" if total_line else 'Over (全場大分)',
             'recommendation': f"買 全場大分 (大 {total_line})" if total_line else '買 全場大分 (Game Over)',
             'confidence': f"雙正面強勢指標：{team_a} 擁有 {len(a_over_full)} 項全場 Over 趨勢，{team_b} 擁有 {len(b_over_full)} 項全場 Over 趨勢。",
@@ -1424,6 +1600,115 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             }}
         }}
 
+        /* Recent Form 參考區（不計分，樣式刻意低調於主推薦） */
+        .rf-block {{
+            margin-top: 20px;
+            padding-top: 18px;
+            border-top: 1px dashed var(--border-color);
+        }}
+
+        .rf-head {{
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 8px;
+        }}
+
+        .rf-title {{
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }}
+
+        .rf-lean-tag {{
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 999px;
+            color: var(--accent-orange);
+            background: rgba(255, 122, 0, 0.1);
+            border: 1px solid rgba(255, 122, 0, 0.25);
+        }}
+
+        .rf-lean-mixed {{
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.04);
+            border-color: var(--border-color);
+        }}
+
+        .rf-caveat {{
+            font-size: 11.5px;
+            line-height: 1.7;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }}
+
+        .rf-list {{
+            list-style: none;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }}
+
+        @media (max-width: 768px) {{
+            .rf-list {{
+                grid-template-columns: 1fr;
+            }}
+        }}
+
+        .rf-item {{
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 12.5px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.015);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 8px;
+            padding: 9px 12px;
+        }}
+
+        .rf-dot {{
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-top: 7px;
+            flex-shrink: 0;
+            background: var(--text-muted);
+        }}
+
+        .rf-over .rf-dot {{ background: var(--accent-orange); }}
+        .rf-under .rf-dot {{ background: var(--accent-blue); }}
+
+        /* 推薦卡上的近期走勢旁證標記 */
+        .rf-flag {{
+            margin-top: 10px;
+            font-size: 11.5px;
+            font-weight: 600;
+            padding: 6px 10px;
+            border-radius: 8px;
+            line-height: 1.6;
+        }}
+
+        .rf-flag-agree {{
+            color: var(--accent-green);
+            background: rgba(0, 230, 118, 0.08);
+            border: 1px solid rgba(0, 230, 118, 0.2);
+        }}
+
+        .rf-flag-conflict {{
+            color: #ffd200;
+            background: rgba(255, 210, 0, 0.07);
+            border: 1px solid rgba(255, 210, 0, 0.2);
+        }}
+
+        .rf-flag-note {{
+            font-weight: 400;
+            color: var(--text-muted);
+        }}
+
         /* 隊伍趨勢清單 */
         .team-trends-col h4 {{
             font-size: 15px;
@@ -2191,6 +2476,26 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             }}
         }});
 
+        // Recent Form 句子裡的球隊簡稱以 @@Rays@@ 形式標記，依目前語言設定翻譯
+        function renderRecentFormText(zh) {{
+            return zh.replace(/@@([^@]+)@@/g, (_, name) => translateText(name));
+        }}
+
+        // 推薦方向 vs 近期走勢的旁證標記。只在近期走勢明顯一面倒時顯示，
+        // 且刻意不影響分數與排序——這些趨勢樣本太小且經過篩選，只能當提醒。
+        function recentFormFlag(m, direction) {{
+            const lean = (m.rf_lean || {{}}).lean;
+            if (!direction || !lean) return '';
+            const agree = lean === direction;
+            const leanZh = lean === 'Over' ? '大分' : '小分';
+            return `
+                <div class="rf-flag ${{agree ? 'rf-flag-agree' : 'rf-flag-conflict'}}">
+                    ${{agree ? '✅ 近期走勢同向' : '⚠️ 近期走勢反向'}}：該場近期連勝紀錄偏向${{leanZh}}
+                    <span class="rf-flag-note">（僅旁證，未計入分數）</span>
+                </div>
+            `;
+        }}
+
         // 全場趨勢皆為 0 代表 covers 尚未發佈（並非篩選後沒有結果），兩者要分開提示
         function trendsPending() {{
             if (!allMatchups || allMatchups.length === 0) return false;
@@ -2514,6 +2819,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                                 </div>
                                 <div class="rec-headline">${{translateText(rec.recommendation)}}</div>
                                 <div class="rec-desc">${{translateText(rec.confidence)}}</div>
+                                ${{recentFormFlag(m, rec.direction)}}
                             </div>
                         `;
                     }});
@@ -2586,6 +2892,39 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                 if (!teamATrendsHtml) teamATrendsHtml = '<li class="trend-item" style="color: var(--text-muted);">無趨勢數據</li>';
                 if (!teamBTrendsHtml) teamBTrendsHtml = '<li class="trend-item" style="color: var(--text-muted);">無趨勢數據</li>';
 
+                // Recent Form 參考區：樣本 4~9 場且幾乎全勝，是 covers 篩選過的結果，只顯示不計分
+                let recentFormHtml = '';
+                const rf = m.recent_form || [];
+                if (rf.length > 0) {{
+                    const lean = m.rf_lean || {{}};
+                    let leanTag = '';
+                    if (lean.lean) {{
+                        const leanZh = lean.lean === 'Over' ? '大分' : '小分';
+                        leanTag = `<span class="rf-lean-tag">近期偏 ${{leanZh}}（大 ${{lean.over}} / 小 ${{lean.under}}）</span>`;
+                    }} else {{
+                        leanTag = `<span class="rf-lean-tag rf-lean-mixed">方向分歧（大 ${{lean.over || 0}} / 小 ${{lean.under || 0}}）</span>`;
+                    }}
+                    const rows = rf.map(t => {{
+                        let dirClass = 'rf-neutral';
+                        if (t.side === 'Over') dirClass = 'rf-over';
+                        else if (t.side === 'Under') dirClass = 'rf-under';
+                        return `<li class="rf-item ${{dirClass}}"><span class="rf-dot"></span><div>${{renderRecentFormText(t.zh)}}</div></li>`;
+                    }}).join('');
+                    recentFormHtml = `
+                        <div class="rf-block">
+                            <div class="rf-head">
+                                <span class="rf-title">📈 近期走勢（僅供參考）</span>
+                                ${{leanTag}}
+                            </div>
+                            <p class="rf-caveat">
+                                covers 從大量條件切法中挑出的連勝紀錄，樣本僅 4~9 場、幾乎都是全勝，
+                                <strong>是被挑過的結果而非隨機樣本</strong>，因此不列入保守命中率評分，只當旁證看。
+                            </p>
+                            <ul class="rf-list">${{rows}}</ul>
+                        </div>
+                    `;
+                }}
+
                 const cardHtml = `
                     <div class="match-card" id="match-card-${{m.path.split('/').pop()}}">
                         <div class="match-header">
@@ -2640,6 +2979,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                                         </ul>
                                     </div>
                                 </div>
+                                ${{recentFormHtml}}
                             </div>
                         </div>
                     </div>
@@ -2712,6 +3052,10 @@ def main():
         
         print(f"  -> 篩選出 [大小分總分]: {len(double_pos)} 項 | [勝負/讓分盤]: {len(opposing)} 盤口")
         
+        # 4.5 Recent Form：僅供參考顯示與方向佐證，不參與評分排序
+        recent_form = parse_recent_form(matchup_data.get('recent_form', []))
+        rf_lean = recent_form_lean(recent_form)
+
         all_matchups_data.append({
             'path': matchup_data['path'],
             'team_a': matchup_data['team_a'],
@@ -2721,6 +3065,8 @@ def main():
             'processed_trends': processed_trends,
             'double_positive': double_pos,
             'opposing_trends': opposing,
+            'recent_form': recent_form,
+            'rf_lean': rf_lean,
             'game_time': matchup_data['game_time'],
             'is_day_game': matchup_data['is_day_game']
         })

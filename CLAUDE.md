@@ -47,6 +47,30 @@ MLB 每日賽事趨勢爬蟲 + GitHub Pages 儀表板。抓 covers.com 的賽前
 - 首五局 (F5) 與 Team Total 趨勢刻意排除，只做全場市場。
 - 下午場判定以**主場當地時間**（當地 17:00 前開打），非 ET。
 
+### Recent Form 趨勢：只顯示，**永遠不計分**（2026-08-01 加入）
+
+covers 每場另給 8 條 Recent Form（`single-form-trend`），與 ROI Trends 是不同來源、不同區塊。
+2026-08-01 實抓 64 條的統計：樣本數 4~9 場，**64 條裡有 60 條是 0 敗**。
+
+**為什麼不能列入排序**（這是加功能時最容易犯的錯）：
+- 套用現行 Wilson 下界，64 條**全部** ≥55%（範圍 57.5%~84.6%），而真正有厚度的
+  ROI 趨勢 32/45 才 61.8%、29/50 只有 49.0%。一旦混入排序，AI Top 5 會被連勝紀錄全面佔滿。
+- 下界修正的是「樣本小」，前提是隨機抽樣；但這些是 covers **在同一場比賽試很多條件切法**
+  （as a favorite / vs. a right-handed starter / after allowing 2 runs or less…）後挑出的全勝切片。
+  選擇偏誤對 Wilson 是隱形的。丟硬幣 5 連中的機率就有 3%，試 100 種切法必然冒出好幾條。
+- 資料本身即為佐證：8 場裡有 5 場**同時**出現 Over 與 Under 的全勝紀錄，自相矛盾。
+
+**因此的設計**：`parse_recent_form()` 只做解析與中譯，`recent_form_lean()` 算大小分傾斜且
+**淨差 ≥3 才承認有方向**（因為多數場次是分歧的）。前端只有兩個用途：單場卡片的
+「📈 近期走勢（僅供參考）」清單，以及大小分推薦上的「同向／反向」旁證標記（`recentFormFlag`）。
+標記不改分數也不改排序。附帶好處：covers 的 ROI Trends 開天窗時，Recent Form 通常還有資料。
+
+解析細節：句型高度模板化，中譯用 `RF_PHRASES` 片語表（由長到短比對）。幾個坑——
+單位字 `games`/`starts` **不一定在開頭**（"interleague games"）；投手/主審用所有格但
+covers 省略撇號（"Gausmans" = Gausman，`starts` 代表投手、`behind home plate` 代表主審）；
+球隊簡稱輸出成 `@@Rays@@` 佔位符，由前端 `renderRecentFormText()` 依語言設定翻譯，
+才不會和既有的中英切換打架。
+
 ## GitHub Actions 排程（.github/workflows/scrape.yml）
 
 - 每天 6 輪：UTC 11:17/12:17/13:17/15:17（台灣 19:17~23:17）＋ 補救輪 16:17/17:17（台灣 00:17/01:17）。
