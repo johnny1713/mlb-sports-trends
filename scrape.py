@@ -1001,6 +1001,9 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             display: flex;
             flex-direction: column;
             gap: 16px;
+            /* grid 項目的 min-width 預設是 auto(=min-content)，窄螢幕下會被
+               不換行的推薦文字＋走勢藥丸撐爆整欄，導致整頁橫向捲動 */
+            min-width: 0;
         }}
 
         .section-main-title {{
@@ -1102,6 +1105,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             flex-direction: column;
             gap: 2px;
             overflow: hidden;
+            min-width: 0;
         }}
 
         .top-rec-item-match {{
@@ -1118,6 +1122,15 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }}
+
+        @media (max-width: 768px) {{
+            /* 走勢藥丸接在推薦文字後面，nowrap + ellipsis 會把它整個切掉，
+               窄螢幕改為可換行，讓藥丸掉到下一行仍看得見 */
+            .top-rec-item-bet {{
+                white-space: normal;
+                text-overflow: clip;
+            }}
         }}
 
         .top-rec-item-right {{
@@ -1700,6 +1713,81 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
 
         .rf-over .rf-dot {{ background: var(--accent-orange); }}
         .rf-under .rf-dot {{ background: var(--accent-blue); }}
+
+        /* 差一點進 Top 5 的向隅推薦區 */
+        .near-miss-section {{
+            margin-bottom: 40px;
+            padding: 22px 24px;
+            border: 1px dashed var(--border-color);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.012);
+        }}
+
+        .near-miss-caveat {{
+            font-size: 12px;
+            line-height: 1.8;
+            color: var(--text-muted);
+            margin: -6px 0 16px;
+        }}
+
+        .near-miss-list {{
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }}
+
+        .near-miss-item {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.015);
+            cursor: pointer;
+            transition: border-color 0.2s ease, background 0.2s ease;
+        }}
+
+        .near-miss-item:hover, .near-miss-item:active {{
+            border-color: rgba(0, 230, 118, 0.25);
+            background: rgba(0, 230, 118, 0.04);
+        }}
+
+        .near-miss-info {{
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+        }}
+
+        .near-miss-match {{
+            font-size: 11.5px;
+            color: var(--text-muted);
+        }}
+
+        .near-miss-bet {{
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }}
+
+        .near-miss-right {{
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+            flex-shrink: 0;
+        }}
+
+        .near-miss-gap {{
+            font-size: 10.5px;
+            color: var(--text-muted);
+        }}
 
         /* Top 5 清單／AI 卡片上的精簡近期走勢標記 */
         .rf-pill {{
@@ -2331,6 +2419,9 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             </div>
         </section>
 
+        <!-- 差一點進 Top 5、但近期走勢同向的向隅推薦（無符合者由 JS 隱藏） -->
+        <section class="near-miss-section" id="near-miss-section" style="display: none;"></section>
+
         <!-- 篩選與控制列 -->
         <div class="controls-bar">
             <div class="tabs">
@@ -2477,6 +2568,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             
             renderAiTop5();
             renderTopLists();
+            renderNearMisses();
             renderMatchups();
         }}
 
@@ -2505,6 +2597,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                 
                 renderAiTop5();
                 renderTopLists();
+                renderNearMisses();
                 renderMatchups();
             }} catch(e) {{
                 console.error("解析 JSON 數據出錯:", e);
@@ -2720,6 +2813,80 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                     ${{cardsHtml}}
                 </div>
             `;
+        }}
+
+        // 「差一點」的判定門檻。近期走勢刻意不影響排序，所以落榜的推薦本來就代表
+        // 命中率證據較弱——只有在分數差小到沒有實質意義時，走勢同向才值得拿來補救。
+        const NEAR_MISS_MARGIN = 3.0;   // 與該類 Top 5 最低分的差距上限
+        const NEAR_MISS_MIN_SCORE = 50; // 網站自訂門檻，<50% 本來就標示為可忽略
+
+        function collectNearMisses() {{
+            if (!allMatchups || allMatchups.length === 0) return [];
+            const inTop = new Set(
+                [...topSides, ...topTotals].map(r => `${{r.matchup_id}}|${{r.recommendation}}`)
+            );
+            const cutSides = topSides.length ? Math.min(...topSides.map(r => r.score)) : null;
+            const cutTotals = topTotals.length ? Math.min(...topTotals.map(r => r.score)) : null;
+            const out = [];
+            allMatchups.forEach(m => {{
+                const mid = m.path.split('/').pop();
+                const consider = (rec, type, cutoff, marketLabel) => {{
+                    if (cutoff === null) return;
+                    if (inTop.has(`${{mid}}|${{rec.recommendation}}`)) return;
+                    if (rec.score < NEAR_MISS_MIN_SCORE) return;
+                    if (cutoff - rec.score > NEAR_MISS_MARGIN) return;
+                    const ev = recentFormStatus(Object.assign({{}}, rec, {{ matchup_id: mid, type }}));
+                    if (!ev || ev.status !== 'agree') return;
+                    out.push({{
+                        matchup_id: mid,
+                        matchup_name: `${{m.team_a}} vs ${{m.team_b}}`,
+                        market_label: marketLabel,
+                        recommendation: rec.recommendation,
+                        score: rec.score,
+                        gap: Math.round((cutoff - rec.score) * 10) / 10,
+                        weak: ev.weak
+                    }});
+                }};
+                (m.opposing_trends || []).forEach(r => consider(r, 'opposing', cutSides, r.market_zh));
+                (m.double_positive || []).forEach(r => consider(r, 'double', cutTotals, r.market_type));
+            }});
+            return out.sort((a, b) => b.score - a.score).slice(0, 5);
+        }}
+
+        function renderNearMisses() {{
+            const section = document.getElementById('near-miss-section');
+            if (!section) return;
+            const items = collectNearMisses();
+            if (items.length === 0) {{
+                section.style.display = 'none';
+                section.innerHTML = '';
+                return;
+            }}
+            const rows = items.map(it => `
+                <div class="near-miss-item" onclick="scrollToMatch('match-card-${{it.matchup_id}}')">
+                    <div class="near-miss-info">
+                        <span class="near-miss-match">${{translateText(it.matchup_name)}} • ${{it.market_label}}</span>
+                        <span class="near-miss-bet">
+                            ${{translateText(it.recommendation)}}
+                            <span class="rf-pill rf-pill-agree">✅ 走勢同向${{it.weak ? '(弱)' : ''}}</span>
+                        </span>
+                    </div>
+                    <div class="near-miss-right">
+                        <span class="top-rec-item-roi" style="${{scoreBadgeStyle(it.score)}}">保守 ${{it.score}}%</span>
+                        <span class="near-miss-gap">差 ${{it.gap}} 分</span>
+                    </div>
+                </div>
+            `).join('');
+            section.innerHTML = `
+                <h2 class="section-main-title">👀 差一點進 Top 5，但近期走勢同向</h2>
+                <p class="near-miss-caveat">
+                    以下推薦的保守命中率只比 Top 5 門檻低 ${{NEAR_MISS_MARGIN}} 分以內（等於實質平手），
+                    且近期走勢方向一致，因此一併列出供你留意。
+                    <strong>排序仍只看保守命中率</strong>，近期走勢不加分；分數低於 ${{NEAR_MISS_MIN_SCORE}}% 的一律不列。
+                </p>
+                <div class="near-miss-list">${{rows}}</div>
+            `;
+            section.style.display = '';
         }}
 
         function renderTopLists() {{

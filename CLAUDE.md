@@ -80,6 +80,13 @@ covers 每場另給 8 條 Recent Form（`<section id="form_trends">` 內的 `sin
 - AI Top 5 與左右兩個 Top 5 清單的精簡藥丸標記：`recentFormPill` → `recentFormStatus`，
   後者以 `matchup_id` 反查 `allMatchups`，**與單場卡片共用同一套門檻**，改規則只需改一處。
 
+- **「差一點進 Top 5」向隅區**（`collectNearMisses`）：走勢同向但落榜的推薦，
+  只在「與該類 Top 5 最低分差 ≤3 分（`NEAR_MISS_MARGIN`）」**且**「分數 ≥50%
+  （`NEAR_MISS_MIN_SCORE`，網站自訂的可忽略門檻）」時才列出，最多 5 筆。
+  兩道關卡缺一不可——落榜本來就代表命中率證據較弱，只有分差小到沒有實質意義時，
+  走勢同向才值得補救；否則就變成用小樣本連勝把弱推薦拉上檯面，等於偷偷影響排序。
+  無符合者整區隱藏。2026-08-02 當天 9 筆同向中，3 筆已在 Top 5、2 筆低於 50% 被擋，實列 4 筆。
+
 附帶好處：covers 的 ROI Trends 開天窗時，Recent Form 通常還有資料。
 注意 Top 5 常常整排都沒有標記，這是正常的——多數推薦是讓分盤（不適用），
 獨贏則常見 0比0 或 1比1 未達門檻。要確認功能是否還活著，用瀏覽器主控台跑
@@ -108,6 +115,13 @@ covers 省略撇號（"Gausmans" = Gausman，`starts` 代表投手、`behind hom
 
 - `generate_html_dashboard` 是一個巨大的 f-string，**所有 JS/CSS 的大括號都要寫成 `{{ }}`**。
   歷史上已因此出過兩次 JS 語法錯誤。改模板後務必跑一次並檢查產出。
+- **在 Top 5 清單那類卡片裡塞新標籤前，先確認窄螢幕不會橫向溢出**。
+  `.top-col` 是 grid 項目、`.top-rec-item-info` 是 flex 項目，兩者 `min-width` 預設 `auto`(=min-content)，
+  只要內部有不換行的內容（例如 `white-space: nowrap` 的走勢藥丸）就會把整欄撐爆、整頁可橫向捲動。
+  兩處都已加 `min-width: 0`，`.top-rec-item-bet` 也在 ≤768px 改為可換行（否則藥丸會被 ellipsis 切掉）。
+  2026-08-02 加走勢藥丸時就踩過一次，當時只測桌機沒發現。
+  驗證方法：把頁面塞進 390px 寬的 iframe，檢查 `scrollWidth - clientWidth` 是否為 0
+  （直接縮視窗沒用，Chrome 視窗有最小寬度限制）。
 - 只輸出 `index.html`（GitHub Pages 直接用）；`mlb_trends.html` 已於 2026-07-10 移除。
 - 語言預設固定繁中（不記 localStorage）；曾因記憶 'en' 導致「預設變英文」的困擾。
 - 零外部依賴（純標準庫）是刻意的設計，新增功能請維持。
