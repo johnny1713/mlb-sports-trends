@@ -731,6 +731,9 @@ def analyze_betting_recommendations(matchup, processed_trends):
             opposing_trends.append({
                 'market': m,
                 'market_zh': m_zh,
+                # 讓分/受讓決定「直接勝負」對該盤口的參考強度：
+                # 受讓 +1.5 直接獲勝必定過盤；讓分 -1.5 還需贏 2 分以上
+                'spread_side': team_a_side if m == 'Run Line' else None,
                 'bet_on': team_a,
                 'bet_against': team_b,
                 'recommendation': f"買 {team_a} {m_zh}",
@@ -755,6 +758,7 @@ def analyze_betting_recommendations(matchup, processed_trends):
             opposing_trends.append({
                 'market': m,
                 'market_zh': m_zh,
+                'spread_side': team_b_side if m == 'Run Line' else None,
                 'bet_on': team_b,
                 'bet_against': team_a,
                 'recommendation': f"買 {team_b} {m_zh}",
@@ -2519,47 +2523,65 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             return zh.replace(/@@([^@]+)@@/g, (_, name) => translateText(name));
         }}
 
-        // Top 5 清單用的精簡版近期走勢標記。判斷規則與單場卡片完全一致，
-        // 差別只在版面：清單空間小，只出一顆藥丸標籤。讓分盤同樣不標（covers 無此資料）。
+        // 勝負盤（獨贏／讓分）的近期走勢評估——單場卡片與 Top 5 共用的唯一判斷來源。
+        //
+        // covers 的 Recent Form 只有「直接勝負」紀錄，沒有讓分資料，但兩者關聯依盤口而異：
+        //   受讓 +1.5：直接獲勝**必定**過盤（獲勝是過盤的子集），因此直接勝負是有效佐證。
+        //   讓分 -1.5：直接獲勝只是必要條件，還得贏 2 分以上，故標為「較弱」。
+        // 實測 30 隊的獨贏命中率與讓分過盤率相關係數僅 0.407，不足以等同看待。
+        function recentFormSideEval(m, rec) {{
+            if (!m || !rec || rec.market !== 'Moneyline' && rec.market !== 'Run Line') return null;
+            const rf = m.recent_form || [];
+            const forCount = rf.filter(t => t.win_team && t.win_team === rec.bet_on).length;
+            const againstCount = rf.filter(t => t.win_team && t.win_team === rec.bet_against).length;
+            const diff = forCount - againstCount;
+            if (Math.abs(diff) < 2) return null;
+            return {{
+                status: diff > 0 ? 'agree' : 'conflict',
+                forCount, againstCount,
+                weak: rec.market === 'Run Line' && rec.spread_side === '讓分'
+            }};
+        }}
+
+        // Top 5 清單用的精簡版標記。規則與單場卡片完全一致，差別只在版面。
         function recentFormStatus(rec) {{
             const m = (allMatchups || []).find(x => x.path.split('/').pop() === String(rec.matchup_id));
             if (!m) return null;
             if (rec.type === 'double') {{
                 const lean = (m.rf_lean || {{}}).lean;
                 if (!lean || !rec.direction) return null;
-                return lean === rec.direction ? 'agree' : 'conflict';
+                return {{ status: lean === rec.direction ? 'agree' : 'conflict', weak: false }};
             }}
-            if (rec.type === 'opposing' && rec.market === 'Moneyline') {{
-                const rf = m.recent_form || [];
-                const forCount = rf.filter(t => t.win_team && t.win_team === rec.bet_on).length;
-                const againstCount = rf.filter(t => t.win_team && t.win_team === rec.bet_against).length;
-                if (Math.abs(forCount - againstCount) < 2) return null;
-                return forCount > againstCount ? 'agree' : 'conflict';
+            if (rec.type === 'opposing') {{
+                const ev = recentFormSideEval(m, rec);
+                return ev ? {{ status: ev.status, weak: ev.weak }} : null;
             }}
             return null;
         }}
 
         function recentFormPill(rec) {{
-            const status = recentFormStatus(rec);
-            if (!status) return '';
-            return `<span class="rf-pill rf-pill-${{status}}">${{status === 'agree' ? '✅ 走勢同向' : '⚠️ 走勢反向'}}</span>`;
+            const ev = recentFormStatus(rec);
+            if (!ev) return '';
+            const label = (ev.status === 'agree' ? '✅ 走勢同向' : '⚠️ 走勢反向') + (ev.weak ? '(弱)' : '');
+            return `<span class="rf-pill rf-pill-${{ev.status}}">${{label}}</span>`;
         }}
 
-        // 獨贏推薦的旁證標記。covers 的 Recent Form 只有「大小分」與「直接勝負」兩種市場，
-        // 完全沒有讓分/ATS 資料，因此讓分盤一律不標記——球隊直接連勝不代表能過讓分。
+        // 勝負盤推薦的完整旁證標記，資料來源一律是「直接勝負」紀錄，文案依盤口說清楚適用性。
         function recentFormSideFlag(m, rec) {{
-            if (!rec || rec.market !== 'Moneyline') return '';
-            const rf = m.recent_form || [];
-            const forCount = rf.filter(t => t.win_team && t.win_team === rec.bet_on).length;
-            const againstCount = rf.filter(t => t.win_team && t.win_team === rec.bet_against).length;
-            const diff = forCount - againstCount;
-            if (Math.abs(diff) < 2) return '';
-            const agree = diff > 0;
+            const ev = recentFormSideEval(m, rec);
+            if (!ev) return '';
+            const agree = ev.status === 'agree';
             const focus = agree ? rec.bet_on : rec.bet_against;
+            let applicability = '';
+            if (rec.market === 'Run Line') {{
+                applicability = ev.weak
+                    ? '——但本推薦為讓分 1.5，需贏 2 分以上才過盤，直接勝負僅供參考'
+                    : '——本推薦為受讓 1.5，直接獲勝即必定過盤';
+            }}
             return `
                 <div class="rf-flag ${{agree ? 'rf-flag-agree' : 'rf-flag-conflict'}}">
-                    ${{agree ? '✅ 近期走勢同向' : '⚠️ 近期走勢反向'}}：近期直接勝負的連勝紀錄集中在
-                    ${{translateText(focus)}}（${{forCount}} 比 ${{againstCount}}）
+                    ${{agree ? '✅ 近期走勢同向' : '⚠️ 近期走勢反向'}}${{ev.weak ? '（較弱）' : ''}}：近期直接勝負的連勝紀錄集中在
+                    ${{translateText(focus)}}（${{ev.forCount}} 比 ${{ev.againstCount}}）${{applicability}}
                     <span class="rf-flag-note">（僅旁證，未計入分數）</span>
                 </div>
             `;
@@ -3005,8 +3027,9 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                             <p class="rf-caveat">
                                 covers 從大量條件切法中挑出的連勝紀錄，樣本僅 4~9 場、幾乎都是全勝，
                                 <strong>是被挑過的結果而非隨機樣本</strong>，因此不列入保守命中率評分，只當旁證看。
-                                此區只有<strong>大小分</strong>與<strong>直接勝負</strong>兩種市場，
-                                covers 未提供讓分（run line）的近期走勢。
+                                此區只有<strong>大小分</strong>與<strong>直接勝負</strong>兩種市場，covers 未提供讓分走勢——
+                                讓分盤的標記是借用直接勝負推得：<strong>受讓 1.5</strong> 直接獲勝即必定過盤（有效），
+                                <strong>讓分 1.5</strong> 還需贏 2 分以上（僅標為較弱）。
                             </p>
                             <ul class="rf-list">${{rows}}</ul>
                         </div>
@@ -3205,8 +3228,9 @@ def main():
                 'score': rec['score'],
                 'hit_detail': rec['hit_detail'],
                 'bet_on': rec['bet_on'],
-                'bet_against': rec['bet_against'],  # 供前端比對近期走勢（僅獨贏適用）
+                'bet_against': rec['bet_against'],  # 供前端比對近期走勢
                 'market': rec['market'],
+                'spread_side': rec.get('spread_side'),
                 'logo': logo_url,
                 'details': f"過盤紀錄: {rec['hit_detail']}",
                 'is_day_game': matchup['is_day_game'],
@@ -3248,6 +3272,7 @@ def main():
             'bet_on': r['bet_on'],
             'bet_against': r.get('bet_against'),
             'market': r.get('market'),
+            'spread_side': r.get('spread_side'),
             'logo_a': r['logo'],
             'logo_b': None,
             'rationale': f"黃金對立組合！優勢隊 {r['bet_on']} 近期過盤 {r['hit_detail']}，保守命中率 {r['score']}%，強弱差距顯著。",
