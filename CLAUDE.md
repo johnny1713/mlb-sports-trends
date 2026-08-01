@@ -68,9 +68,17 @@ covers 每場另給 8 條 Recent Form（`<section id="form_trends">` 內的 `sin
 - 資料本身即為佐證：8 場裡有 5 場**同時**出現 Over 與 Under 的全勝紀錄，自相矛盾。
 
 **因此的設計**：`parse_recent_form()` 只做解析與中譯，`recent_form_lean()` 算大小分傾斜且
-**淨差 ≥3 才承認有方向**（因為多數場次是分歧的）。前端只有兩個用途：單場卡片的
-「📈 近期走勢（僅供參考）」清單，以及大小分推薦上的「同向／反向」旁證標記（`recentFormFlag`）。
-標記不改分數也不改排序。附帶好處：covers 的 ROI Trends 開天窗時，Recent Form 通常還有資料。
+**淨差 ≥3 才承認有方向**（因為多數場次是分歧的）；獨贏比對用 `win_team` 欄位，**淨差 ≥2** 才標記。
+前端用途都只是顯示，不改分數也不改排序：
+- 單場卡片的「📈 近期走勢（僅供參考）」清單
+- 單場推薦上的完整標記：`recentFormFlag`（大小分）、`recentFormSideFlag`（獨贏；讓分回傳空字串）
+- AI Top 5 與左右兩個 Top 5 清單的精簡藥丸標記：`recentFormPill` → `recentFormStatus`，
+  後者以 `matchup_id` 反查 `allMatchups`，**與單場卡片共用同一套門檻**，改規則只需改一處。
+
+附帶好處：covers 的 ROI Trends 開天窗時，Recent Form 通常還有資料。
+注意 Top 5 常常整排都沒有標記，這是正常的——多數推薦是讓分盤（不適用），
+獨贏則常見 0比0 或 1比1 未達門檻。要確認功能是否還活著，用瀏覽器主控台跑
+`recentFormStatus(topTotals[i])` 看回傳值，不要只看畫面有沒有標記。
 
 解析細節：句型高度模板化，中譯用 `RF_PHRASES` 片語表（由長到短比對）。幾個坑——
 單位字 `games`/`starts` **不一定在開頭**（"interleague games"）；投手/主審用所有格但

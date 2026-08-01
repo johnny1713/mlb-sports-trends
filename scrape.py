@@ -1697,6 +1697,29 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
         .rf-over .rf-dot {{ background: var(--accent-orange); }}
         .rf-under .rf-dot {{ background: var(--accent-blue); }}
 
+        /* Top 5 清單／AI 卡片上的精簡近期走勢標記 */
+        .rf-pill {{
+            display: inline-block;
+            font-size: 10.5px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 999px;
+            white-space: nowrap;
+            vertical-align: middle;
+        }}
+
+        .rf-pill-agree {{
+            color: var(--accent-green);
+            background: rgba(0, 230, 118, 0.1);
+            border: 1px solid rgba(0, 230, 118, 0.22);
+        }}
+
+        .rf-pill-conflict {{
+            color: #ffd200;
+            background: rgba(255, 210, 0, 0.09);
+            border: 1px solid rgba(255, 210, 0, 0.22);
+        }}
+
         /* 推薦卡上的近期走勢旁證標記 */
         .rf-flag {{
             margin-top: 10px;
@@ -2496,6 +2519,32 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             return zh.replace(/@@([^@]+)@@/g, (_, name) => translateText(name));
         }}
 
+        // Top 5 清單用的精簡版近期走勢標記。判斷規則與單場卡片完全一致，
+        // 差別只在版面：清單空間小，只出一顆藥丸標籤。讓分盤同樣不標（covers 無此資料）。
+        function recentFormStatus(rec) {{
+            const m = (allMatchups || []).find(x => x.path.split('/').pop() === String(rec.matchup_id));
+            if (!m) return null;
+            if (rec.type === 'double') {{
+                const lean = (m.rf_lean || {{}}).lean;
+                if (!lean || !rec.direction) return null;
+                return lean === rec.direction ? 'agree' : 'conflict';
+            }}
+            if (rec.type === 'opposing' && rec.market === 'Moneyline') {{
+                const rf = m.recent_form || [];
+                const forCount = rf.filter(t => t.win_team && t.win_team === rec.bet_on).length;
+                const againstCount = rf.filter(t => t.win_team && t.win_team === rec.bet_against).length;
+                if (Math.abs(forCount - againstCount) < 2) return null;
+                return forCount > againstCount ? 'agree' : 'conflict';
+            }}
+            return null;
+        }}
+
+        function recentFormPill(rec) {{
+            const status = recentFormStatus(rec);
+            if (!status) return '';
+            return `<span class="rf-pill rf-pill-${{status}}">${{status === 'agree' ? '✅ 走勢同向' : '⚠️ 走勢反向'}}</span>`;
+        }}
+
         // 獨贏推薦的旁證標記。covers 的 Recent Form 只有「大小分」與「直接勝負」兩種市場，
         // 完全沒有讓分/ATS 資料，因此讓分盤一律不標記——球隊直接連勝不代表能過讓分。
         function recentFormSideFlag(m, rec) {{
@@ -2612,6 +2661,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                         <div class="ai-card-header">
                             <span class="ai-card-tag ${{tagClass}}">${{tagText}}</span>
                             ${{dayGameBadge}}
+                            ${{recentFormPill(rec)}}
                             <span class="ai-card-match">${{translateText(rec.matchup_name)}}</span>
                         </div>
                         <div>
@@ -2669,7 +2719,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                                         ${{translateText(rec.matchup_name)}} • ${{rec.market_type}}
                                         ${{rec.is_day_game ? `<span style="color: #fbbf24; font-weight: 700; margin-left: 6px;">⚠️ ${{currentLanguage === 'zh' ? '下午場' : 'Day Game'}}</span>` : ''}}
                                     </span>
-                                    <span class="top-rec-item-bet">${{translateText(rec.recommendation)}}</span>
+                                    <span class="top-rec-item-bet">${{translateText(rec.recommendation)}} ${{recentFormPill(rec)}}</span>
                                 </div>
                             </div>
                             <div class="top-rec-item-right">
@@ -2700,7 +2750,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                                         ${{translateText(rec.matchup_name)}} • ${{rec.market_type}}
                                         ${{rec.is_day_game ? `<span style="color: #fbbf24; font-weight: 700; margin-left: 6px;">⚠️ ${{currentLanguage === 'zh' ? '下午場' : 'Day Game'}}</span>` : ''}}
                                     </span>
-                                    <span class="top-rec-item-bet">${{translateText(rec.recommendation)}}</span>
+                                    <span class="top-rec-item-bet">${{translateText(rec.recommendation)}} ${{recentFormPill(rec)}}</span>
                                 </div>
                             </div>
                             <div class="top-rec-item-right">
@@ -3129,6 +3179,7 @@ def main():
                 'type': 'double',
                 'type_zh': '大小分總分',
                 'market_type': rec['market_type'],
+                'direction': rec.get('direction'),  # 供前端比對近期走勢方向
                 'recommendation': rec['recommendation'],
                 'confidence': rec['confidence'],
                 'score': rec['score'],
@@ -3154,6 +3205,8 @@ def main():
                 'score': rec['score'],
                 'hit_detail': rec['hit_detail'],
                 'bet_on': rec['bet_on'],
+                'bet_against': rec['bet_against'],  # 供前端比對近期走勢（僅獨贏適用）
+                'market': rec['market'],
                 'logo': logo_url,
                 'details': f"過盤紀錄: {rec['hit_detail']}",
                 'is_day_game': matchup['is_day_game'],
@@ -3193,6 +3246,8 @@ def main():
             'score': r['score'],
             'hit_detail': r['hit_detail'],
             'bet_on': r['bet_on'],
+            'bet_against': r.get('bet_against'),
+            'market': r.get('market'),
             'logo_a': r['logo'],
             'logo_b': None,
             'rationale': f"黃金對立組合！優勢隊 {r['bet_on']} 近期過盤 {r['hit_detail']}，保守命中率 {r['score']}%，強弱差距顯著。",
@@ -3207,6 +3262,7 @@ def main():
             'type': 'double',
             'type_zh': '大小分總分',
             'market_type': r['market_type'],
+            'direction': r.get('direction'),
             'recommendation': r['recommendation'],
             'confidence': r['confidence'],
             'score': r['score'],
