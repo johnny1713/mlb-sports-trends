@@ -8,6 +8,9 @@ import os
 import sys
 from datetime import datetime
 
+# 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
+APP_VERSION = "1.5"
+
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
 
@@ -173,6 +176,51 @@ def get_eastern_today():
         # 無時區資料庫時以 UTC-4 (美東夏令時間) 近似，MLB 賽季均在夏令時間內
         from datetime import timezone, timedelta
         return (datetime.now(timezone.utc) - timedelta(hours=4)).strftime("%Y-%m-%d")
+
+def taiwan_play_dates(date_str, matchups_data):
+    """
+    依實際開賽時間，換算出這批賽事在**台灣**是哪一天（或哪兩天）開打。
+
+    美東下午/晚上的比賽對應台灣隔天凌晨到中午，所以標題只寫美東日期時，
+    台灣使用者在當地隔天打開會誤以為「這是昨天、已經打完了」。
+    回傳 'M/D' 或 'M/D~M/D'；無法解析時回傳 None，由呼叫端略過不顯示。
+    """
+    try:
+        from zoneinfo import ZoneInfo
+        et_tz, tw_tz = ZoneInfo("America/New_York"), ZoneInfo("Asia/Taipei")
+    except Exception:
+        from datetime import timezone, timedelta
+        et_tz, tw_tz = timezone(timedelta(hours=-4)), timezone(timedelta(hours=8))
+
+    try:
+        base = datetime.strptime(date_str, "%Y-%m-%d")
+    except (ValueError, TypeError):
+        return None
+
+    from datetime import timedelta
+    dates = []
+    for m in matchups_data:
+        t = re.match(r'(\d{1,2}):(\d{2})\s*([AP]M)', str(m.get('game_time') or ''), re.IGNORECASE)
+        if not t:
+            continue
+        hour, minute, ampm = int(t.group(1)), int(t.group(2)), t.group(3).upper()
+        if ampm == 'PM' and hour != 12:
+            hour += 12
+        elif ampm == 'AM' and hour == 12:
+            hour = 0
+        et_dt = base.replace(hour=hour, minute=minute, tzinfo=et_tz)
+        dates.append(et_dt.astimezone(tw_tz).date())
+
+    if not dates:
+        # 沒有任何可解析的開賽時間時，以美東晚場的通則（台灣隔日）近似
+        fallback = (base + timedelta(days=1)).date()
+        return f"{fallback.month}/{fallback.day}"
+
+    lo, hi = min(dates), max(dates)
+    if lo == hi:
+        return f"{lo.month}/{lo.day}"
+    return f"{lo.month}/{lo.day}~{hi.month}/{hi.day}"
+
 
 def get_matchups_data(date_str):
     """
@@ -783,6 +831,9 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
     total_opposing = sum(len(m['opposing_trends']) for m in matchups_data)
     
     display_date = date_str if date_str else datetime.now().strftime("%Y-%m-%d")
+    tw_dates = taiwan_play_dates(display_date, matchups_data)
+    # 只標美東日期會讓台灣使用者以為賽事已結束（他看的當地日期通常已是隔天）
+    tw_hint = f'<span class="date-badge-tw">台灣 {tw_dates} 開打</span>' if tw_dates else ''
     
     matchups_json = json.dumps(matchups_data, ensure_ascii=False)
     top_sides_json = json.dumps(top_5_sides, ensure_ascii=False)
@@ -905,7 +956,28 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             color: var(--text-secondary);
             display: flex;
             align-items: center;
-            gap: 8px;
+            flex-wrap: wrap;
+            gap: 6px;
+        }}
+
+        /* 標示日期為美東，並補上台灣實際開打日，避免誤判賽事已結束 */
+        .date-badge-et {{
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 1px 5px;
+        }}
+
+        .date-badge-tw {{
+            font-size: 11.5px;
+            font-weight: 700;
+            color: var(--accent-green);
+            background: rgba(0, 230, 118, 0.1);
+            border: 1px solid rgba(0, 230, 118, 0.22);
+            border-radius: 999px;
+            padding: 2px 9px;
         }}
 
         .date-badge strong {{
@@ -2351,11 +2423,12 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
         <!-- 頂部導航與標題 -->
         <header>
             <div class="header-top">
-                <h1>MLB 每日賽事黃金趨勢篩選 <span>PRO v1.4</span></h1>
+                <h1>MLB 每日賽事黃金趨勢篩選 <span>PRO v{APP_VERSION}</span></h1>
                 <div class="header-actions">
                     <div class="date-badge">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                        賽事日期：<strong>{display_date}</strong>
+                        賽事日期：<strong>{display_date}</strong><span class="date-badge-et">美東</span>
+                        {tw_hint}
                     </div>
                     <button class="lang-toggle-btn" id="lang-toggle" onclick="toggleLanguage()">
                         🌐 隊伍名稱：中文
