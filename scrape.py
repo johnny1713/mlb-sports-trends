@@ -508,7 +508,7 @@ def _translate_rf_condition(text):
     return out
 
 
-def parse_recent_form(raw_list):
+def parse_recent_form(raw_list, team_a=None, team_b=None):
     """
     解析 Recent Form 句型，輸出結構化資料供前端顯示。
 
@@ -581,10 +581,25 @@ def parse_recent_form(raw_list):
         if cond:
             zh += f'（{cond}）'
 
+        # 球隊直接勝負型（"Mets are 6-0 in ..."）才歸屬球隊，供獨贏推薦比對。
+        # covers 的 Recent Form 完全沒有讓分/ATS 資料，故不會有讓分歸屬。
+        win_team = None
+        if side is None and head_token:
+            if head_token == 'Home team':
+                win_team = team_b
+            elif head_token == 'Road team':
+                win_team = team_a
+            else:
+                for full in (team_a, team_b):
+                    if full and head_token.lower() in full.lower():
+                        win_team = full
+                        break
+
         items.append({
             'raw': text,
             'zh': zh,
             'side': side,          # 'Over' / 'Under' / None
+            'win_team': win_team,  # 直接勝負趨勢所屬球隊（全名）；非勝負型為 None
             'record': record,
             'sample': sample,
             'losses': losses,
@@ -2481,6 +2496,26 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             return zh.replace(/@@([^@]+)@@/g, (_, name) => translateText(name));
         }}
 
+        // 獨贏推薦的旁證標記。covers 的 Recent Form 只有「大小分」與「直接勝負」兩種市場，
+        // 完全沒有讓分/ATS 資料，因此讓分盤一律不標記——球隊直接連勝不代表能過讓分。
+        function recentFormSideFlag(m, rec) {{
+            if (!rec || rec.market !== 'Moneyline') return '';
+            const rf = m.recent_form || [];
+            const forCount = rf.filter(t => t.win_team && t.win_team === rec.bet_on).length;
+            const againstCount = rf.filter(t => t.win_team && t.win_team === rec.bet_against).length;
+            const diff = forCount - againstCount;
+            if (Math.abs(diff) < 2) return '';
+            const agree = diff > 0;
+            const focus = agree ? rec.bet_on : rec.bet_against;
+            return `
+                <div class="rf-flag ${{agree ? 'rf-flag-agree' : 'rf-flag-conflict'}}">
+                    ${{agree ? '✅ 近期走勢同向' : '⚠️ 近期走勢反向'}}：近期直接勝負的連勝紀錄集中在
+                    ${{translateText(focus)}}（${{forCount}} 比 ${{againstCount}}）
+                    <span class="rf-flag-note">（僅旁證，未計入分數）</span>
+                </div>
+            `;
+        }}
+
         // 推薦方向 vs 近期走勢的旁證標記。只在近期走勢明顯一面倒時顯示，
         // 且刻意不影響分數與排序——這些趨勢樣本太小且經過篩選，只能當提醒。
         function recentFormFlag(m, direction) {{
@@ -2842,6 +2877,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                                 </div>
                                 <div class="rec-headline">${{translateText(rec.recommendation)}}</div>
                                 <div class="rec-desc">${{translateText(rec.confidence)}}</div>
+                                ${{recentFormSideFlag(m, rec)}}
                             </div>
                         `;
                     }});
@@ -2919,6 +2955,8 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                             <p class="rf-caveat">
                                 covers 從大量條件切法中挑出的連勝紀錄，樣本僅 4~9 場、幾乎都是全勝，
                                 <strong>是被挑過的結果而非隨機樣本</strong>，因此不列入保守命中率評分，只當旁證看。
+                                此區只有<strong>大小分</strong>與<strong>直接勝負</strong>兩種市場，
+                                covers 未提供讓分（run line）的近期走勢。
                             </p>
                             <ul class="rf-list">${{rows}}</ul>
                         </div>
@@ -3053,7 +3091,9 @@ def main():
         print(f"  -> 篩選出 [大小分總分]: {len(double_pos)} 項 | [勝負/讓分盤]: {len(opposing)} 盤口")
         
         # 4.5 Recent Form：僅供參考顯示與方向佐證，不參與評分排序
-        recent_form = parse_recent_form(matchup_data.get('recent_form', []))
+        recent_form = parse_recent_form(
+            matchup_data.get('recent_form', []),
+            matchup_data['team_a'], matchup_data['team_b'])
         rf_lean = recent_form_lean(recent_form)
 
         all_matchups_data.append({
