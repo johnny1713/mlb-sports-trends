@@ -2080,6 +2080,7 @@
                         matchup_id: mid,
                         matchup_name: `${m.team_a} vs ${m.team_b}`,
                         market_label: marketLabel,
+                        bet_on: rec.bet_on || null,
                         recommendation: rec.recommendation,
                         score: rec.score,
                         gap: Math.round((cutoff - rec.score) * 10) / 10,
@@ -2089,7 +2090,20 @@
                 (m.opposing_trends || []).forEach(r => consider(r, 'opposing', cutSides, r.market_zh));
                 (m.double_positive || []).forEach(r => consider(r, 'double', cutTotals, r.market_type));
             });
-            return out.sort((a, b) => b.score - a.score).slice(0, 5);
+            // 與 Top 5 相同的去重原則：同場同隊只留分數最高的一筆
+            // （否則「買 X 受讓 1.5」與「買 X 獨贏」會在這裡並列，等於換個地方重複）
+            out.sort((a, b) => b.score - a.score);
+            const kept = [];
+            const seenTeam = new Set();
+            out.forEach(it => {
+                if (it.bet_on) {
+                    const key = `${it.matchup_id}|${it.bet_on}`;
+                    if (seenTeam.has(key)) return;
+                    seenTeam.add(key);
+                }
+                kept.push(it);
+            });
+            return kept.slice(0, 5);
         }
 
         function renderNearMisses() {
