@@ -2191,6 +2191,23 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             }}
         }});
 
+        // 全場趨勢皆為 0 代表 covers 尚未發佈（並非篩選後沒有結果），兩者要分開提示
+        function trendsPending() {{
+            if (!allMatchups || allMatchups.length === 0) return false;
+            return allMatchups.reduce((sum, m) => sum + (m.processed_trends || []).length, 0) === 0;
+        }}
+
+        // 依情境回傳空狀態文案：無賽事 / covers 未發佈 / 有趨勢但無合格組合
+        function emptyStateText(marketLabel) {{
+            if (!allMatchups || allMatchups.length === 0) {{
+                return '今日無賽事資料。';
+            }}
+            if (trendsPending()) {{
+                return '⏳ covers.com 尚未發佈今日趨勢（通常美東上午發佈完畢），稍後的自動更新會補上，請晚點再看。';
+            }}
+            return `今日暫無符合篩選標準的「${{marketLabel}}」推薦組合。`;
+        }}
+
         // 依「保守命中率下界」強弱回傳顏色：綠 >=55 強 / 黃 50~55 普通 / 灰 <50 弱
         function scoreColor(s) {{
             if (s >= 55) return 'var(--accent-green)';
@@ -2209,6 +2226,19 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             if (!section) return;
             
             if (topAi.length === 0) {{
+                // 趨勢尚未發佈時不要整區隱藏，否則看起來像網站壞掉；明確告知稍後會自動補上
+                if (trendsPending()) {{
+                    section.innerHTML = `
+                        <div class="ai-title-row">
+                            <h2 class="ai-main-title">🤖 今日 AI 智慧精選 Top 5 黃金推薦</h2>
+                        </div>
+                        <div class="score-legend" style="border-color: rgba(255, 210, 0, 0.3);">
+                            ⏳ <strong style="color: #ffd200;">covers.com 尚未發佈今日趨勢</strong>，因此暫時沒有推薦。
+                            趨勢通常在美東上午發佈完畢，之後的自動更新會補上——請稍後再重新整理。
+                        </div>
+                    `;
+                    return;
+                }}
                 section.style.display = 'none';
                 return;
             }}
@@ -2285,7 +2315,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             sidesContainer.innerHTML = '';
             
             if (topSides.length === 0) {{
-                sidesContainer.innerHTML = `<div class="no-data-card" style="padding: 24px;"><p style="font-size: 13px; color: var(--text-muted); font-style: italic;">今日暫無符合篩選標準的「勝負/讓分盤」推薦組合。</p></div>`;
+                sidesContainer.innerHTML = `<div class="no-data-card" style="padding: 24px;"><p style="font-size: 13px; color: var(--text-muted); font-style: italic;">${{emptyStateText('勝負/讓分盤')}}</p></div>`;
             }} else {{
                 topSides.forEach(rec => {{
                     const cardHtml = `
@@ -2315,7 +2345,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             totalsContainer.innerHTML = '';
             
             if (topTotals.length === 0) {{
-                totalsContainer.innerHTML = `<div class="no-data-card" style="padding: 24px;"><p style="font-size: 13px; color: var(--text-muted); font-style: italic;">今日暫無符合篩選標準的「大小分總分」推薦組合。</p></div>`;
+                totalsContainer.innerHTML = `<div class="no-data-card" style="padding: 24px;"><p style="font-size: 13px; color: var(--text-muted); font-style: italic;">${{emptyStateText('大小分總分')}}</p></div>`;
             }} else {{
                 topTotals.forEach(rec => {{
                     const cardHtml = `
@@ -2513,9 +2543,12 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                 }}
 
                 if (m.double_positive.length === 0 && m.opposing_trends.length === 0) {{
+                    const cardEmptyText = (m.processed_trends || []).length === 0
+                        ? '⏳ covers.com 尚未發佈此賽事的趨勢，稍後自動更新會補上。'
+                        : '此賽事今日無符合篩選標準的黃金推薦投注組合。';
                     recsHtml += `
                         <div style="padding: 10px 0; color: var(--text-muted); font-size: 13px; font-style: italic;">
-                            此賽事今日無符合篩選標準的黃金推薦投注組合。
+                            ${{cardEmptyText}}
                         </div>
                     `;
                 }}
