@@ -673,6 +673,77 @@ def recent_form_lean(items):
     return {'over': over, 'under': under, 'lean': lean}
 
 
+def recent_form_agreement(matchup, rec):
+    """
+    這筆推薦與該場近期走勢是否同向，回傳 True/False/None(無明顯方向)。
+
+    **只用在分數完全相同時的排序決勝**：不加分、不調整任何分數、不會讓低分排到高分前面。
+    理由是 Top 5 邊界經常是平手（實測 17 天中 11 天第 5 與第 6 名相差 <1 分、2 天完全同分），
+    而 Python 的 sorted 是穩定排序，同分時等於用「covers 賽事列表的順序」決定名次——那是任意的。
+    以弱訊號取代任意順序，期望值不會更差。門檻與前端 recentFormStatus() 一致，改動請同步。
+    """
+    rf = matchup.get('recent_form') or []
+    if rec.get('direction'):
+        lean = (matchup.get('rf_lean') or {}).get('lean')
+        return (lean == rec['direction']) if lean else None
+    if rec.get('market') in ('Moneyline', 'Run Line'):
+        for_count = sum(1 for t in rf if t.get('win_team') and t['win_team'] == rec.get('bet_on'))
+        against_count = sum(1 for t in rf if t.get('win_team') and t['win_team'] == rec.get('bet_against'))
+        if abs(for_count - against_count) < 2:
+            return None
+        return for_count > against_count
+    return None
+
+
+def dedupe_same_team_picks(recs):
+    """
+    同一場、同一隊的勝負盤推薦只保留分數最高的一筆，供 Top 5 清單使用。
+
+    「買 X 獨贏」與「買 X 讓 1.5」本質是同一個看法的兩種風險版本，兩筆都擠進 Top 5
+    會白白吃掉名額，也讓人誤以為有 5 個獨立標的。實測 17 天：AI Top 5 有 10 天出現
+    同場重複、勝負 Top 5 有 8 天出現同隊重複（最常見的就是獨贏＋讓分成對出現）。
+    單場卡片仍會完整顯示所有推薦，這裡只影響精選清單。
+    """
+    best = {}
+    for r in recs:
+        key = (r['matchup_id'], r.get('bet_on'))
+        if key not in best or r['score'] > best[key]['score']:
+            best[key] = r
+    return list(best.values())
+
+
+def _margin_lower_bound(rec):
+    """該筆推薦要成立所需的最小分差（押注隊得分 - 對手得分）。"""
+    if rec.get('market') == 'Moneyline':
+        return 1        # 直接獲勝
+    if rec.get('spread_side') == '讓分':
+        return 2        # 讓 1.5：需贏 2 分以上
+    return -1           # 受讓 1.5：輸 1 分以內即可
+
+
+def picks_are_contradictory(recs):
+    """
+    同場的多筆勝負推薦是否真的無法同時成立。
+
+    以分差建模：押 A 的推薦給出 M_A 的下界，押 B 的推薦等價於 M_A 的上界，
+    兩者區間無交集才算矛盾（MLB 無和局，分差不為 0）。
+    **只押不同隊並不等於矛盾**——「買 A 獨贏」＋「買 B 受讓 1.5」在 A 贏 1 分時同時成立。
+    舊版以「押到不同隊就整場排除」判斷，實測 17 天內 14 場被排除、其中 7 場其實相容。
+    """
+    teams = sorted({r.get('bet_on') for r in recs})
+    if len(teams) < 2:
+        return False
+    anchor = teams[0]
+    lo, hi = -99, 99
+    for r in recs:
+        need = _margin_lower_bound(r)
+        if r.get('bet_on') == anchor:
+            lo = max(lo, need)
+        else:
+            hi = min(hi, -need)
+    return not any(m != 0 and lo <= m <= hi for m in range(-30, 31))
+
+
 def analyze_betting_recommendations(matchup, processed_trends):
     """
     根據用戶要求的兩種核心趨勢演算法進行媒合：
@@ -2898,6 +2969,13 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             const inTop = new Set(
                 [...topSides, ...topTotals].map(r => `${{r.matchup_id}}|${{r.recommendation}}`)
             );
+            // Top 5 已列出同場同隊的推薦時，這裡不再列出它的另一種盤口版本
+            // （買 X 獨贏與買 X 讓 1.5 是同一個看法，重複列出只會佔版面）
+            const shownTeams = new Set(
+                [...topSides, ...topTotals]
+                    .filter(r => r.bet_on)
+                    .map(r => `${{r.matchup_id}}|${{r.bet_on}}`)
+            );
             const cutSides = topSides.length ? Math.min(...topSides.map(r => r.score)) : null;
             const cutTotals = topTotals.length ? Math.min(...topTotals.map(r => r.score)) : null;
             const out = [];
@@ -2906,6 +2984,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                 const consider = (rec, type, cutoff, marketLabel) => {{
                     if (cutoff === null) return;
                     if (inTop.has(`${{mid}}|${{rec.recommendation}}`)) return;
+                    if (rec.bet_on && shownTeams.has(`${{mid}}|${{rec.bet_on}}`)) return;
                     if (rec.score < NEAR_MISS_MIN_SCORE) return;
                     if (cutoff - rec.score > NEAR_MISS_MARGIN) return;
                     const ev = recentFormStatus(Object.assign({{}}, rec, {{ matchup_id: mid, type }}));
@@ -3443,6 +3522,7 @@ def main():
                 'type_zh': '大小分總分',
                 'market_type': rec['market_type'],
                 'direction': rec.get('direction'),  # 供前端比對近期走勢方向
+                'rf_agree': recent_form_agreement(matchup, rec),  # 僅供同分決勝
                 'recommendation': rec['recommendation'],
                 'confidence': rec['confidence'],
                 'score': rec['score'],
@@ -3471,32 +3551,33 @@ def main():
                 'bet_against': rec['bet_against'],  # 供前端比對近期走勢
                 'market': rec['market'],
                 'spread_side': rec.get('spread_side'),
+                'rf_agree': recent_form_agreement(matchup, rec),  # 僅供同分決勝
                 'logo': logo_url,
                 'details': f"過盤紀錄: {rec['hit_detail']}",
                 'is_day_game': matchup['is_day_game'],
                 'game_time': matchup['game_time']
             })
             
-    # 分別對兩組推薦以「命中率 Wilson 下界」由大到小排序，取各自的前 5 名 (Top 5)
-    top_5_sides = sorted(sides_recs, key=lambda x: x['score'], reverse=True)[:5]
-    top_5_totals = sorted(totals_recs, key=lambda x: x['score'], reverse=True)[:5]
+    # 精選清單先去除「同場同隊」的重複推薦（獨贏與讓分常成對出現，是同一個看法）
+    sides_for_top = dedupe_same_team_picks(sides_recs)
 
-    # 5.5 計算「今日 AI 推薦 Top 5」 (智慧過濾方向衝突，依命中率下界排序)
-    conflicting_matchups = set()
-    matchup_bet_teams = {}
-    for r in sides_recs:
-        m_id = r['matchup_id']
-        team = r.get('bet_on')
-        if m_id not in matchup_bet_teams:
-            matchup_bet_teams[m_id] = set()
-        matchup_bet_teams[m_id].add(team)
-        
-    for m_id, teams in matchup_bet_teams.items():
-        if len(teams) > 1:
-            conflicting_matchups.add(m_id)
-            
+    # 分別對兩組推薦以「命中率 Wilson 下界」由大到小排序，取各自的前 5 名 (Top 5)
+    # 同分時才用近期走勢決勝（見 recent_form_agreement 說明），否則純看保守命中率
+    rank_key = lambda x: (-x['score'], 0 if x.get('rf_agree') else 1)
+    top_5_sides = sorted(sides_for_top, key=rank_key)[:5]
+    top_5_totals = sorted(totals_recs, key=rank_key)[:5]
+
+    # 5.5 計算「今日 AI 推薦 Top 5」 (排除真正互斥的同場推薦，依命中率下界排序)
+    by_matchup = {}
+    for r in sides_for_top:
+        by_matchup.setdefault(r['matchup_id'], []).append(r)
+
+    conflicting_matchups = {
+        m_id for m_id, recs in by_matchup.items() if picks_are_contradictory(recs)
+    }
+
     ai_candidates = []
-    for r in sides_recs:
+    for r in sides_for_top:
         if r['matchup_id'] in conflicting_matchups:
             continue
         ai_candidates.append({
@@ -3513,6 +3594,7 @@ def main():
             'bet_against': r.get('bet_against'),
             'market': r.get('market'),
             'spread_side': r.get('spread_side'),
+            'rf_agree': r.get('rf_agree'),
             'logo_a': r['logo'],
             'logo_b': None,
             'rationale': f"黃金對立組合！優勢隊 {r['bet_on']} 近期過盤 {r['hit_detail']}，保守命中率 {r['score']}%，強弱差距顯著。",
@@ -3528,6 +3610,7 @@ def main():
             'type_zh': '大小分總分',
             'market_type': r['market_type'],
             'direction': r.get('direction'),
+            'rf_agree': r.get('rf_agree'),
             'recommendation': r['recommendation'],
             'confidence': r['confidence'],
             'score': r['score'],
@@ -3539,7 +3622,7 @@ def main():
             'game_time': r['game_time']
         })
         
-    top_5_ai = sorted(ai_candidates, key=lambda x: x['score'], reverse=True)[:5]
+    top_5_ai = sorted(ai_candidates, key=rank_key)[:5]
     
     print(f"\n[+] 成功計算出今日「勝負/讓分盤」與「大小分總分」雙欄 Top 5 黃金投注推薦。")
     print(f"[+] 成功計算出今日「AI 推薦 Top 5」精選：{len(top_5_ai)} 項組合。")
