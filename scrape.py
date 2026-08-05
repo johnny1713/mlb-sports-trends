@@ -9,10 +9,17 @@ import sys
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "1.5.1"
+APP_VERSION = "1.6"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
+
+# Top 5 精選清單的保守命中率下限。網站說明列自己寫「<50% 僅供參考」，
+# 「差一點進 Top 5」向隅區也用同一個 50 擋（前端 NEAR_MISS_MIN_SCORE），
+# 但正榜以前沒有下限——實測 27 天有 5 天讓 <50% 的推薦上榜（最低 46.8%），
+# 等於系統把自己標為「可忽略」的標的當成當日精選。寧可列不滿 5 筆也不推。
+# 改這個值時記得同步前端的 NEAR_MISS_MIN_SCORE。
+TOP_PICK_MIN_SCORE = 50
 
 def wilson_lower_bound(wins, n, z=1.28):
     """
@@ -47,11 +54,29 @@ def fail_lb(t):
     return wilson_lower_bound(n - wins, n)
 
 def fmt_hit(t):
-    """把趨勢的過盤紀錄格式化成 '32/45 (71%)'；無法解析時退回 Units 描述。"""
+    """
+    把趨勢的過盤紀錄格式化成 '32/45 (71%)'。
+
+    無法解析場次時**不可退回 Units 描述**：Units 是用美國賠率算的，對台灣運彩玩家
+    沒有意義，本站已全面不顯示（見 strip_roi_text）。這裡改回「紀錄不明」。
+    """
     wins, n = t.get('wins'), t.get('sample')
     if wins is None or not n:
-        return f"{t['units']:+g} Units"
+        return "紀錄不明"
     return f"{wins}/{n} ({round(wins / n * 100)}%)"
+
+# covers 趨勢句尾的 "(+6.65 Units / 47% ROI)"。Units/ROI 是用美國賠率算的，
+# 對台灣運彩玩家沒有意義，全站不顯示。2026-07-10 清掉了推薦卡片，但趨勢原文
+# 漏了——它會經由 processed_trends 顯示在詳細趨勢區，也會被複製進推薦的
+# strong_trend / weak_trend / team_x_trends 欄位，所以要在解析源頭就砍掉。
+# 以歷史 5440 句實測：命中 4253 處、全部同一種型態、無殘留，且 "(F5)" 不受影響。
+_ROI_PAREN_RE = re.compile(r'\s*\([^()]*\b(?:Units?|ROI)\b[^()]*\)')
+
+
+def strip_roi_text(text):
+    """移除趨勢句尾的 Units/ROI 括號，其餘原樣保留（過盤紀錄本身在句子裡）。"""
+    return _ROI_PAREN_RE.sub('', text).strip()
+
 
 # ==========================================
 # 網路請求模組與防擋策略
@@ -480,7 +505,8 @@ def classify_and_process_trends(matchup):
             'team': team_match,
             'team_confident': team_confident,
             'class': klass,
-            'text': text,
+            # Units/ROI 只在上面用來判方向，不外流到任何顯示欄位
+            'text': strip_roi_text(text),
             'market': market,
             'direction': direction,
             'units': units,
@@ -710,6 +736,33 @@ def dedupe_same_team_picks(recs):
         if key not in best or r['score'] > best[key]['score']:
             best[key] = r
     return list(best.values())
+
+
+def dedupe_totals_picks(recs):
+    """
+    大小分推薦的去重與互斥檢查（勝負盤的對應物是 dedupe_same_team_picks +
+    picks_are_contradictory，2026-08-02 就補了，大小分這邊當時漏掉）。
+
+    同場同方向只留分數最高的一筆；同場若同時出現「買大分」與「買小分」則兩筆都不列入
+    精選——兩隊各自有相反方向的強趨勢時理論上會發生，此時等於沒有共識，
+    列出任一邊都是誤導。實測 69 天尚未真的發生過，這裡純粹是補上缺的防線。
+    """
+    best = {}
+    for r in recs:
+        key = (r['matchup_id'], r.get('direction'))
+        if key not in best or r['score'] > best[key]['score']:
+            best[key] = r
+
+    by_matchup = {}
+    for (m_id, _), r in best.items():
+        by_matchup.setdefault(m_id, []).append(r)
+
+    out = []
+    for m_id, group in by_matchup.items():
+        if len({r.get('direction') for r in group}) > 1:
+            continue  # 同場方向互斥，整場略過
+        out.extend(group)
+    return out
 
 
 def _margin_lower_bound(rec):
@@ -2880,20 +2933,24 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             if (!section) return;
             
             if (topAi.length === 0) {{
-                // 趨勢尚未發佈時不要整區隱藏，否則看起來像網站壞掉；明確告知稍後會自動補上
-                if (trendsPending()) {{
-                    section.innerHTML = `
-                        <div class="ai-title-row">
-                            <h2 class="ai-main-title">🤖 今日 AI 智慧精選 Top 5 黃金推薦</h2>
-                        </div>
-                        <div class="score-legend" style="border-color: rgba(255, 210, 0, 0.3);">
-                            ⏳ <strong style="color: #ffd200;">covers.com 尚未發佈今日趨勢</strong>，因此暫時沒有推薦。
-                            趨勢通常在美東上午發佈完畢，之後的自動更新會補上——請稍後再重新整理。
-                        </div>
-                    `;
-                    return;
-                }}
-                section.style.display = 'none';
+                // 整區隱藏會讓人以為網站壞了（使用者實際反映過），所以三種空狀態都要講清楚：
+                // covers 未發佈 / 今日無賽事 / 有趨勢但沒有推薦達到 50% 門檻
+                const pending = trendsPending();
+                const msg = pending
+                    ? `⏳ <strong style="color: #ffd200;">covers.com 尚未發佈今日趨勢</strong>，因此暫時沒有推薦。
+                       趨勢通常在美東上午發佈完畢，之後的自動更新會補上——請稍後再重新整理。`
+                    : `😴 <strong style="color: #ffd200;">今日沒有達標的推薦</strong>：所有組合的保守命中率都低於
+                       ${{TOP_PICK_MIN_SCORE}}%，依本站標準屬於「僅供參考」等級，因此不列入精選。
+                       <strong>這是正常結果，不是資料出錯</strong>——冷門日寧可不推。`;
+                section.innerHTML = `
+                    <div class="ai-title-row">
+                        <h2 class="ai-main-title">🤖 今日 AI 智慧精選 Top 5 黃金推薦</h2>
+                    </div>
+                    <div class="score-legend" style="border-color: rgba(255, 210, 0, 0.3);">
+                        ${{msg}}
+                    </div>
+                `;
+                section.style.display = '';
                 return;
             }}
             
@@ -2968,7 +3025,11 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
         // 「差一點」的判定門檻。近期走勢刻意不影響排序，所以落榜的推薦本來就代表
         // 命中率證據較弱——只有在分數差小到沒有實質意義時，走勢同向才值得拿來補救。
         const NEAR_MISS_MARGIN = 3.0;   // 與該類 Top 5 最低分的差距上限
-        const NEAR_MISS_MIN_SCORE = 50; // 網站自訂門檻，<50% 本來就標示為可忽略
+        // 由 Python 的 TOP_PICK_MIN_SCORE 帶入，讓正榜與向隅區共用同一個門檻。
+        // 以前兩邊各寫各的：向隅區擋掉 <50%，正榜卻放行，導致 49 分的推薦
+        // 進不了向隅區反而進得了 Top 5。改門檻只要改 Python 那一個常數。
+        const TOP_PICK_MIN_SCORE = {TOP_PICK_MIN_SCORE};
+        const NEAR_MISS_MIN_SCORE = TOP_PICK_MIN_SCORE;
 
         function collectNearMisses() {{
             if (!allMatchups || allMatchups.length === 0) return [];
@@ -3255,8 +3316,8 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                 let dayGameBanner = '';
                 if (m.is_day_game) {{
                     const bannerText = currentLanguage === 'zh' 
-                        ? '<strong>此賽事為下午場 (Day Game)</strong>：開賽時間約為當地時間 13:00~14:00。下午場由於球員生理時鐘、陣容輪替(主力休息、備用捕手先發)與牛棚調度等變數極多，盤口<strong>極易開出反邊</strong>，建議<strong>避開</strong>或考慮<strong>反下</strong>。'
-                        : '<strong>This is a Day Game</strong>: Scheduled around 1:00 PM - 2:00 PM local time. Day games have high volatility due to circadian rhythm shifts, lineup rotations (resting stars/starting backup catchers), and bullpen fatigue. They are <strong>prone to upset/reverse results</strong>. Consider <strong>avoiding</strong> or <strong>betting against</strong> the trend.';
+                        ? '<strong>此賽事為下午場 (Day Game)</strong>：主場當地時間 17:00 前開打（多數落在 13:00~14:00）。下午場由於球員生理時鐘、陣容輪替(主力休息、備用捕手先發)與牛棚調度等變數極多，盤口<strong>極易開出反邊</strong>，建議<strong>避開</strong>或考慮<strong>反下</strong>。'
+                        : '<strong>This is a Day Game</strong>: First pitch before 5:00 PM home local time (most start 1:00-2:00 PM). Day games have high volatility due to circadian rhythm shifts, lineup rotations (resting stars/starting backup catchers), and bullpen fatigue. They are <strong>prone to upset/reverse results</strong>. Consider <strong>avoiding</strong> or <strong>betting against</strong> the trend.';
                     dayGameBanner = `
                         <div class="day-game-banner">
                             <span class="day-game-icon">⚠️</span>
@@ -3600,12 +3661,19 @@ def main():
             
     # 精選清單先去除「同場同隊」的重複推薦（獨贏與讓分常成對出現，是同一個看法）
     sides_for_top = dedupe_same_team_picks(sides_recs)
+    # 大小分同樣去重，並排除同場方向互斥的情形
+    totals_for_top = dedupe_totals_picks(totals_recs)
+
+    # 低於 TOP_PICK_MIN_SCORE 的推薦不進任何精選清單：網站自己標示 <50% 為可忽略，
+    # 讓它上榜等於自打嘴巴。寧可當日列不滿 5 筆（前端有對應空狀態文案）。
+    def qualified(recs):
+        return [r for r in recs if (r.get('score') or 0) >= TOP_PICK_MIN_SCORE]
 
     # 分別對兩組推薦以「命中率 Wilson 下界」由大到小排序，取各自的前 5 名 (Top 5)
     # 同分時才用近期走勢決勝（見 recent_form_agreement 說明），否則純看保守命中率
     rank_key = lambda x: (-x['score'], 0 if x.get('rf_agree') else 1)
-    top_5_sides = sorted(sides_for_top, key=rank_key)[:5]
-    top_5_totals = sorted(totals_recs, key=rank_key)[:5]
+    top_5_sides = sorted(qualified(sides_for_top), key=rank_key)[:5]
+    top_5_totals = sorted(qualified(totals_for_top), key=rank_key)[:5]
 
     # 5.5 計算「今日 AI 推薦 Top 5」 (排除真正互斥的同場推薦，依命中率下界排序)
     by_matchup = {}
@@ -3642,7 +3710,7 @@ def main():
             'game_time': r['game_time']
         })
         
-    for r in totals_recs:
+    for r in totals_for_top:
         ai_candidates.append({
             'matchup_id': r['matchup_id'],
             'matchup_name': r['matchup_name'],
@@ -3662,7 +3730,7 @@ def main():
             'game_time': r['game_time']
         })
         
-    top_5_ai = sorted(ai_candidates, key=rank_key)[:5]
+    top_5_ai = sorted(qualified(ai_candidates), key=rank_key)[:5]
     
     print(f"\n[+] 成功計算出今日「勝負/讓分盤」與「大小分總分」雙欄 Top 5 黃金投注推薦。")
     print(f"[+] 成功計算出今日「AI 推薦 Top 5」精選：{len(top_5_ai)} 項組合。")
