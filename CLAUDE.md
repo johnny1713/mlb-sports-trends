@@ -204,8 +204,14 @@ ROI Trends 原文以前是全站唯一沒中譯的區塊。**這裡刻意不用 
 
 ## 技術地雷
 
-- `generate_html_dashboard` 是一個巨大的 f-string，**所有 JS/CSS 的大括號都要寫成 `{{ }}`**。
-  歷史上已因此出過兩次 JS 語法錯誤。改模板後務必跑一次並檢查產出。
+- **CSS 與 JS 已抽出 f-string（2026-08-06），大括號照正常寫,不要再加倍。**
+  改到 `DASHBOARD_CSS` / `DASHBOARD_JS` 這兩個模組層級常數時，`{` 就寫 `{`。
+  它們刻意**不是** f-string。以前整段長在 `generate_html_dashboard` 的巨大 f-string 裡，
+  876 個加倍括號只為了服務 15 個插值，寫錯還不會報錯（歷史上出過兩次 JS 語法錯誤）。
+  抽出後模板從 2586 行縮到 160 行、加倍括號歸零。
+  - JS 唯一需要 Python 值的地方是門檻常數，用 `__TOP_PICK_MIN_SCORE__` 哨符在組頁面時替換，
+    維持「門檻只有一個來源」。要再加設定值請比照，**不要把 JS 改回 f-string**。
+  - 只有剩下的 HTML 骨架仍是 f-string（14 個插值），那裡才需要注意大括號。
 - **摺疊區 `.accordion-content` 的展開高度不可寫死**（2026-08-05 修）。
   它是 `max-height` + `overflow: hidden` 做動畫，原本 `.expanded` 寫死 `max-height: 1500px`。
   桌機雙欄時內容才 ~720px 沒事，**窄螢幕 `.accordion-inner` 與 `.rf-list` 都塌成單欄**，
@@ -231,6 +237,16 @@ ROI Trends 原文以前是全站唯一沒中譯的區塊。**這裡刻意不用 
 
 ## 驗證方式
 
-改完爬蟲後：`python scrape.py` 跑一次，檢查產出 index.html 內嵌 JSON
+改完**爬蟲**後：`python scrape.py` 跑一次，檢查產出 index.html 內嵌 JSON
 （`top-ai-data` / `top-sides-data` / `top-totals-data`）數量與欄位，
 並確認 `game_time` 不是全 "None"。趨勢稀疏時段（美東凌晨）推薦為 0 是正常的。
+
+改**版面／樣式**時用 `python scrape.py --replay`：不連網，直接讀回 index.html 內嵌的
+四份 JSON 重新產生頁面，**0.3 秒**（完整爬蟲要 16 次請求、約一分鐘，還會多打擾 covers 一次）。
+
+`--replay` 也是重構樣板時的安全網：輸入輸出是同一份資料，所以**只要行為沒變，
+產出就該位元組完全相同**。做法是先 `cp index.html baseline.html`，改完跑 `--replay`，
+再 `cmp index.html baseline.html`。CSS/JS 抽出 f-string 那次就是這樣驗證的
+（2586 行搬家、876 個括號改寫，cmp 一次證明零行為差異）。
+
+UI 改動另外一定要用 390px iframe 量 `scrollWidth - clientWidth`（見技術地雷）。

@@ -1024,6 +1024,2447 @@ def analyze_betting_recommendations(matchup, processed_trends):
 # ==========================================
 # 質感中文化 HTML 儀表板文件生成器
 # ==========================================
+# ------------------------------------------
+# 頁面樣式與前端腳本
+# ------------------------------------------
+# 這兩塊刻意**不是** f-string。原本它們整段長在 generate_html_dashboard 的巨大
+# f-string 裡，導致 CSS/JS 的每一個大括號都要寫成 {{ }}——實測 876 個加倍括號
+# 只為了服務 15 個插值，而且寫錯不會報錯、是靜默壞掉（歷史上已因此出過兩次
+# JS 語法錯誤）。抽出來之後這裡的大括號就照正常寫，改樣式不必再閃躲。
+#
+# 唯一的例外是 JS 需要 Python 的 TOP_PICK_MIN_SCORE，改用 __TOP_PICK_MIN_SCORE__
+# 哨符在組頁面時替換，維持「門檻只有一個來源」。
+DASHBOARD_CSS = """
+        /* ==========================================
+           1. 變數與基礎樣式 (Core Palette & Reset)
+           ========================================== */
+        :root {
+            --bg-color: #080c14;
+            --surface-color: rgba(22, 31, 48, 0.45);
+            --surface-hover: rgba(22, 31, 48, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --accent-orange: #fd5000;
+            --accent-orange-glow: rgba(253, 80, 0, 0.4);
+            --accent-green: #00E676;
+            --accent-green-glow: rgba(0, 230, 118, 0.25);
+            --accent-red: #ff5252;
+            --accent-red-glow: rgba(255, 82, 82, 0.25);
+            --accent-blue: #00b0ff;
+            --accent-gold: #ffd200;
+            --accent-gold-glow: rgba(255, 210, 0, 0.25);
+            --accent-purple: #a855f7;
+            --accent-purple-glow: rgba(168, 85, 247, 0.25);
+            --font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            --shadow-premium: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+            --glass-blur: blur(12px);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 10% 20%, rgba(253, 80, 0, 0.06) 0px, transparent 50%),
+                radial-gradient(at 90% 80%, rgba(0, 176, 255, 0.05) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            font-family: var(--font-family);
+            min-height: 100vh;
+            padding-bottom: 80px;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* ==========================================
+           2. 頂部導航欄與統計區 (Header & Statistics)
+           ========================================== */
+        header {
+            padding: 40px 0 20px 0;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 30px;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #ffffff 30%, #a5b4fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h1 span {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent-orange);
+            background: rgba(253, 80, 0, 0.1);
+            border: 1px solid rgba(253, 80, 0, 0.3);
+            padding: 4px 10px;
+            border-radius: 99px;
+            letter-spacing: 0;
+            -webkit-text-fill-color: var(--accent-orange);
+        }
+
+        .date-badge {
+            font-size: 14px;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        /* 標示日期為美東，並補上台灣實際開打日，避免誤判賽事已結束 */
+        .date-badge-et {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 1px 5px;
+        }
+
+        .date-badge-tw {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: var(--accent-green);
+            background: rgba(0, 230, 118, 0.1);
+            border: 1px solid rgba(0, 230, 118, 0.22);
+            border-radius: 999px;
+            padding: 2px 9px;
+        }
+
+        .date-badge strong {
+            color: var(--text-primary);
+        }
+
+        /* 抓取失敗警告列：只有真的漏抓時才會輸出（見 generate_html_dashboard） */
+        .fetch-warning {
+            margin: 0 0 24px;
+            padding: 14px 18px;
+            border-radius: 12px;
+            font-size: 13px;
+            line-height: 1.8;
+            color: #ffd200;
+            background: rgba(255, 210, 0, 0.07);
+            border: 1px solid rgba(255, 210, 0, 0.3);
+        }
+
+        .fetch-warning strong {
+            color: #ffe066;
+        }
+
+        /* 統計面板網格 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .stats-card {
+            background: var(--surface-color);
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: var(--shadow-premium);
+        }
+
+        .stats-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .stats-info h3 {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .stats-info p {
+            font-size: 32px;
+            font-weight: 800;
+        }
+
+        .stats-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .stats-total .stats-icon {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+        }
+
+        .stats-double .stats-icon {
+            background: var(--accent-green-glow);
+            color: var(--accent-green);
+            border: 1px solid rgba(0, 230, 118, 0.2);
+        }
+
+        .stats-opposing .stats-icon {
+            background: rgba(0, 176, 255, 0.1);
+            color: var(--accent-blue);
+            border: 1px solid rgba(0, 176, 255, 0.2);
+        }
+
+        /* ==========================================
+           3. 今日雙欄 Top 5 黃金投注推薦專區 (Top 5 Columns)
+           ========================================== */
+        .top-section {
+            margin-bottom: 45px;
+        }
+
+        .top-columns-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+        }
+
+        @media (max-width: 992px) {
+            .top-columns-grid {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+        }
+
+        .top-col {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            /* grid 項目的 min-width 預設是 auto(=min-content)，窄螢幕下會被
+               不換行的推薦文字＋走勢藥丸撐爆整欄，導致整頁橫向捲動 */
+            min-width: 0;
+        }
+
+        .section-main-title {
+            font-size: 18px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        .pulse-glow {
+            animation: pulse 1.5s infinite alternate;
+            font-size: 20px;
+        }
+
+        .pulse-glow-green {
+            animation: pulse-green 1.5s infinite alternate;
+            font-size: 20px;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(0,176,255,0.5)); }
+            100% { transform: scale(1.15); filter: drop-shadow(0 0 8px rgba(0,176,255,0.9)); }
+        }
+
+        @keyframes pulse-green {
+            0% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(0,230,118,0.5)); }
+            100% { transform: scale(1.15); filter: drop-shadow(0 0 8px rgba(0,230,118,0.9)); }
+        }
+
+        .top-rec-vertical-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* 橫向列表項目 (Sleek List Item Card) */
+        .top-rec-list-item {
+            background: var(--surface-color);
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            position: relative;
+        }
+
+        .top-rec-list-item:hover {
+            transform: translateX(6px);
+            border-color: var(--hover-glow-color, var(--accent-blue));
+            box-shadow: 0 4px 15px var(--hover-shadow-color, rgba(0, 176, 255, 0.15));
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .top-rec-item-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            overflow: hidden;
+            flex-grow: 1;
+        }
+
+        .top-rec-logo-container {
+            display: flex;
+            align-items: center;
+            position: relative;
+            height: 38px;
+            flex-shrink: 0;
+        }
+
+        .top-rec-logo {
+            width: 34px;
+            height: 34px;
+            object-fit: contain;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 4px;
+        }
+
+        .top-rec-logo-container .top-rec-logo:nth-child(2) {
+            margin-left: -12px;
+            position: relative;
+            z-index: 2;
+            background: rgba(18, 25, 38, 0.95);
+        }
+
+        .top-rec-item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .top-rec-item-match {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .top-rec-item-bet {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        @media (max-width: 768px) {
+            /* 走勢藥丸接在推薦文字後面，nowrap + ellipsis 會把它整個切掉，
+               窄螢幕改為可換行，讓藥丸掉到下一行仍看得見 */
+            .top-rec-item-bet {
+                white-space: normal;
+                text-overflow: clip;
+            }
+        }
+
+        .top-rec-item-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .top-rec-item-roi {
+            font-size: 12px;
+            font-weight: 800;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        /* ==========================================
+           4. 篩選與控制欄 (Filters & Controls)
+           ========================================== */
+        .controls-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 30px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 30px;
+        }
+
+        /* 分類頁籤 (窄螢幕可橫向滑動，不爆版) */
+        .tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            padding: 4px;
+            border-radius: 12px;
+            gap: 4px;
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+        .tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-family: var(--font-family);
+            font-size: 14px;
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .tab-btn.active {
+            background: var(--accent-orange);
+            color: #ffffff;
+            box-shadow: 0 4px 15px var(--accent-orange-glow);
+        }
+
+        .tab-count {
+            font-size: 11px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 2px 6px;
+            border-radius: 99px;
+            color: #ffffff;
+        }
+
+        .tab-btn.active .tab-count {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        /* 搜尋輸入框 */
+        .search-wrapper {
+            position: relative;
+            max-width: 320px;
+            width: 100%;
+        }
+
+        .search-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            padding: 12px 16px 12px 40px;
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-family: var(--font-family);
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent-orange);
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 0 15px rgba(253, 80, 0, 0.15);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 16px;
+            pointer-events: none;
+        }
+
+        /* ==========================================
+           5. 對戰卡片網格與詳情 (Match Grid & Accordion)
+           ========================================== */
+        .match-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+        }
+
+        .match-card {
+            background: var(--surface-color);
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: var(--shadow-premium);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .match-card:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.6);
+        }
+
+        /* 高亮閃爍動畫 (滾動錨點交互) */
+        @keyframes borderFlash {
+            0%, 100% { border-color: var(--border-color); box-shadow: var(--shadow-premium); }
+            50% { border-color: var(--accent-orange); box-shadow: 0 0 35px rgba(253, 80, 0, 0.5); }
+        }
+
+        .highlight-flash {
+            animation: borderFlash 2s ease;
+        }
+
+        /* 卡片頭部：隊伍與對戰名稱 */
+        .match-header {
+            padding: 24px 28px;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.01);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .match-meta-left {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .match-time-sub {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: 2px;
+        }
+
+        .teams-versus {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .team-logo {
+            width: 38px;
+            height: 38px;
+            object-fit: contain;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 4px;
+            flex-shrink: 0;
+        }
+
+        .team-name-badge {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .vs-text {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            padding: 4px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+        }
+
+        .match-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .match-tag {
+            font-size: 12px;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .match-tag.double-tag {
+            background: rgba(0, 230, 118, 0.1);
+            border: 1px solid rgba(0, 230, 118, 0.3);
+            color: var(--accent-green);
+        }
+
+        .match-tag.opposing-tag {
+            background: rgba(0, 176, 255, 0.1);
+            border: 1px solid rgba(0, 176, 255, 0.3);
+            color: var(--accent-blue);
+        }
+
+        .match-tag.day-game-tag {
+            background: rgba(251, 191, 36, 0.12);
+            border: 1px solid rgba(251, 191, 36, 0.35);
+            color: #fbbf24;
+            text-shadow: 0 0 8px rgba(251, 191, 36, 0.2);
+        }
+
+        .match-tag.night-game-tag {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .day-game-tag-ai {
+            background: rgba(251, 191, 36, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+
+        /* 下午場警示橫幅 */
+        .day-game-banner {
+            background: linear-gradient(90deg, rgba(251, 191, 36, 0.08) 0%, rgba(251, 191, 36, 0.02) 100%);
+            border: 1px solid rgba(251, 191, 36, 0.2);
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .day-game-icon {
+            font-size: 18px;
+            color: #fbbf24;
+            margin-top: 1px;
+            display: inline-block;
+            animation: warning-pulse 2s infinite alternate;
+        }
+
+        @keyframes warning-pulse {
+            0% { transform: scale(1); filter: drop-shadow(0 0 1px rgba(251, 191, 36, 0.4)); }
+            100% { transform: scale(1.1); filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.8)); }
+        }
+
+        .day-game-text {
+            font-size: 13px;
+            color: #e5e7eb;
+            line-height: 1.6;
+        }
+
+        .day-game-text strong {
+            color: #fbbf24;
+        }
+
+        /* 核心推薦區域 */
+        .match-body {
+            padding: 28px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .rec-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .rec-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 推薦卡片樣式 */
+        .rec-box {
+            border-radius: 14px;
+            padding: 20px;
+            border: 1px dashed transparent;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+
+        /* 大小分總分推薦箱 */
+        .rec-box.double-box {
+            background: radial-gradient(circle at top right, rgba(0, 230, 118, 0.05), transparent 60%), rgba(255, 255, 255, 0.02);
+            border-color: rgba(0, 230, 118, 0.25);
+        }
+
+        .rec-box.double-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent-green);
+        }
+
+        /* 勝負/讓分盤推薦箱 */
+        .rec-box.opposing-box {
+            background: radial-gradient(circle at top right, rgba(0, 176, 255, 0.05), transparent 60%), rgba(255, 255, 255, 0.02);
+            border-color: rgba(0, 176, 255, 0.25);
+        }
+
+        .rec-box.opposing-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent-blue);
+        }
+
+        .rec-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .rec-type-badge {
+            font-size: 12px;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 6px;
+            text-transform: uppercase;
+        }
+
+        .double-box .rec-type-badge {
+            background: var(--accent-green);
+            color: #000000;
+        }
+
+        .opposing-box .rec-type-badge {
+            background: var(--accent-blue);
+            color: #000000;
+        }
+
+        .roi-badge {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent-green);
+            background: rgba(0, 230, 118, 0.1);
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .rec-headline {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .rec-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* 動態收合摺疊區 (Accordion Details) */
+        .details-trigger {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px 20px;
+            width: 100%;
+            color: var(--text-secondary);
+            font-family: var(--font-family);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .details-trigger:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .details-trigger svg {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            fill: currentColor;
+        }
+
+        .match-card.expanded .details-trigger {
+            background: rgba(255, 255, 255, 0.04);
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            color: var(--text-primary);
+        }
+
+        .match-card.expanded .details-trigger svg {
+            transform: rotate(180deg);
+            color: var(--accent-orange);
+        }
+
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(255, 255, 255, 0.015);
+            border-left: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+        }
+
+        /* 這裡的數值只是「沒有 JS 時的保底」。實際展開高度由 syncAccordionHeight()
+           以 scrollHeight 寫成 inline style，因為窄螢幕單欄排版時內容遠超過任何固定值
+           （近期走勢那 8 條就會撐爆），寫死會被 overflow: hidden 直接切掉。 */
+        .match-card.expanded .accordion-content {
+            max-height: 4000px;
+        }
+
+        .accordion-inner {
+            padding: 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .accordion-inner {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Recent Form 參考區（不計分，樣式刻意低調於主推薦） */
+        /* rf-block 是 accordion-inner 的兄弟節點，拿不到它的 24px padding，
+           要自己補左右與底部，否則文字會貼齊卡片邊框（底部原本是 0）。
+           分隔線刻意維持整寬，所以用 padding 而不是 margin。 */
+        .rf-block {
+            margin-top: 20px;
+            padding: 18px 24px 24px;
+            border-top: 1px dashed var(--border-color);
+        }
+
+        .rf-head {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .rf-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .rf-lean-tag {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 999px;
+            color: var(--accent-orange);
+            background: rgba(255, 122, 0, 0.1);
+            border: 1px solid rgba(255, 122, 0, 0.25);
+        }
+
+        .rf-lean-mixed {
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.04);
+            border-color: var(--border-color);
+        }
+
+        .rf-caveat {
+            font-size: 11.5px;
+            line-height: 1.7;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .rf-list {
+            list-style: none;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .rf-list {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .rf-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 12.5px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.015);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 8px;
+            padding: 9px 12px;
+        }
+
+        .rf-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-top: 7px;
+            flex-shrink: 0;
+            background: var(--text-muted);
+        }
+
+        .rf-over .rf-dot { background: var(--accent-orange); }
+        .rf-under .rf-dot { background: var(--accent-blue); }
+
+        /* 差一點進 Top 5 的向隅推薦區 */
+        .near-miss-section {
+            margin-bottom: 40px;
+            padding: 22px 24px;
+            border: 1px dashed var(--border-color);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.012);
+        }
+
+        .near-miss-caveat {
+            font-size: 12px;
+            line-height: 1.8;
+            color: var(--text-muted);
+            margin: -6px 0 16px;
+        }
+
+        .near-miss-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .near-miss-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.015);
+            cursor: pointer;
+            transition: border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .near-miss-item:hover, .near-miss-item:active {
+            border-color: rgba(0, 230, 118, 0.25);
+            background: rgba(0, 230, 118, 0.04);
+        }
+
+        .near-miss-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+        }
+
+        .near-miss-match {
+            font-size: 11.5px;
+            color: var(--text-muted);
+        }
+
+        .near-miss-bet {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .near-miss-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .near-miss-gap {
+            font-size: 10.5px;
+            color: var(--text-muted);
+        }
+
+        /* Top 5 清單／AI 卡片上的精簡近期走勢標記 */
+        .rf-pill {
+            display: inline-block;
+            font-size: 10.5px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 999px;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+
+        .rf-pill-agree {
+            color: var(--accent-green);
+            background: rgba(0, 230, 118, 0.1);
+            border: 1px solid rgba(0, 230, 118, 0.22);
+        }
+
+        .rf-pill-conflict {
+            color: #ffd200;
+            background: rgba(255, 210, 0, 0.09);
+            border: 1px solid rgba(255, 210, 0, 0.22);
+        }
+
+        /* 推薦卡上的近期走勢旁證標記 */
+        .rf-flag {
+            margin-top: 10px;
+            font-size: 11.5px;
+            font-weight: 600;
+            padding: 6px 10px;
+            border-radius: 8px;
+            line-height: 1.6;
+        }
+
+        .rf-flag-agree {
+            color: var(--accent-green);
+            background: rgba(0, 230, 118, 0.08);
+            border: 1px solid rgba(0, 230, 118, 0.2);
+        }
+
+        .rf-flag-conflict {
+            color: #ffd200;
+            background: rgba(255, 210, 0, 0.07);
+            border: 1px solid rgba(255, 210, 0, 0.2);
+        }
+
+        .rf-flag-note {
+            font-weight: 400;
+            color: var(--text-muted);
+        }
+
+        /* 隊伍趨勢清單 */
+        .team-trends-col h4 {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            border-left: 3px solid var(--accent-orange);
+            padding-left: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .trend-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .trend-item {
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 10px;
+            padding: 14px 16px;
+            font-size: 13px;
+            line-height: 1.5;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .trend-item.trend-high {
+            border-left: 3px solid var(--accent-green);
+        }
+
+        .trend-item.trend-low {
+            border-left: 3px solid var(--accent-red);
+            color: var(--text-secondary);
+        }
+
+        .trend-class-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 99px;
+            margin-top: 5px;
+            flex-shrink: 0;
+        }
+
+        .trend-high .trend-class-dot {
+            background: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green-glow);
+        }
+
+        .trend-low .trend-class-dot {
+            background: var(--accent-red);
+            box-shadow: 0 0 8px var(--accent-red-glow);
+        }
+
+        /* ==========================================
+           6. 空狀態與無數據提示
+           ========================================== */
+        .no-data-card {
+            background: var(--surface-color);
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 60px 40px;
+            text-align: center;
+            box-shadow: var(--shadow-premium);
+        }
+
+        .no-data-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .no-data-card h2 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .no-data-card p {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* ==========================================
+           AI 精選推薦專區 (AI Top 5 Section)
+           ========================================== */
+        .ai-section {
+            margin-bottom: 45px;
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(253, 80, 0, 0.04) 100%);
+            border: 1px solid rgba(168, 85, 247, 0.2);
+            border-radius: 24px;
+            padding: 28px;
+            box-shadow: 0 15px 35px -10px rgba(168, 85, 247, 0.15);
+            backdrop-filter: var(--glass-blur);
+        }
+
+        .ai-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+        }
+
+        .ai-main-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+        }
+
+        .ai-badge-glow {
+            background: linear-gradient(135deg, #a855f7 0%, #fd5000 100%);
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 99px;
+            box-shadow: 0 0 12px rgba(168, 85, 247, 0.5);
+            letter-spacing: 0.5px;
+        }
+
+        /* 下界判讀說明列 */
+        .score-legend {
+            font-size: 12.5px;
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-bottom: 20px;
+            line-height: 1.7;
+        }
+
+        .ai-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 992px) {
+            .ai-cards-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+
+        .ai-card {
+            background: rgba(8, 12, 20, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 18px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .ai-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, #a855f7, #fd5000);
+            opacity: 0.8;
+        }
+
+        .ai-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(168, 85, 247, 0.4);
+            box-shadow: 0 10px 25px -5px rgba(168, 85, 247, 0.15);
+            background: rgba(15, 23, 42, 0.7);
+        }
+
+        .ai-card-rank {
+            position: absolute;
+            right: 16px;
+            top: 16px;
+            font-size: 28px;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.03);
+            font-style: italic;
+            line-height: 1;
+        }
+
+        .ai-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .ai-card-tag {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+
+        .ai-card-tag.side-tag {
+            background: rgba(0, 176, 255, 0.15);
+            color: var(--accent-blue);
+            border: 1px solid rgba(0, 176, 255, 0.25);
+        }
+
+        .ai-card-tag.total-tag {
+            background: rgba(0, 230, 118, 0.15);
+            color: var(--accent-green);
+            border: 1px solid rgba(0, 230, 118, 0.25);
+        }
+
+        .ai-card-match {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .ai-card-bet {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-top: 4px;
+        }
+
+        .ai-card-logos {
+            display: flex;
+            align-items: center;
+            height: 30px;
+        }
+
+        .ai-card-logo {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 3px;
+        }
+
+        .ai-card-logos .ai-card-logo:nth-child(2) {
+            margin-left: -10px;
+            background: rgba(8, 12, 20, 0.95);
+        }
+
+        .ai-card-rationale {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            flex-grow: 1;
+        }
+
+        .ai-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 10px;
+            margin-top: 4px;
+        }
+
+        .ai-card-roi-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .ai-card-roi-val {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--accent-gold);
+            text-shadow: 0 0 8px rgba(255, 210, 0, 0.3);
+        }
+
+        /* ==========================================
+           7. 頁尾
+           ========================================== */
+        footer {
+            margin-top: 60px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        /* 語言切換按鈕與排版 */
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .lang-toggle-btn {
+            font-size: 14px;
+            font-weight: 600;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(165, 180, 252, 0.05) 100%);
+            border: 1px solid rgba(165, 180, 252, 0.3);
+            padding: 8px 16px;
+            border-radius: 8px;
+            color: #a5b4fc;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+
+        .lang-toggle-btn:hover {
+            border-color: #a5b4fc;
+            color: #ffffff;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(165, 180, 252, 0.15) 100%);
+            box-shadow: 0 0 15px rgba(165, 180, 252, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .lang-toggle-btn:active {
+            transform: translateY(1px);
+        }
+
+        /* 搜尋清除按鈕 */
+        .search-clear-btn {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s ease;
+            border-radius: 4px;
+            z-index: 5;
+        }
+        
+        .search-clear-btn:hover {
+            color: var(--text-primary);
+        }
+
+        /* 回到頂部懸浮按鈕 */
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: rgba(22, 31, 48, 0.85);
+            border: 1px solid rgba(165, 180, 252, 0.25);
+            color: #a5b4fc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+        }
+
+        .back-to-top.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .back-to-top:hover {
+            border-color: #a5b4fc;
+            color: #ffffff;
+            background: rgba(99, 102, 241, 0.3);
+            box-shadow: 0 0 15px rgba(165, 180, 252, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .back-to-top:active {
+            transform: translateY(1px);
+        }
+
+        /* ==========================================
+           手機版優化 (Mobile Optimizations)
+           ========================================== */
+        /* 觸控按壓回饋 (hover 效果在觸控裝置無作用) */
+        .ai-card:active,
+        .stats-card:active,
+        .rec-box:active,
+        .top-rec-item:active {
+            transform: scale(0.985);
+        }
+
+        .tab-btn:active {
+            transform: scale(0.96);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 14px;
+            }
+
+            header {
+                padding: 24px 0 14px 0;
+                margin-bottom: 20px;
+            }
+
+            h1 {
+                font-size: 22px;
+            }
+
+            /* 統計卡壓縮成一列三格，讓 AI 精選更早出現 */
+            .stats-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+                margin-top: 20px;
+            }
+
+            .stats-card {
+                flex-direction: column-reverse;
+                align-items: center;
+                text-align: center;
+                gap: 6px;
+                padding: 14px 8px;
+            }
+
+            .stats-icon {
+                width: 32px;
+                height: 32px;
+                border-radius: 9px;
+                font-size: 15px;
+            }
+
+            .stats-info h3 {
+                font-size: 11px;
+                margin-bottom: 4px;
+            }
+
+            .stats-info p {
+                font-size: 22px;
+            }
+
+            /* 縮減層層疊加的留白 */
+            .ai-section {
+                padding: 16px;
+                border-radius: 18px;
+            }
+
+            .ai-card,
+            .rec-box {
+                padding: 16px;
+            }
+
+            .top-section {
+                margin-bottom: 32px;
+            }
+
+            /* 篩選列固定在頂端，捲動時可直接切換分類與搜尋 */
+            .controls-bar {
+                position: sticky;
+                top: 0;
+                z-index: 50;
+                background: rgba(8, 12, 20, 0.92);
+                backdrop-filter: blur(14px);
+                -webkit-backdrop-filter: blur(14px);
+                border-top: none;
+                border-bottom: 1px solid var(--border-color);
+                padding: 12px 14px;
+                margin: 0 -14px 20px -14px;
+                gap: 10px;
+            }
+
+            .tabs {
+                width: 100%;
+            }
+
+            .tab-btn {
+                padding: 9px 14px;
+                font-size: 13px;
+            }
+
+            .search-wrapper {
+                max-width: 100%;
+            }
+        }
+    """
+
+DASHBOARD_JS = """        // ==========================================
+        // MLB 隊伍名稱中英文對照字典
+        // ==========================================
+        const teamTranslations = {
+            "Arizona Diamondbacks": "亞利桑那響尾蛇",
+            "Atlanta Braves": "亞特蘭大勇士",
+            "Baltimore Orioles": "巴爾的摩金鶯",
+            "Boston Red Sox": "波士頓紅襪",
+            "Chicago Cubs": "芝加哥小熊",
+            "Chicago White Sox": "芝加哥白襪",
+            "Cincinnati Reds": "辛辛那提紅人",
+            "Cleveland Guardians": "克里夫蘭守護者",
+            "Colorado Rockies": "科羅拉多落磯",
+            "Detroit Tigers": "底特律老虎",
+            "Houston Astros": "休士頓太空人",
+            "Kansas City Royals": "堪薩斯皇家",
+            "Los Angeles Angels": "洛杉磯天使",
+            "Los Angeles Dodgers": "洛杉磯道奇",
+            "Miami Marlins": "邁阿密馬林魚",
+            "Milwaukee Brewers": "密爾瓦基釀酒人",
+            "Minnesota Twins": "明尼蘇達雙城",
+            "New York Mets": "紐約大都會",
+            "New York Yankees": "紐約洋基",
+            "Athletics Athletics": "奧克蘭運動家",
+            "Athletics": "奧克蘭運動家",
+            "Oakland Athletics": "奧克蘭運動家",
+            "Philadelphia Phillies": "費城費城人",
+            "Pittsburgh Pirates": "匹茲堡海盜",
+            "San Diego Padres": "聖地牙哥教士",
+            "San Francisco Giants": "舊金山巨人",
+            "Seattle Mariners": "西雅圖水手",
+            "St. Louis Cardinals": "聖路易紅雀",
+            "Tampa Bay Rays": "坦帕灣光芒",
+            "Texas Rangers": "德州遊騎兵",
+            "Toronto Blue Jays": "多倫多藍鳥",
+            "Washington Nationals": "華盛頓國民",
+            "Diamondbacks": "亞利桑那響尾蛇",
+            "Braves": "亞特蘭大勇士",
+            "Orioles": "巴爾的摩金鶯",
+            "Red Sox": "波士頓紅襪",
+            "Cubs": "芝加哥小熊",
+            "White Sox": "芝加哥白襪",
+            "Reds": "辛辛那提紅人",
+            "Guardians": "克里夫蘭守護者",
+            "Rockies": "科羅拉多落磯",
+            "Tigers": "底特律老虎",
+            "Astros": "休士頓太空人",
+            "Royals": "堪薩斯皇家",
+            "Angels": "洛杉磯天使",
+            "Dodgers": "洛杉磯道奇",
+            "Marlins": "邁阿密馬林魚",
+            "Brewers": "密爾瓦基釀酒人",
+            "Twins": "明尼蘇達雙城",
+            "Mets": "紐約大都會",
+            "Yankees": "紐約洋基",
+            "Phillies": "費城費城人",
+            "Pirates": "匹茲堡海盜",
+            "Padres": "聖地牙哥教士",
+            "Giants": "舊金山巨人",
+            "Mariners": "西雅圖水手",
+            "Cardinals": "聖路易紅雀",
+            "Rays": "坦帕灣光芒",
+            "Rangers": "德州遊騎兵",
+            "Blue Jays": "多倫多藍鳥",
+            "Nationals": "華盛頓國民"
+        };
+
+        // 每次載入固定預設繁體中文 (不記憶上次切換，避免曾切過英文後預設變英文)
+        let currentLanguage = 'zh';
+
+        function translateText(text) {
+            if (!text) return text;
+            if (currentLanguage === 'en') {
+                return text.replace(/Athletics Athletics/g, "Athletics");
+            }
+            let translated = text;
+            const sortedKeys = Object.keys(teamTranslations).sort((a, b) => b.length - a.length);
+            for (const key of sortedKeys) {
+                const regex = new RegExp(key, 'g');
+                translated = translated.replace(regex, teamTranslations[key]);
+            }
+            return translated;
+        }
+
+        function toggleLanguage() {
+            currentLanguage = currentLanguage === 'zh' ? 'en' : 'zh';
+            const btn = document.getElementById('lang-toggle');
+            if (btn) {
+                btn.innerHTML = `🌐 隊伍名稱：${currentLanguage === 'zh' ? '中文' : 'English'}`;
+            }
+            
+            renderAiTop5();
+            renderTopLists();
+            renderNearMisses();
+            renderMatchups();
+        }
+
+        let allMatchups = [];
+        let topSides = [];
+        let topTotals = [];
+        let topAi = [];
+        let currentTab = 'all';
+        let searchQuery = '';
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('lang-toggle');
+            if (btn) {
+                btn.innerHTML = `🌐 隊伍名稱：${currentLanguage === 'zh' ? '中文' : 'English'}`;
+            }
+
+            const rawData = document.getElementById('matchups-data').textContent;
+            const rawSides = document.getElementById('top-sides-data').textContent;
+            const rawTotals = document.getElementById('top-totals-data').textContent;
+            const rawAi = document.getElementById('top-ai-data').textContent;
+            try {
+                allMatchups = JSON.parse(rawData);
+                topSides = JSON.parse(rawSides);
+                topTotals = JSON.parse(rawTotals);
+                topAi = JSON.parse(rawAi);
+                
+                renderAiTop5();
+                renderTopLists();
+                renderNearMisses();
+                renderMatchups();
+            } catch(e) {
+                console.error("解析 JSON 數據出錯:", e);
+                document.getElementById('matchups-container').innerHTML = `
+                    <div class="no-data-card">
+                        <div class="no-data-icon">⚠️</div>
+                        <h2>數據加載錯誤</h2>
+                        <p>無法讀取嵌入的 JSON 對戰數據。</p>
+                    </div>
+                `;
+            }
+        });
+
+        // Recent Form 句子裡的球隊簡稱以 @@Rays@@ 形式標記，依目前語言設定翻譯
+        function renderRecentFormText(zh) {
+            return zh.replace(/@@([^@]+)@@/g, (_, name) => translateText(name));
+        }
+
+        // 詳細趨勢區的單行文字。中文模式優先用 Python 譯好的 text_zh（隊名是 @@佔位符@@，
+        // 與 Recent Form 共用同一套替換機制）；英文模式或翻不出來時退回 covers 原文。
+        function renderTrendText(t) {
+            if (currentLanguage === 'zh' && t.text_zh) {
+                return renderRecentFormText(t.text_zh);
+            }
+            return (t.text || '').replace(/Athletics Athletics/g, 'Athletics');
+        }
+
+        // 勝負盤（獨贏／讓分）的近期走勢評估——單場卡片與 Top 5 共用的唯一判斷來源。
+        //
+        // covers 的 Recent Form 只有「直接勝負」紀錄，沒有讓分資料，但兩者關聯依盤口而異：
+        //   受讓 +1.5：直接獲勝**必定**過盤（獲勝是過盤的子集），因此直接勝負是有效佐證。
+        //   讓分 -1.5：直接獲勝只是必要條件，還得贏 2 分以上，故標為「較弱」。
+        // 實測 30 隊的獨贏命中率與讓分過盤率相關係數僅 0.407，不足以等同看待。
+        function recentFormSideEval(m, rec) {
+            if (!m || !rec || rec.market !== 'Moneyline' && rec.market !== 'Run Line') return null;
+            const rf = m.recent_form || [];
+            const forCount = rf.filter(t => t.win_team && t.win_team === rec.bet_on).length;
+            const againstCount = rf.filter(t => t.win_team && t.win_team === rec.bet_against).length;
+            const diff = forCount - againstCount;
+            if (Math.abs(diff) < 2) return null;
+            return {
+                status: diff > 0 ? 'agree' : 'conflict',
+                forCount, againstCount,
+                weak: rec.market === 'Run Line' && rec.spread_side === '讓分'
+            };
+        }
+
+        // Top 5 清單用的精簡版標記。規則與單場卡片完全一致，差別只在版面。
+        function recentFormStatus(rec) {
+            const m = (allMatchups || []).find(x => x.path.split('/').pop() === String(rec.matchup_id));
+            if (!m) return null;
+            if (rec.type === 'double') {
+                const lean = (m.rf_lean || {}).lean;
+                if (!lean || !rec.direction) return null;
+                return { status: lean === rec.direction ? 'agree' : 'conflict', weak: false };
+            }
+            if (rec.type === 'opposing') {
+                const ev = recentFormSideEval(m, rec);
+                return ev ? { status: ev.status, weak: ev.weak } : null;
+            }
+            return null;
+        }
+
+        function recentFormPill(rec) {
+            const ev = recentFormStatus(rec);
+            if (!ev) return '';
+            const label = (ev.status === 'agree' ? '✅ 走勢同向' : '⚠️ 走勢反向') + (ev.weak ? '(弱)' : '');
+            return `<span class="rf-pill rf-pill-${ev.status}">${label}</span>`;
+        }
+
+        // 勝負盤推薦的完整旁證標記，資料來源一律是「直接勝負」紀錄，文案依盤口說清楚適用性。
+        function recentFormSideFlag(m, rec) {
+            const ev = recentFormSideEval(m, rec);
+            if (!ev) return '';
+            const agree = ev.status === 'agree';
+            const focus = agree ? rec.bet_on : rec.bet_against;
+            let applicability = '';
+            if (rec.market === 'Run Line') {
+                applicability = ev.weak
+                    ? '——但本推薦為讓分 1.5，需贏 2 分以上才過盤，直接勝負僅供參考'
+                    : '——本推薦為受讓 1.5，直接獲勝即必定過盤';
+            }
+            return `
+                <div class="rf-flag ${agree ? 'rf-flag-agree' : 'rf-flag-conflict'}">
+                    ${agree ? '✅ 近期走勢同向' : '⚠️ 近期走勢反向'}${ev.weak ? '（較弱）' : ''}：近期直接勝負的連勝紀錄集中在
+                    ${translateText(focus)}（${ev.forCount} 比 ${ev.againstCount}）${applicability}
+                    <span class="rf-flag-note">（僅旁證，未計入分數）</span>
+                </div>
+            `;
+        }
+
+        // 推薦方向 vs 近期走勢的旁證標記。只在近期走勢明顯一面倒時顯示，
+        // 且刻意不影響分數與排序——這些趨勢樣本太小且經過篩選，只能當提醒。
+        function recentFormFlag(m, direction) {
+            const lean = (m.rf_lean || {}).lean;
+            if (!direction || !lean) return '';
+            const agree = lean === direction;
+            const leanZh = lean === 'Over' ? '大分' : '小分';
+            return `
+                <div class="rf-flag ${agree ? 'rf-flag-agree' : 'rf-flag-conflict'}">
+                    ${agree ? '✅ 近期走勢同向' : '⚠️ 近期走勢反向'}：該場近期連勝紀錄偏向${leanZh}
+                    <span class="rf-flag-note">（僅旁證，未計入分數）</span>
+                </div>
+            `;
+        }
+
+        // 全場趨勢皆為 0 代表 covers 尚未發佈（並非篩選後沒有結果），兩者要分開提示
+        function trendsPending() {
+            if (!allMatchups || allMatchups.length === 0) return false;
+            return allMatchups.reduce((sum, m) => sum + (m.processed_trends || []).length, 0) === 0;
+        }
+
+        // 依情境回傳空狀態文案：無賽事 / covers 未發佈 / 有趨勢但無合格組合
+        function emptyStateText(marketLabel) {
+            if (!allMatchups || allMatchups.length === 0) {
+                return '今日無賽事資料。';
+            }
+            if (trendsPending()) {
+                return '⏳ covers.com 尚未發佈今日趨勢（通常美東上午發佈完畢），稍後的自動更新會補上，請晚點再看。';
+            }
+            return `今日暫無符合篩選標準的「${marketLabel}」推薦組合。`;
+        }
+
+        // 依「保守命中率下界」強弱回傳顏色：綠 >=55 強 / 黃 50~55 普通 / 灰 <50 弱
+        function scoreColor(s) {
+            if (s >= 55) return 'var(--accent-green)';
+            if (s >= 50) return '#ffd200';
+            return 'var(--text-muted)';
+        }
+
+        function scoreBadgeStyle(s) {
+            if (s >= 55) return 'color: var(--accent-green); background: rgba(0, 230, 118, 0.12); border: 1px solid rgba(0, 230, 118, 0.25);';
+            if (s >= 50) return 'color: #ffd200; background: rgba(255, 210, 0, 0.1); border: 1px solid rgba(255, 210, 0, 0.25);';
+            return 'color: var(--text-muted); background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color);';
+        }
+
+        function renderAiTop5() {
+            const section = document.getElementById('ai-top5-section');
+            if (!section) return;
+            
+            if (topAi.length === 0) {
+                // 整區隱藏會讓人以為網站壞了（使用者實際反映過），所以三種空狀態都要講清楚：
+                // covers 未發佈 / 今日無賽事 / 有趨勢但沒有推薦達到 50% 門檻
+                const pending = trendsPending();
+                const msg = pending
+                    ? `⏳ <strong style="color: #ffd200;">covers.com 尚未發佈今日趨勢</strong>，因此暫時沒有推薦。
+                       趨勢通常在美東上午發佈完畢，之後的自動更新會補上——請稍後再重新整理。`
+                    : `😴 <strong style="color: #ffd200;">今日沒有達標的推薦</strong>：所有組合的保守命中率都低於
+                       ${TOP_PICK_MIN_SCORE}%，依本站標準屬於「僅供參考」等級，因此不列入精選。
+                       <strong>這是正常結果，不是資料出錯</strong>——冷門日寧可不推。`;
+                section.innerHTML = `
+                    <div class="ai-title-row">
+                        <h2 class="ai-main-title">🤖 今日 AI 智慧精選 Top 5 黃金推薦</h2>
+                    </div>
+                    <div class="score-legend" style="border-color: rgba(255, 210, 0, 0.3);">
+                        ${msg}
+                    </div>
+                `;
+                section.style.display = '';
+                return;
+            }
+            
+            let cardsHtml = '';
+            topAi.forEach((rec, idx) => {
+                const rankNum = idx + 1;
+                const tagClass = rec.type === 'opposing' ? 'side-tag' : 'total-tag';
+                const tagText = rec.type === 'opposing' ? '🎯 勝負/讓分' : '🔥 大小總分';
+                const roiLabel = '保守命中率';
+                
+                let logosHtml = '';
+                if (rec.logo_b) {
+                    logosHtml = `
+                        <img src="${rec.logo_a}" class="ai-card-logo" onerror="this.style.display='none'" />
+                        <img src="${rec.logo_b}" class="ai-card-logo" onerror="this.style.display='none'" />
+                    `;
+                } else {
+                    logosHtml = `
+                        <img src="${rec.logo_a}" class="ai-card-logo" onerror="this.style.display='none'" />
+                    `;
+                }
+                
+                const dayGameBadge = rec.is_day_game 
+                    ? `<span class="ai-card-tag day-game-tag-ai">⚠️ ${currentLanguage === 'zh' ? '下午場' : 'Day Game'}</span>` 
+                    : '';
+                
+                cardsHtml += `
+                    <div class="ai-card" onclick="scrollToMatch('match-card-${rec.matchup_id}')">
+                        <div class="ai-card-rank">#0${rankNum}</div>
+                        <div class="ai-card-header">
+                            <span class="ai-card-tag ${tagClass}">${tagText}</span>
+                            ${dayGameBadge}
+                            ${recentFormPill(rec)}
+                            <span class="ai-card-match">${translateText(rec.matchup_name)}</span>
+                        </div>
+                        <div>
+                            <div class="ai-card-bet">${translateText(rec.recommendation)}</div>
+                        </div>
+                        <div class="ai-card-logos">
+                            ${logosHtml}
+                        </div>
+                        <div class="ai-card-rationale">
+                            ${translateText(rec.rationale)}
+                        </div>
+                        <div class="ai-card-footer">
+                            <span class="ai-card-roi-label">${roiLabel}</span>
+                            <span class="ai-card-roi-val" style="color: ${scoreColor(rec.score)}">${rec.score}%</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            section.innerHTML = `
+                <div class="ai-title-row">
+                    <h2 class="ai-main-title">
+                        🤖 今日 AI 智慧精選 Top 5 黃金推薦
+                    </h2>
+                    <span class="ai-badge-glow">AI OPTIMIZED</span>
+                </div>
+                <div class="score-legend">
+                    📖 保守命中率怎麼看：<span style="color: var(--accent-green); font-weight: 700;">≥55% 強訊號</span> ·
+                    <span style="color: #ffd200; font-weight: 700;">50~55% 普通</span> ·
+                    <span style="color: var(--text-muted); font-weight: 700;">&lt;50% 僅供參考</span>
+                    （過盤率已依樣本數扣除運氣水分，小樣本會被自動壓低）
+                </div>
+                <div class="ai-cards-grid">
+                    ${cardsHtml}
+                </div>
+            `;
+        }
+
+        // 「差一點」的判定門檻。近期走勢刻意不影響排序，所以落榜的推薦本來就代表
+        // 命中率證據較弱——只有在分數差小到沒有實質意義時，走勢同向才值得拿來補救。
+        const NEAR_MISS_MARGIN = 3.0;   // 與該類 Top 5 最低分的差距上限
+        // 由 Python 的 TOP_PICK_MIN_SCORE 帶入，讓正榜與向隅區共用同一個門檻。
+        // 以前兩邊各寫各的：向隅區擋掉 <50%，正榜卻放行，導致 49 分的推薦
+        // 進不了向隅區反而進得了 Top 5。改門檻只要改 Python 那一個常數。
+        const TOP_PICK_MIN_SCORE = __TOP_PICK_MIN_SCORE__;
+        const NEAR_MISS_MIN_SCORE = TOP_PICK_MIN_SCORE;
+
+        function collectNearMisses() {
+            if (!allMatchups || allMatchups.length === 0) return [];
+            const inTop = new Set(
+                [...topSides, ...topTotals].map(r => `${r.matchup_id}|${r.recommendation}`)
+            );
+            // Top 5 已列出同場同隊的推薦時，這裡不再列出它的另一種盤口版本
+            // （買 X 獨贏與買 X 讓 1.5 是同一個看法，重複列出只會佔版面）
+            const shownTeams = new Set(
+                [...topSides, ...topTotals]
+                    .filter(r => r.bet_on)
+                    .map(r => `${r.matchup_id}|${r.bet_on}`)
+            );
+            const cutSides = topSides.length ? Math.min(...topSides.map(r => r.score)) : null;
+            const cutTotals = topTotals.length ? Math.min(...topTotals.map(r => r.score)) : null;
+            const out = [];
+            allMatchups.forEach(m => {
+                const mid = m.path.split('/').pop();
+                const consider = (rec, type, cutoff, marketLabel) => {
+                    if (cutoff === null) return;
+                    if (inTop.has(`${mid}|${rec.recommendation}`)) return;
+                    if (rec.bet_on && shownTeams.has(`${mid}|${rec.bet_on}`)) return;
+                    if (rec.score < NEAR_MISS_MIN_SCORE) return;
+                    if (cutoff - rec.score > NEAR_MISS_MARGIN) return;
+                    const ev = recentFormStatus(Object.assign({}, rec, { matchup_id: mid, type }));
+                    if (!ev || ev.status !== 'agree') return;
+                    out.push({
+                        matchup_id: mid,
+                        matchup_name: `${m.team_a} vs ${m.team_b}`,
+                        market_label: marketLabel,
+                        bet_on: rec.bet_on || null,
+                        recommendation: rec.recommendation,
+                        score: rec.score,
+                        gap: Math.round((cutoff - rec.score) * 10) / 10,
+                        weak: ev.weak
+                    });
+                };
+                (m.opposing_trends || []).forEach(r => consider(r, 'opposing', cutSides, r.market_zh));
+                (m.double_positive || []).forEach(r => consider(r, 'double', cutTotals, r.market_type));
+            });
+            // 與 Top 5 相同的去重原則：同場同隊只留分數最高的一筆
+            // （否則「買 X 受讓 1.5」與「買 X 獨贏」會在這裡並列，等於換個地方重複）
+            out.sort((a, b) => b.score - a.score);
+            const kept = [];
+            const seenTeam = new Set();
+            out.forEach(it => {
+                if (it.bet_on) {
+                    const key = `${it.matchup_id}|${it.bet_on}`;
+                    if (seenTeam.has(key)) return;
+                    seenTeam.add(key);
+                }
+                kept.push(it);
+            });
+            return kept.slice(0, 5);
+        }
+
+        function renderNearMisses() {
+            const section = document.getElementById('near-miss-section');
+            if (!section) return;
+            const items = collectNearMisses();
+            if (items.length === 0) {
+                section.style.display = 'none';
+                section.innerHTML = '';
+                return;
+            }
+            const rows = items.map(it => `
+                <div class="near-miss-item" onclick="scrollToMatch('match-card-${it.matchup_id}')">
+                    <div class="near-miss-info">
+                        <span class="near-miss-match">${translateText(it.matchup_name)} • ${it.market_label}</span>
+                        <span class="near-miss-bet">
+                            ${translateText(it.recommendation)}
+                            <span class="rf-pill rf-pill-agree">✅ 走勢同向${it.weak ? '(弱)' : ''}</span>
+                        </span>
+                    </div>
+                    <div class="near-miss-right">
+                        <span class="top-rec-item-roi" style="${scoreBadgeStyle(it.score)}">保守 ${it.score}%</span>
+                        <span class="near-miss-gap">差 ${it.gap} 分</span>
+                    </div>
+                </div>
+            `).join('');
+            section.innerHTML = `
+                <h2 class="section-main-title">👀 差一點進 Top 5，但近期走勢同向</h2>
+                <p class="near-miss-caveat">
+                    以下推薦的保守命中率只比 Top 5 門檻低 ${NEAR_MISS_MARGIN} 分以內（等於實質平手），
+                    且近期走勢方向一致，因此一併列出供你留意。
+                    <strong>排序仍只看保守命中率</strong>，近期走勢不加分；分數低於 ${NEAR_MISS_MIN_SCORE}% 的一律不列。
+                </p>
+                <div class="near-miss-list">${rows}</div>
+            `;
+            section.style.display = '';
+        }
+
+        function renderTopLists() {
+            const sidesContainer = document.getElementById('top-sides-container');
+            sidesContainer.innerHTML = '';
+            
+            if (topSides.length === 0) {
+                sidesContainer.innerHTML = `<div class="no-data-card" style="padding: 24px;"><p style="font-size: 13px; color: var(--text-muted); font-style: italic;">${emptyStateText('勝負/讓分盤')}</p></div>`;
+            } else {
+                topSides.forEach(rec => {
+                    const cardHtml = `
+                        <div class="top-rec-list-item" style="--hover-glow-color: var(--accent-blue); --hover-shadow-color: rgba(0, 176, 255, 0.15);" onclick="scrollToMatch('match-card-${rec.matchup_id}')">
+                            <div class="top-rec-item-left">
+                                <div class="top-rec-logo-container">
+                                    <img src="${rec.logo}" class="top-rec-logo" onerror="this.style.display='none'" />
+                                </div>
+                                <div class="top-rec-item-info">
+                                    <span class="top-rec-item-match">
+                                        ${translateText(rec.matchup_name)} • ${rec.market_type}
+                                        ${rec.is_day_game ? `<span style="color: #fbbf24; font-weight: 700; margin-left: 6px;">⚠️ ${currentLanguage === 'zh' ? '下午場' : 'Day Game'}</span>` : ''}
+                                    </span>
+                                    <span class="top-rec-item-bet">${translateText(rec.recommendation)} ${recentFormPill(rec)}</span>
+                                </div>
+                            </div>
+                            <div class="top-rec-item-right">
+                                <span class="top-rec-item-roi" style="${scoreBadgeStyle(rec.score)}">保守 ${rec.score}%</span>
+                            </div>
+                        </div>
+                    `;
+                    sidesContainer.insertAdjacentHTML('beforeend', cardHtml);
+                });
+            }
+
+            const totalsContainer = document.getElementById('top-totals-container');
+            totalsContainer.innerHTML = '';
+            
+            if (topTotals.length === 0) {
+                totalsContainer.innerHTML = `<div class="no-data-card" style="padding: 24px;"><p style="font-size: 13px; color: var(--text-muted); font-style: italic;">${emptyStateText('大小分總分')}</p></div>`;
+            } else {
+                topTotals.forEach(rec => {
+                    const cardHtml = `
+                        <div class="top-rec-list-item" style="--hover-glow-color: var(--accent-green); --hover-shadow-color: rgba(0, 230, 118, 0.15);" onclick="scrollToMatch('match-card-${rec.matchup_id}')">
+                            <div class="top-rec-item-left">
+                                <div class="top-rec-logo-container">
+                                    <img src="${rec.logo_a}" class="top-rec-logo" onerror="this.style.display='none'" />
+                                    <img src="${rec.logo_b}" class="top-rec-logo" onerror="this.style.display='none'" />
+                                </div>
+                                <div class="top-rec-item-info">
+                                    <span class="top-rec-item-match">
+                                        ${translateText(rec.matchup_name)} • ${rec.market_type}
+                                        ${rec.is_day_game ? `<span style="color: #fbbf24; font-weight: 700; margin-left: 6px;">⚠️ ${currentLanguage === 'zh' ? '下午場' : 'Day Game'}</span>` : ''}
+                                    </span>
+                                    <span class="top-rec-item-bet">${translateText(rec.recommendation)} ${recentFormPill(rec)}</span>
+                                </div>
+                            </div>
+                            <div class="top-rec-item-right">
+                                <span class="top-rec-item-roi" style="${scoreBadgeStyle(rec.score)}">保守 ${rec.score}%</span>
+                            </div>
+                        </div>
+                    `;
+                    totalsContainer.insertAdjacentHTML('beforeend', cardHtml);
+                });
+            }
+        }
+
+        function scrollToMatch(id) {
+            const el = document.getElementById(id);
+            if (el) {
+                if (!el.classList.contains('expanded')) {
+                    el.classList.add('expanded');
+                    syncAccordionHeight(el);
+                }
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.classList.add('highlight-flash');
+                setTimeout(() => {
+                    el.classList.remove('highlight-flash');
+                }, 2000);
+            }
+        }
+
+        // 切換頁籤
+        function switchTab(tab, element) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+            renderMatchups();
+        }
+
+        // 搜尋隊伍名稱與清除按鈕處理
+        function handleSearch() {
+            const box = document.getElementById('search-box');
+            const clearBtn = document.getElementById('search-clear');
+            searchQuery = box.value.trim().toLowerCase();
+            if (clearBtn) {
+                clearBtn.style.display = searchQuery ? 'flex' : 'none';
+            }
+            renderMatchups();
+        }
+
+        // 清除搜尋框內容
+        function clearSearch() {
+            const box = document.getElementById('search-box');
+            const clearBtn = document.getElementById('search-clear');
+            if (box) {
+                box.value = '';
+            }
+            if (clearBtn) {
+                clearBtn.style.display = 'none';
+            }
+            searchQuery = '';
+            renderMatchups();
+        }
+
+        // 監聽滾動以顯示/隱藏「回到頂部」按鈕
+        window.addEventListener('scroll', () => {
+            const btn = document.getElementById('back-to-top-btn');
+            if (btn) {
+                if (window.scrollY > 400) {
+                    btn.classList.add('show');
+                } else {
+                    btn.classList.remove('show');
+                }
+            }
+        });
+
+        // 平滑滾動到頂部
+        function scrollToTop() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
+        // 依實際內容高度設定摺疊區的 max-height（收合時清成空字串讓 CSS 的 0 生效）。
+        // 不能用固定值：窄螢幕是單欄排版，趨勢兩欄加上近期走勢會超過任何寫死的數字，
+        // 超出的部分會被 overflow: hidden 吃掉，看起來像「只剩前一兩條」。
+        function syncAccordionHeight(cardElement) {
+            const content = cardElement.querySelector('.accordion-content');
+            if (!content) return;
+            if (cardElement.classList.contains('expanded')) {
+                content.style.maxHeight = content.scrollHeight + 'px';
+            } else {
+                content.style.maxHeight = '';
+            }
+        }
+
+        // 展開/收合卡片摺疊區
+        function toggleExpand(cardElement) {
+            cardElement.classList.toggle('expanded');
+            syncAccordionHeight(cardElement);
+        }
+
+        // 轉向橫式或改變視窗寬度時欄數會變，已展開的卡片要重新量一次
+        window.addEventListener('resize', () => {
+            document.querySelectorAll('.match-card.expanded').forEach(syncAccordionHeight);
+        });
+
+        // 渲染賽事清單
+        function renderMatchups() {
+            const container = document.getElementById('matchups-container');
+            container.innerHTML = '';
+            
+            const filtered = allMatchups.filter(m => {
+                if (currentTab === 'double' && m.double_positive.length === 0) return false;
+                if (currentTab === 'opposing' && m.opposing_trends.length === 0) return false;
+                
+                if (searchQuery) {
+                    const titleEn = (m.team_a + " vs " + m.team_b).toLowerCase();
+                    const titleZh = (translateText(m.team_a) + " vs " + translateText(m.team_b)).toLowerCase();
+                    if (!titleEn.includes(searchQuery) && !titleZh.includes(searchQuery)) return false;
+                }
+                
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="no-data-card">
+                        <div class="no-data-icon">🛸</div>
+                        <h2>無符合條件的對戰組合</h2>
+                        <p>請嘗試清除搜尋詞或切換其他分類頁籤。</p>
+                    </div>
+                `;
+                return;
+            }
+
+            filtered.forEach(m => {
+                const doubleTags = m.double_positive.length > 0 ? `<span class="match-tag double-tag">🔥 大小分總分 (${m.double_positive.length})</span>` : '';
+                const opposingTags = m.opposing_trends.length > 0 ? `<span class="match-tag opposing-tag">🎯 勝負/讓分盤 (${m.opposing_trends.length})</span>` : '';
+                const dayGameTag = m.is_day_game 
+                    ? `<span class="match-tag day-game-tag">\u26a0\ufe0f ${currentLanguage === 'zh' ? '\u4e0b\u5348\u5834' : 'Day Game'}</span>` 
+                    : '';
+                
+                let dayGameBanner = '';
+                if (m.is_day_game) {
+                    const bannerText = currentLanguage === 'zh' 
+                        ? '<strong>此賽事為下午場 (Day Game)</strong>：主場當地時間 17:00 前開打（多數落在 13:00~14:00）。下午場由於球員生理時鐘、陣容輪替(主力休息、備用捕手先發)與牛棚調度等變數極多，盤口<strong>極易開出反邊</strong>，建議<strong>避開</strong>或考慮<strong>反下</strong>。'
+                        : '<strong>This is a Day Game</strong>: First pitch before 5:00 PM home local time (most start 1:00-2:00 PM). Day games have high volatility due to circadian rhythm shifts, lineup rotations (resting stars/starting backup catchers), and bullpen fatigue. They are <strong>prone to upset/reverse results</strong>. Consider <strong>avoiding</strong> or <strong>betting against</strong> the trend.';
+                    dayGameBanner = `
+                        <div class="day-game-banner">
+                            <span class="day-game-icon">⚠️</span>
+                            <div class="day-game-text">
+                                ${bannerText}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                let recsHtml = '';
+                
+                if (m.double_positive.length > 0 && (currentTab === 'all' || currentTab === 'double')) {
+                    recsHtml += `
+                        <div class="section-title">
+                            <span>🔥 大小分總分黃金推薦</span>
+                        </div>
+                        <div class="rec-container">
+                    `;
+                    m.double_positive.forEach(rec => {
+                        recsHtml += `
+                            <div class="rec-box double-box">
+                                <div class="rec-title-row">
+                                    <span class="rec-type-badge">大小分總分 • ${rec.market_type}</span>
+                                    <span class="roi-badge" style="${scoreBadgeStyle(rec.score)}">過盤: ${rec.hit_detail} | 保守 ${rec.score}%</span>
+                                </div>
+                                <div class="rec-headline">${translateText(rec.recommendation)}</div>
+                                <div class="rec-desc">${translateText(rec.confidence)}</div>
+                                ${recentFormFlag(m, rec.direction)}
+                            </div>
+                        `;
+                    });
+                    recsHtml += `</div>`;
+                }
+                
+                if (m.opposing_trends.length > 0 && (currentTab === 'all' || currentTab === 'opposing')) {
+                    recsHtml += `
+                        <div class="section-title">
+                            <span>🎯 勝負/讓分盤黃金推薦</span>
+                        </div>
+                        <div class="rec-container">
+                    `;
+                    m.opposing_trends.forEach(rec => {
+                        recsHtml += `
+                            <div class="rec-box opposing-box">
+                                <div class="rec-title-row">
+                                    <span class="rec-type-badge">勝負/讓分盤 • ${rec.market_zh}</span>
+                                    <span class="roi-badge" style="${scoreBadgeStyle(rec.score)}">過盤: ${rec.hit_detail} | 保守 ${rec.score}%</span>
+                                </div>
+                                <div class="rec-headline">${translateText(rec.recommendation)}</div>
+                                <div class="rec-desc">${translateText(rec.confidence)}</div>
+                                ${recentFormSideFlag(m, rec)}
+                            </div>
+                        `;
+                    });
+                    recsHtml += `</div>`;
+                }
+
+                if (m.double_positive.length === 0 && m.opposing_trends.length === 0) {
+                    const cardEmptyText = (m.processed_trends || []).length === 0
+                        ? '⏳ covers.com 尚未發佈此賽事的趨勢，稍後自動更新會補上。'
+                        : '此賽事今日無符合篩選標準的黃金推薦投注組合。';
+                    recsHtml += `
+                        <div style="padding: 10px 0; color: var(--text-muted); font-size: 13px; font-style: italic;">
+                            ${cardEmptyText}
+                        </div>
+                    `;
+                }
+
+                let teamATrendsHtml = '';
+                let teamBTrendsHtml = '';
+                
+                const highTrendsA = m.processed_trends.filter(t => t.team === m.team_a && t.class === 'High');
+                const lowTrendsA = m.processed_trends.filter(t => t.team === m.team_a && t.class === 'Low');
+                const highTrendsB = m.processed_trends.filter(t => t.team === m.team_b && t.class === 'High');
+                const lowTrendsB = m.processed_trends.filter(t => t.team === m.team_b && t.class === 'Low');
+
+                const trendRow = t => {
+                    const klassName = t.class === 'High' ? 'trend-high' : 'trend-low';
+                    return `
+                        <li class="trend-item ${klassName}">
+                            <span class="trend-class-dot"></span>
+                            <div>${renderTrendText(t)}</div>
+                        </li>
+                    `;
+                };
+
+                [...highTrendsA, ...lowTrendsA].forEach(t => { teamATrendsHtml += trendRow(t); });
+                [...highTrendsB, ...lowTrendsB].forEach(t => { teamBTrendsHtml += trendRow(t); });
+
+                if (!teamATrendsHtml) teamATrendsHtml = '<li class="trend-item" style="color: var(--text-muted);">無趨勢數據</li>';
+                if (!teamBTrendsHtml) teamBTrendsHtml = '<li class="trend-item" style="color: var(--text-muted);">無趨勢數據</li>';
+
+                // Recent Form 參考區：樣本 4~9 場且幾乎全勝，是 covers 篩選過的結果，只顯示不計分
+                let recentFormHtml = '';
+                const rf = m.recent_form || [];
+                if (rf.length > 0) {
+                    const lean = m.rf_lean || {};
+                    let leanTag = '';
+                    if (lean.lean) {
+                        const leanZh = lean.lean === 'Over' ? '大分' : '小分';
+                        leanTag = `<span class="rf-lean-tag">近期偏 ${leanZh}（大 ${lean.over} / 小 ${lean.under}）</span>`;
+                    } else {
+                        leanTag = `<span class="rf-lean-tag rf-lean-mixed">方向分歧（大 ${lean.over || 0} / 小 ${lean.under || 0}）</span>`;
+                    }
+                    const rows = rf.map(t => {
+                        let dirClass = 'rf-neutral';
+                        if (t.side === 'Over') dirClass = 'rf-over';
+                        else if (t.side === 'Under') dirClass = 'rf-under';
+                        return `<li class="rf-item ${dirClass}"><span class="rf-dot"></span><div>${renderRecentFormText(t.zh)}</div></li>`;
+                    }).join('');
+                    recentFormHtml = `
+                        <div class="rf-block">
+                            <div class="rf-head">
+                                <span class="rf-title">📈 近期走勢（僅供參考）</span>
+                                ${leanTag}
+                            </div>
+                            <p class="rf-caveat">
+                                covers 從大量條件切法中挑出的連勝紀錄，樣本僅 4~9 場、幾乎都是全勝，
+                                <strong>是被挑過的結果而非隨機樣本</strong>，因此不列入保守命中率評分，只當旁證看。
+                                此區只有<strong>大小分</strong>與<strong>直接勝負</strong>兩種市場，covers 未提供讓分走勢——
+                                讓分盤的標記是借用直接勝負推得：<strong>受讓 1.5</strong> 直接獲勝即必定過盤（有效），
+                                <strong>讓分 1.5</strong> 還需贏 2 分以上（僅標為較弱）。
+                            </p>
+                            <ul class="rf-list">${rows}</ul>
+                        </div>
+                    `;
+                }
+
+                const cardHtml = `
+                    <div class="match-card" id="match-card-${m.path.split('/').pop()}">
+                        <div class="match-header">
+                            <div class="match-meta-left">
+                                <div class="teams-versus">
+                                <span class="team-name-badge">
+                                    <img src="${m.team_a_logo}" class="team-logo" onerror="this.style.display='none'" />
+                                    ${translateText(m.team_a)}
+                                </span>
+                                <span class="vs-text">vs</span>
+                                <span class="team-name-badge">
+                                    <img src="${m.team_b_logo}" class="team-logo" onerror="this.style.display='none'" />
+                                    ${translateText(m.team_b)}
+                                </span>
+                            </div>
+                                <div class="match-time-sub">\U0001f552 ${m.game_time}</div>
+                            </div>
+                            <div class="match-tags">
+                                ${dayGameTag}
+                                ${doubleTags}
+                                ${opposingTags}
+                            </div>
+                        </div>
+                        
+                        <div class="match-body">
+                            ${dayGameBanner}
+                            ${recsHtml}
+                            
+                            <button class="details-trigger" onclick="toggleExpand(this.closest('.match-card'))">
+                                <span>顯示該賽事完整詳細趨勢數據 (High / Low Trends)</span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" fill="none"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            </button>
+                            
+                            <div class="accordion-content">
+                                <div class="accordion-inner">
+                                    <div class="team-trends-col">
+                                        <h4>
+                                            <img src="${m.team_a_logo}" class="team-logo" style="width: 24px; height: 24px; border-radius: 6px; padding: 2px;" onerror="this.style.display='none'" />
+                                            ${translateText(m.team_a)} 趨勢數據
+                                        </h4>
+                                        <ul class="trend-list">
+                                            ${teamATrendsHtml}
+                                        </ul>
+                                    </div>
+                                    <div class="team-trends-col">
+                                        <h4>
+                                            <img src="${m.team_b_logo}" class="team-logo" style="width: 24px; height: 24px; border-radius: 6px; padding: 2px;" onerror="this.style.display='none'" />
+                                            ${translateText(m.team_b)} 趨勢數據
+                                        </h4>
+                                        <ul class="trend-list">
+                                            ${teamBTrendsHtml}
+                                        </ul>
+                                    </div>
+                                </div>
+                                ${recentFormHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', cardHtml);
+            });
+        }"""
+
+
 def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, date_str,
                             failed_count=0, expected_count=None):
     """
@@ -1055,6 +3496,9 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
     # 只標美東日期會讓台灣使用者以為賽事已結束（他看的當地日期通常已是隔天）
     tw_hint = f'<span class="date-badge-tw">台灣 {tw_dates} 開打</span>' if tw_dates else ''
     
+    # JS 唯一需要 Python 值的地方：門檻常數（見 TOP_PICK_MIN_SCORE）
+    dashboard_js = DASHBOARD_JS.replace("__TOP_PICK_MIN_SCORE__", str(TOP_PICK_MIN_SCORE))
+
     matchups_json = json.dumps(matchups_data, ensure_ascii=False)
     top_sides_json = json.dumps(top_5_sides, ensure_ascii=False)
     top_totals_json = json.dumps(top_5_totals, ensure_ascii=False)
@@ -1081,1594 +3525,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
               href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap">
     </noscript>
 
-    <style>
-        /* ==========================================
-           1. 變數與基礎樣式 (Core Palette & Reset)
-           ========================================== */
-        :root {{
-            --bg-color: #080c14;
-            --surface-color: rgba(22, 31, 48, 0.45);
-            --surface-hover: rgba(22, 31, 48, 0.7);
-            --border-color: rgba(255, 255, 255, 0.08);
-            --text-primary: #f3f4f6;
-            --text-secondary: #9ca3af;
-            --text-muted: #6b7280;
-            --accent-orange: #fd5000;
-            --accent-orange-glow: rgba(253, 80, 0, 0.4);
-            --accent-green: #00E676;
-            --accent-green-glow: rgba(0, 230, 118, 0.25);
-            --accent-red: #ff5252;
-            --accent-red-glow: rgba(255, 82, 82, 0.25);
-            --accent-blue: #00b0ff;
-            --accent-gold: #ffd200;
-            --accent-gold-glow: rgba(255, 210, 0, 0.25);
-            --accent-purple: #a855f7;
-            --accent-purple-glow: rgba(168, 85, 247, 0.25);
-            --font-family: 'Inter', 'Noto Sans TC', sans-serif;
-            --shadow-premium: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-            --glass-blur: blur(12px);
-        }}
-
-        * {{
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }}
-
-        body {{
-            background-color: var(--bg-color);
-            background-image: 
-                radial-gradient(at 10% 20%, rgba(253, 80, 0, 0.06) 0px, transparent 50%),
-                radial-gradient(at 90% 80%, rgba(0, 176, 255, 0.05) 0px, transparent 50%);
-            background-attachment: fixed;
-            color: var(--text-primary);
-            font-family: var(--font-family);
-            min-height: 100vh;
-            padding-bottom: 80px;
-            overflow-x: hidden;
-            -webkit-font-smoothing: antialiased;
-        }}
-
-        .container {{
-            max-width: 1280px;
-            margin: 0 auto;
-            padding: 0 24px;
-        }}
-
-        /* ==========================================
-           2. 頂部導航欄與統計區 (Header & Statistics)
-           ========================================== */
-        header {{
-            padding: 40px 0 20px 0;
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 30px;
-        }}
-
-        .header-top {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 20px;
-        }}
-
-        h1 {{
-            font-size: 28px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            background: linear-gradient(135deg, #ffffff 30%, #a5b4fc 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }}
-
-        h1 span {{
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--accent-orange);
-            background: rgba(253, 80, 0, 0.1);
-            border: 1px solid rgba(253, 80, 0, 0.3);
-            padding: 4px 10px;
-            border-radius: 99px;
-            letter-spacing: 0;
-            -webkit-text-fill-color: var(--accent-orange);
-        }}
-
-        .date-badge {{
-            font-size: 14px;
-            font-weight: 600;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-color);
-            padding: 8px 16px;
-            border-radius: 8px;
-            color: var(--text-secondary);
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 6px;
-        }}
-
-        /* 標示日期為美東，並補上台灣實際開打日，避免誤判賽事已結束 */
-        .date-badge-et {{
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--text-muted);
-            border: 1px solid var(--border-color);
-            border-radius: 5px;
-            padding: 1px 5px;
-        }}
-
-        .date-badge-tw {{
-            font-size: 11.5px;
-            font-weight: 700;
-            color: var(--accent-green);
-            background: rgba(0, 230, 118, 0.1);
-            border: 1px solid rgba(0, 230, 118, 0.22);
-            border-radius: 999px;
-            padding: 2px 9px;
-        }}
-
-        .date-badge strong {{
-            color: var(--text-primary);
-        }}
-
-        /* 抓取失敗警告列：只有真的漏抓時才會輸出（見 generate_html_dashboard） */
-        .fetch-warning {{
-            margin: 0 0 24px;
-            padding: 14px 18px;
-            border-radius: 12px;
-            font-size: 13px;
-            line-height: 1.8;
-            color: #ffd200;
-            background: rgba(255, 210, 0, 0.07);
-            border: 1px solid rgba(255, 210, 0, 0.3);
-        }}
-
-        .fetch-warning strong {{
-            color: #ffe066;
-        }}
-
-        /* 統計面板網格 */
-        .stats-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin-top: 30px;
-        }}
-
-        .stats-card {{
-            background: var(--surface-color);
-            backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: var(--shadow-premium);
-        }}
-
-        .stats-card:hover {{
-            transform: translateY(-2px);
-            border-color: rgba(255, 255, 255, 0.15);
-        }}
-
-        .stats-info h3 {{
-            font-size: 14px;
-            color: var(--text-secondary);
-            font-weight: 500;
-            margin-bottom: 8px;
-        }}
-
-        .stats-info p {{
-            font-size: 32px;
-            font-weight: 800;
-        }}
-
-        .stats-icon {{
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-        }}
-
-        .stats-total .stats-icon {{
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-primary);
-        }}
-
-        .stats-double .stats-icon {{
-            background: var(--accent-green-glow);
-            color: var(--accent-green);
-            border: 1px solid rgba(0, 230, 118, 0.2);
-        }}
-
-        .stats-opposing .stats-icon {{
-            background: rgba(0, 176, 255, 0.1);
-            color: var(--accent-blue);
-            border: 1px solid rgba(0, 176, 255, 0.2);
-        }}
-
-        /* ==========================================
-           3. 今日雙欄 Top 5 黃金投注推薦專區 (Top 5 Columns)
-           ========================================== */
-        .top-section {{
-            margin-bottom: 45px;
-        }}
-
-        .top-columns-grid {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 28px;
-        }}
-
-        @media (max-width: 992px) {{
-            .top-columns-grid {{
-                grid-template-columns: 1fr;
-                gap: 30px;
-            }}
-        }}
-
-        .top-col {{
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            /* grid 項目的 min-width 預設是 auto(=min-content)，窄螢幕下會被
-               不換行的推薦文字＋走勢藥丸撐爆整欄，導致整頁橫向捲動 */
-            min-width: 0;
-        }}
-
-        .section-main-title {{
-            font-size: 18px;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: var(--text-primary);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 12px;
-        }}
-
-        .pulse-glow {{
-            animation: pulse 1.5s infinite alternate;
-            font-size: 20px;
-        }}
-
-        .pulse-glow-green {{
-            animation: pulse-green 1.5s infinite alternate;
-            font-size: 20px;
-        }}
-
-        @keyframes pulse {{
-            0% {{ transform: scale(1); filter: drop-shadow(0 0 2px rgba(0,176,255,0.5)); }}
-            100% {{ transform: scale(1.15); filter: drop-shadow(0 0 8px rgba(0,176,255,0.9)); }}
-        }}
-
-        @keyframes pulse-green {{
-            0% {{ transform: scale(1); filter: drop-shadow(0 0 2px rgba(0,230,118,0.5)); }}
-            100% {{ transform: scale(1.15); filter: drop-shadow(0 0 8px rgba(0,230,118,0.9)); }}
-        }}
-
-        .top-rec-vertical-list {{
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }}
-
-        /* 橫向列表項目 (Sleek List Item Card) */
-        .top-rec-list-item {{
-            background: var(--surface-color);
-            backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--border-color);
-            border-radius: 14px;
-            padding: 14px 18px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            cursor: pointer;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-            position: relative;
-        }}
-
-        .top-rec-list-item:hover {{
-            transform: translateX(6px);
-            border-color: var(--hover-glow-color, var(--accent-blue));
-            box-shadow: 0 4px 15px var(--hover-shadow-color, rgba(0, 176, 255, 0.15));
-            background: rgba(255, 255, 255, 0.02);
-        }}
-
-        .top-rec-item-left {{
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            overflow: hidden;
-            flex-grow: 1;
-        }}
-
-        .top-rec-logo-container {{
-            display: flex;
-            align-items: center;
-            position: relative;
-            height: 38px;
-            flex-shrink: 0;
-        }}
-
-        .top-rec-logo {{
-            width: 34px;
-            height: 34px;
-            object-fit: contain;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 4px;
-        }}
-
-        .top-rec-logo-container .top-rec-logo:nth-child(2) {{
-            margin-left: -12px;
-            position: relative;
-            z-index: 2;
-            background: rgba(18, 25, 38, 0.95);
-        }}
-
-        .top-rec-item-info {{
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            overflow: hidden;
-            min-width: 0;
-        }}
-
-        .top-rec-item-match {{
-            font-size: 10px;
-            color: var(--text-muted);
-            font-weight: 600;
-            text-transform: uppercase;
-        }}
-
-        .top-rec-item-bet {{
-            font-size: 14px;
-            font-weight: 800;
-            color: var(--text-primary);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }}
-
-        @media (max-width: 768px) {{
-            /* 走勢藥丸接在推薦文字後面，nowrap + ellipsis 會把它整個切掉，
-               窄螢幕改為可換行，讓藥丸掉到下一行仍看得見 */
-            .top-rec-item-bet {{
-                white-space: normal;
-                text-overflow: clip;
-            }}
-        }}
-
-        .top-rec-item-right {{
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-shrink: 0;
-        }}
-
-        .top-rec-item-roi {{
-            font-size: 12px;
-            font-weight: 800;
-            padding: 4px 8px;
-            border-radius: 6px;
-        }}
-
-        /* ==========================================
-           4. 篩選與控制欄 (Filters & Controls)
-           ========================================== */
-        .controls-bar {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 20px;
-            margin-bottom: 30px;
-            border-top: 1px solid var(--border-color);
-            padding-top: 30px;
-        }}
-
-        /* 分類頁籤 (窄螢幕可橫向滑動，不爆版) */
-        .tabs {{
-            display: flex;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-color);
-            padding: 4px;
-            border-radius: 12px;
-            gap: 4px;
-            max-width: 100%;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-        }}
-
-        .tabs::-webkit-scrollbar {{
-            display: none;
-        }}
-
-        .tab-btn {{
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            font-family: var(--font-family);
-            font-size: 14px;
-            font-weight: 600;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }}
-
-        .tab-btn:hover {{
-            color: var(--text-primary);
-        }}
-
-        .tab-btn.active {{
-            background: var(--accent-orange);
-            color: #ffffff;
-            box-shadow: 0 4px 15px var(--accent-orange-glow);
-        }}
-
-        .tab-count {{
-            font-size: 11px;
-            background: rgba(255, 255, 255, 0.15);
-            padding: 2px 6px;
-            border-radius: 99px;
-            color: #ffffff;
-        }}
-
-        .tab-btn.active .tab-count {{
-            background: rgba(0, 0, 0, 0.2);
-        }}
-
-        /* 搜尋輸入框 */
-        .search-wrapper {{
-            position: relative;
-            max-width: 320px;
-            width: 100%;
-        }}
-
-        .search-input {{
-            width: 100%;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-color);
-            padding: 12px 16px 12px 40px;
-            border-radius: 10px;
-            color: var(--text-primary);
-            font-family: var(--font-family);
-            font-size: 14px;
-            outline: none;
-            transition: all 0.2s ease;
-        }}
-
-        .search-input:focus {{
-            border-color: var(--accent-orange);
-            background: rgba(255, 255, 255, 0.05);
-            box-shadow: 0 0 15px rgba(253, 80, 0, 0.15);
-        }}
-
-        .search-icon {{
-            position: absolute;
-            left: 14px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-            font-size: 16px;
-            pointer-events: none;
-        }}
-
-        /* ==========================================
-           5. 對戰卡片網格與詳情 (Match Grid & Accordion)
-           ========================================== */
-        .match-grid {{
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 24px;
-        }}
-
-        .match-card {{
-            background: var(--surface-color);
-            backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--border-color);
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: var(--shadow-premium);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }}
-
-        .match-card:hover {{
-            border-color: rgba(255, 255, 255, 0.12);
-            box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.6);
-        }}
-
-        /* 高亮閃爍動畫 (滾動錨點交互) */
-        @keyframes borderFlash {{
-            0%, 100% {{ border-color: var(--border-color); box-shadow: var(--shadow-premium); }}
-            50% {{ border-color: var(--accent-orange); box-shadow: 0 0 35px rgba(253, 80, 0, 0.5); }}
-        }}
-
-        .highlight-flash {{
-            animation: borderFlash 2s ease;
-        }}
-
-        /* 卡片頭部：隊伍與對戰名稱 */
-        .match-header {{
-            padding: 24px 28px;
-            border-bottom: 1px solid var(--border-color);
-            background: rgba(255, 255, 255, 0.01);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 20px;
-        }}
-
-        .match-meta-left {{
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }}
-
-        .match-time-sub {{
-            font-size: 12px;
-            color: var(--text-secondary);
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-left: 2px;
-        }}
-
-        .teams-versus {{
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            flex-wrap: wrap;
-        }}
-
-        .team-logo {{
-            width: 38px;
-            height: 38px;
-            object-fit: contain;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 10px;
-            padding: 4px;
-            flex-shrink: 0;
-        }}
-
-        .team-name-badge {{
-            font-size: 20px;
-            font-weight: 800;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }}
-
-        .vs-text {{
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--text-muted);
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-color);
-            padding: 4px 8px;
-            border-radius: 6px;
-            text-transform: uppercase;
-        }}
-
-        .match-tags {{
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }}
-
-        .match-tag {{
-            font-size: 12px;
-            font-weight: 700;
-            padding: 6px 12px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }}
-
-        .match-tag.double-tag {{
-            background: rgba(0, 230, 118, 0.1);
-            border: 1px solid rgba(0, 230, 118, 0.3);
-            color: var(--accent-green);
-        }}
-
-        .match-tag.opposing-tag {{
-            background: rgba(0, 176, 255, 0.1);
-            border: 1px solid rgba(0, 176, 255, 0.3);
-            color: var(--accent-blue);
-        }}
-
-        .match-tag.day-game-tag {{
-            background: rgba(251, 191, 36, 0.12);
-            border: 1px solid rgba(251, 191, 36, 0.35);
-            color: #fbbf24;
-            text-shadow: 0 0 8px rgba(251, 191, 36, 0.2);
-        }}
-
-        .match-tag.night-game-tag {{
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-color);
-            color: var(--text-secondary);
-        }}
-
-        .day-game-tag-ai {{
-            background: rgba(251, 191, 36, 0.15);
-            color: #fbbf24;
-            border: 1px solid rgba(251, 191, 36, 0.3);
-            font-size: 11px;
-            font-weight: 700;
-            padding: 3px 8px;
-            border-radius: 6px;
-        }}
-
-        /* 下午場警示橫幅 */
-        .day-game-banner {{
-            background: linear-gradient(90deg, rgba(251, 191, 36, 0.08) 0%, rgba(251, 191, 36, 0.02) 100%);
-            border: 1px solid rgba(251, 191, 36, 0.2);
-            border-radius: 12px;
-            padding: 14px 18px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }}
-
-        .day-game-icon {{
-            font-size: 18px;
-            color: #fbbf24;
-            margin-top: 1px;
-            display: inline-block;
-            animation: warning-pulse 2s infinite alternate;
-        }}
-
-        @keyframes warning-pulse {{
-            0% {{ transform: scale(1); filter: drop-shadow(0 0 1px rgba(251, 191, 36, 0.4)); }}
-            100% {{ transform: scale(1.1); filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.8)); }}
-        }}
-
-        .day-game-text {{
-            font-size: 13px;
-            color: #e5e7eb;
-            line-height: 1.6;
-        }}
-
-        .day-game-text strong {{
-            color: #fbbf24;
-        }}
-
-        /* 核心推薦區域 */
-        .match-body {{
-            padding: 28px;
-        }}
-
-        .section-title {{
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }}
-
-        .rec-container {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 20px;
-            margin-bottom: 24px;
-        }}
-
-        @media (max-width: 768px) {{
-            .rec-container {{
-                grid-template-columns: 1fr;
-            }}
-        }}
-
-        /* 推薦卡片樣式 */
-        .rec-box {{
-            border-radius: 14px;
-            padding: 20px;
-            border: 1px dashed transparent;
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-        }}
-
-        /* 大小分總分推薦箱 */
-        .rec-box.double-box {{
-            background: radial-gradient(circle at top right, rgba(0, 230, 118, 0.05), transparent 60%), rgba(255, 255, 255, 0.02);
-            border-color: rgba(0, 230, 118, 0.25);
-        }}
-
-        .rec-box.double-box::before {{
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 4px;
-            height: 100%;
-            background: var(--accent-green);
-        }}
-
-        /* 勝負/讓分盤推薦箱 */
-        .rec-box.opposing-box {{
-            background: radial-gradient(circle at top right, rgba(0, 176, 255, 0.05), transparent 60%), rgba(255, 255, 255, 0.02);
-            border-color: rgba(0, 176, 255, 0.25);
-        }}
-
-        .rec-box.opposing-box::before {{
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 4px;
-            height: 100%;
-            background: var(--accent-blue);
-        }}
-
-        .rec-title-row {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }}
-
-        .rec-type-badge {{
-            font-size: 12px;
-            font-weight: 800;
-            padding: 4px 10px;
-            border-radius: 6px;
-            text-transform: uppercase;
-        }}
-
-        .double-box .rec-type-badge {{
-            background: var(--accent-green);
-            color: #000000;
-        }}
-
-        .opposing-box .rec-type-badge {{
-            background: var(--accent-blue);
-            color: #000000;
-        }}
-
-        .roi-badge {{
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--accent-green);
-            background: rgba(0, 230, 118, 0.1);
-            padding: 4px 8px;
-            border-radius: 6px;
-        }}
-
-        .rec-headline {{
-            font-size: 16px;
-            font-weight: 800;
-            color: var(--text-primary);
-        }}
-
-        .rec-desc {{
-            font-size: 13px;
-            color: var(--text-secondary);
-            line-height: 1.6;
-        }}
-
-        /* 動態收合摺疊區 (Accordion Details) */
-        .details-trigger {{
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 16px 20px;
-            width: 100%;
-            color: var(--text-secondary);
-            font-family: var(--font-family);
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: all 0.2s ease;
-        }}
-
-        .details-trigger:hover {{
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-primary);
-            border-color: rgba(255, 255, 255, 0.15);
-        }}
-
-        .details-trigger svg {{
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            fill: currentColor;
-        }}
-
-        .match-card.expanded .details-trigger {{
-            background: rgba(255, 255, 255, 0.04);
-            border-bottom-left-radius: 0;
-            border-bottom-right-radius: 0;
-            color: var(--text-primary);
-        }}
-
-        .match-card.expanded .details-trigger svg {{
-            transform: rotate(180deg);
-            color: var(--accent-orange);
-        }}
-
-        .accordion-content {{
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            background: rgba(255, 255, 255, 0.015);
-            border-left: 1px solid var(--border-color);
-            border-right: 1px solid var(--border-color);
-            border-bottom: 1px solid var(--border-color);
-            border-bottom-left-radius: 12px;
-            border-bottom-right-radius: 12px;
-        }}
-
-        /* 這裡的數值只是「沒有 JS 時的保底」。實際展開高度由 syncAccordionHeight()
-           以 scrollHeight 寫成 inline style，因為窄螢幕單欄排版時內容遠超過任何固定值
-           （近期走勢那 8 條就會撐爆），寫死會被 overflow: hidden 直接切掉。 */
-        .match-card.expanded .accordion-content {{
-            max-height: 4000px;
-        }}
-
-        .accordion-inner {{
-            padding: 24px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 24px;
-        }}
-
-        @media (max-width: 768px) {{
-            .accordion-inner {{
-                grid-template-columns: 1fr;
-            }}
-        }}
-
-        /* Recent Form 參考區（不計分，樣式刻意低調於主推薦） */
-        /* rf-block 是 accordion-inner 的兄弟節點，拿不到它的 24px padding，
-           要自己補左右與底部，否則文字會貼齊卡片邊框（底部原本是 0）。
-           分隔線刻意維持整寬，所以用 padding 而不是 margin。 */
-        .rf-block {{
-            margin-top: 20px;
-            padding: 18px 24px 24px;
-            border-top: 1px dashed var(--border-color);
-        }}
-
-        .rf-head {{
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 8px;
-        }}
-
-        .rf-title {{
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--text-primary);
-        }}
-
-        .rf-lean-tag {{
-            font-size: 11px;
-            font-weight: 700;
-            padding: 3px 9px;
-            border-radius: 999px;
-            color: var(--accent-orange);
-            background: rgba(255, 122, 0, 0.1);
-            border: 1px solid rgba(255, 122, 0, 0.25);
-        }}
-
-        .rf-lean-mixed {{
-            color: var(--text-muted);
-            background: rgba(255, 255, 255, 0.04);
-            border-color: var(--border-color);
-        }}
-
-        .rf-caveat {{
-            font-size: 11.5px;
-            line-height: 1.7;
-            color: var(--text-muted);
-            margin-bottom: 12px;
-        }}
-
-        .rf-list {{
-            list-style: none;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }}
-
-        @media (max-width: 768px) {{
-            .rf-list {{
-                grid-template-columns: 1fr;
-            }}
-        }}
-
-        .rf-item {{
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
-            font-size: 12.5px;
-            line-height: 1.6;
-            color: var(--text-secondary);
-            background: rgba(255, 255, 255, 0.015);
-            border: 1px solid rgba(255, 255, 255, 0.04);
-            border-radius: 8px;
-            padding: 9px 12px;
-        }}
-
-        .rf-dot {{
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            margin-top: 7px;
-            flex-shrink: 0;
-            background: var(--text-muted);
-        }}
-
-        .rf-over .rf-dot {{ background: var(--accent-orange); }}
-        .rf-under .rf-dot {{ background: var(--accent-blue); }}
-
-        /* 差一點進 Top 5 的向隅推薦區 */
-        .near-miss-section {{
-            margin-bottom: 40px;
-            padding: 22px 24px;
-            border: 1px dashed var(--border-color);
-            border-radius: 16px;
-            background: rgba(255, 255, 255, 0.012);
-        }}
-
-        .near-miss-caveat {{
-            font-size: 12px;
-            line-height: 1.8;
-            color: var(--text-muted);
-            margin: -6px 0 16px;
-        }}
-
-        .near-miss-list {{
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }}
-
-        .near-miss-item {{
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 14px;
-            padding: 12px 14px;
-            border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            background: rgba(255, 255, 255, 0.015);
-            cursor: pointer;
-            transition: border-color 0.2s ease, background 0.2s ease;
-        }}
-
-        .near-miss-item:hover, .near-miss-item:active {{
-            border-color: rgba(0, 230, 118, 0.25);
-            background: rgba(0, 230, 118, 0.04);
-        }}
-
-        .near-miss-info {{
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            min-width: 0;
-        }}
-
-        .near-miss-match {{
-            font-size: 11.5px;
-            color: var(--text-muted);
-        }}
-
-        .near-miss-bet {{
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 8px;
-        }}
-
-        .near-miss-right {{
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 4px;
-            flex-shrink: 0;
-        }}
-
-        .near-miss-gap {{
-            font-size: 10.5px;
-            color: var(--text-muted);
-        }}
-
-        /* Top 5 清單／AI 卡片上的精簡近期走勢標記 */
-        .rf-pill {{
-            display: inline-block;
-            font-size: 10.5px;
-            font-weight: 700;
-            padding: 2px 7px;
-            border-radius: 999px;
-            white-space: nowrap;
-            vertical-align: middle;
-        }}
-
-        .rf-pill-agree {{
-            color: var(--accent-green);
-            background: rgba(0, 230, 118, 0.1);
-            border: 1px solid rgba(0, 230, 118, 0.22);
-        }}
-
-        .rf-pill-conflict {{
-            color: #ffd200;
-            background: rgba(255, 210, 0, 0.09);
-            border: 1px solid rgba(255, 210, 0, 0.22);
-        }}
-
-        /* 推薦卡上的近期走勢旁證標記 */
-        .rf-flag {{
-            margin-top: 10px;
-            font-size: 11.5px;
-            font-weight: 600;
-            padding: 6px 10px;
-            border-radius: 8px;
-            line-height: 1.6;
-        }}
-
-        .rf-flag-agree {{
-            color: var(--accent-green);
-            background: rgba(0, 230, 118, 0.08);
-            border: 1px solid rgba(0, 230, 118, 0.2);
-        }}
-
-        .rf-flag-conflict {{
-            color: #ffd200;
-            background: rgba(255, 210, 0, 0.07);
-            border: 1px solid rgba(255, 210, 0, 0.2);
-        }}
-
-        .rf-flag-note {{
-            font-weight: 400;
-            color: var(--text-muted);
-        }}
-
-        /* 隊伍趨勢清單 */
-        .team-trends-col h4 {{
-            font-size: 15px;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 16px;
-            border-left: 3px solid var(--accent-orange);
-            padding-left: 8px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }}
-
-        .trend-list {{
-            list-style: none;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }}
-
-        .trend-item {{
-            background: rgba(255, 255, 255, 0.01);
-            border: 1px solid rgba(255, 255, 255, 0.04);
-            border-radius: 10px;
-            padding: 14px 16px;
-            font-size: 13px;
-            line-height: 1.5;
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-        }}
-
-        .trend-item.trend-high {{
-            border-left: 3px solid var(--accent-green);
-        }}
-
-        .trend-item.trend-low {{
-            border-left: 3px solid var(--accent-red);
-            color: var(--text-secondary);
-        }}
-
-        .trend-class-dot {{
-            width: 8px;
-            height: 8px;
-            border-radius: 99px;
-            margin-top: 5px;
-            flex-shrink: 0;
-        }}
-
-        .trend-high .trend-class-dot {{
-            background: var(--accent-green);
-            box-shadow: 0 0 8px var(--accent-green-glow);
-        }}
-
-        .trend-low .trend-class-dot {{
-            background: var(--accent-red);
-            box-shadow: 0 0 8px var(--accent-red-glow);
-        }}
-
-        /* ==========================================
-           6. 空狀態與無數據提示
-           ========================================== */
-        .no-data-card {{
-            background: var(--surface-color);
-            backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--border-color);
-            border-radius: 20px;
-            padding: 60px 40px;
-            text-align: center;
-            box-shadow: var(--shadow-premium);
-        }}
-
-        .no-data-icon {{
-            font-size: 48px;
-            margin-bottom: 20px;
-        }}
-
-        .no-data-card h2 {{
-            font-size: 18px;
-            font-weight: 700;
-            margin-bottom: 8px;
-            color: var(--text-primary);
-        }}
-
-        .no-data-card p {{
-            font-size: 14px;
-            color: var(--text-secondary);
-        }}
-
-        /* ==========================================
-           AI 精選推薦專區 (AI Top 5 Section)
-           ========================================== */
-        .ai-section {{
-            margin-bottom: 45px;
-            background: linear-gradient(135deg, rgba(168, 85, 247, 0.08) 0%, rgba(253, 80, 0, 0.04) 100%);
-            border: 1px solid rgba(168, 85, 247, 0.2);
-            border-radius: 24px;
-            padding: 28px;
-            box-shadow: 0 15px 35px -10px rgba(168, 85, 247, 0.15);
-            backdrop-filter: var(--glass-blur);
-        }}
-
-        .ai-title-row {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            padding-bottom: 16px;
-            margin-bottom: 24px;
-        }}
-
-        .ai-main-title {{
-            font-size: 20px;
-            font-weight: 800;
-            color: #ffffff;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            text-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
-        }}
-
-        .ai-badge-glow {{
-            background: linear-gradient(135deg, #a855f7 0%, #fd5000 100%);
-            color: #ffffff;
-            font-size: 11px;
-            font-weight: 700;
-            padding: 4px 12px;
-            border-radius: 99px;
-            box-shadow: 0 0 12px rgba(168, 85, 247, 0.5);
-            letter-spacing: 0.5px;
-        }}
-
-        /* 下界判讀說明列 */
-        .score-legend {{
-            font-size: 12.5px;
-            color: var(--text-secondary);
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 10px 14px;
-            margin-bottom: 20px;
-            line-height: 1.7;
-        }}
-
-        .ai-cards-grid {{
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-        }}
-
-        @media (max-width: 992px) {{
-            .ai-cards-grid {{
-                grid-template-columns: 1fr;
-                gap: 20px;
-            }}
-        }}
-
-        .ai-card {{
-            background: rgba(8, 12, 20, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 18px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-            cursor: pointer;
-        }}
-
-        .ai-card::before {{
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background: linear-gradient(90deg, #a855f7, #fd5000);
-            opacity: 0.8;
-        }}
-
-        .ai-card:hover {{
-            transform: translateY(-5px);
-            border-color: rgba(168, 85, 247, 0.4);
-            box-shadow: 0 10px 25px -5px rgba(168, 85, 247, 0.15);
-            background: rgba(15, 23, 42, 0.7);
-        }}
-
-        .ai-card-rank {{
-            position: absolute;
-            right: 16px;
-            top: 16px;
-            font-size: 28px;
-            font-weight: 900;
-            color: rgba(255, 255, 255, 0.03);
-            font-style: italic;
-            line-height: 1;
-        }}
-
-        .ai-card-header {{
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }}
-
-        .ai-card-tag {{
-            font-size: 11px;
-            font-weight: 700;
-            padding: 3px 8px;
-            border-radius: 6px;
-        }}
-
-        .ai-card-tag.side-tag {{
-            background: rgba(0, 176, 255, 0.15);
-            color: var(--accent-blue);
-            border: 1px solid rgba(0, 176, 255, 0.25);
-        }}
-
-        .ai-card-tag.total-tag {{
-            background: rgba(0, 230, 118, 0.15);
-            color: var(--accent-green);
-            border: 1px solid rgba(0, 230, 118, 0.25);
-        }}
-
-        .ai-card-match {{
-            font-size: 12px;
-            color: var(--text-muted);
-            font-weight: 600;
-        }}
-
-        .ai-card-bet {{
-            font-size: 16px;
-            font-weight: 800;
-            color: var(--text-primary);
-            margin-top: 4px;
-        }}
-
-        .ai-card-logos {{
-            display: flex;
-            align-items: center;
-            height: 30px;
-        }}
-
-        .ai-card-logo {{
-            width: 28px;
-            height: 28px;
-            object-fit: contain;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 6px;
-            padding: 3px;
-        }}
-
-        .ai-card-logos .ai-card-logo:nth-child(2) {{
-            margin-left: -10px;
-            background: rgba(8, 12, 20, 0.95);
-        }}
-
-        .ai-card-rationale {{
-            font-size: 12px;
-            color: var(--text-secondary);
-            line-height: 1.5;
-            background: rgba(255, 255, 255, 0.02);
-            padding: 10px 12px;
-            border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.03);
-            flex-grow: 1;
-        }}
-
-        .ai-card-footer {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            padding-top: 10px;
-            margin-top: 4px;
-        }}
-
-        .ai-card-roi-label {{
-            font-size: 11px;
-            color: var(--text-muted);
-            font-weight: 600;
-        }}
-
-        .ai-card-roi-val {{
-            font-size: 16px;
-            font-weight: 800;
-            color: var(--accent-gold);
-            text-shadow: 0 0 8px rgba(255, 210, 0, 0.3);
-        }}
-
-        /* ==========================================
-           7. 頁尾
-           ========================================== */
-        footer {{
-            margin-top: 60px;
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 12px;
-            letter-spacing: 0.5px;
-        }}
-
-        /* 語言切換按鈕與排版 */
-        .header-actions {{
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }}
-
-        .lang-toggle-btn {{
-            font-size: 14px;
-            font-weight: 600;
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(165, 180, 252, 0.05) 100%);
-            border: 1px solid rgba(165, 180, 252, 0.3);
-            padding: 8px 16px;
-            border-radius: 8px;
-            color: #a5b4fc;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            user-select: none;
-        }}
-
-        .lang-toggle-btn:hover {{
-            border-color: #a5b4fc;
-            color: #ffffff;
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(165, 180, 252, 0.15) 100%);
-            box-shadow: 0 0 15px rgba(165, 180, 252, 0.2);
-            transform: translateY(-1px);
-        }}
-
-        .lang-toggle-btn:active {{
-            transform: translateY(1px);
-        }}
-
-        /* 搜尋清除按鈕 */
-        .search-clear-btn {{
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            padding: 4px;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            transition: color 0.2s ease;
-            border-radius: 4px;
-            z-index: 5;
-        }}
-        
-        .search-clear-btn:hover {{
-            color: var(--text-primary);
-        }}
-
-        /* 回到頂部懸浮按鈕 */
-        .back-to-top {{
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 46px;
-            height: 46px;
-            border-radius: 50%;
-            background: rgba(22, 31, 48, 0.85);
-            border: 1px solid rgba(165, 180, 252, 0.25);
-            color: #a5b4fc;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 1000;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(10px);
-        }}
-
-        .back-to-top.show {{
-            opacity: 1;
-            visibility: visible;
-        }}
-
-        .back-to-top:hover {{
-            border-color: #a5b4fc;
-            color: #ffffff;
-            background: rgba(99, 102, 241, 0.3);
-            box-shadow: 0 0 15px rgba(165, 180, 252, 0.4);
-            transform: translateY(-2px);
-        }}
-
-        .back-to-top:active {{
-            transform: translateY(1px);
-        }}
-
-        /* ==========================================
-           手機版優化 (Mobile Optimizations)
-           ========================================== */
-        /* 觸控按壓回饋 (hover 效果在觸控裝置無作用) */
-        .ai-card:active,
-        .stats-card:active,
-        .rec-box:active,
-        .top-rec-item:active {{
-            transform: scale(0.985);
-        }}
-
-        .tab-btn:active {{
-            transform: scale(0.96);
-        }}
-
-        @media (max-width: 768px) {{
-            .container {{
-                padding: 0 14px;
-            }}
-
-            header {{
-                padding: 24px 0 14px 0;
-                margin-bottom: 20px;
-            }}
-
-            h1 {{
-                font-size: 22px;
-            }}
-
-            /* 統計卡壓縮成一列三格，讓 AI 精選更早出現 */
-            .stats-grid {{
-                grid-template-columns: repeat(3, 1fr);
-                gap: 10px;
-                margin-top: 20px;
-            }}
-
-            .stats-card {{
-                flex-direction: column-reverse;
-                align-items: center;
-                text-align: center;
-                gap: 6px;
-                padding: 14px 8px;
-            }}
-
-            .stats-icon {{
-                width: 32px;
-                height: 32px;
-                border-radius: 9px;
-                font-size: 15px;
-            }}
-
-            .stats-info h3 {{
-                font-size: 11px;
-                margin-bottom: 4px;
-            }}
-
-            .stats-info p {{
-                font-size: 22px;
-            }}
-
-            /* 縮減層層疊加的留白 */
-            .ai-section {{
-                padding: 16px;
-                border-radius: 18px;
-            }}
-
-            .ai-card,
-            .rec-box {{
-                padding: 16px;
-            }}
-
-            .top-section {{
-                margin-bottom: 32px;
-            }}
-
-            /* 篩選列固定在頂端，捲動時可直接切換分類與搜尋 */
-            .controls-bar {{
-                position: sticky;
-                top: 0;
-                z-index: 50;
-                background: rgba(8, 12, 20, 0.92);
-                backdrop-filter: blur(14px);
-                -webkit-backdrop-filter: blur(14px);
-                border-top: none;
-                border-bottom: 1px solid var(--border-color);
-                padding: 12px 14px;
-                margin: 0 -14px 20px -14px;
-                gap: 10px;
-            }}
-
-            .tabs {{
-                width: 100%;
-            }}
-
-            .tab-btn {{
-                padding: 9px 14px;
-                font-size: 13px;
-            }}
-
-            .search-wrapper {{
-                max-width: 100%;
-            }}
-        }}
-    </style>
+    <style>{DASHBOARD_CSS}</style>
 </head>
 <body>
     <div class="container">
@@ -2802,846 +3659,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
     </script>
 
     <script>
-        // ==========================================
-        // MLB 隊伍名稱中英文對照字典
-        // ==========================================
-        const teamTranslations = {{
-            "Arizona Diamondbacks": "亞利桑那響尾蛇",
-            "Atlanta Braves": "亞特蘭大勇士",
-            "Baltimore Orioles": "巴爾的摩金鶯",
-            "Boston Red Sox": "波士頓紅襪",
-            "Chicago Cubs": "芝加哥小熊",
-            "Chicago White Sox": "芝加哥白襪",
-            "Cincinnati Reds": "辛辛那提紅人",
-            "Cleveland Guardians": "克里夫蘭守護者",
-            "Colorado Rockies": "科羅拉多落磯",
-            "Detroit Tigers": "底特律老虎",
-            "Houston Astros": "休士頓太空人",
-            "Kansas City Royals": "堪薩斯皇家",
-            "Los Angeles Angels": "洛杉磯天使",
-            "Los Angeles Dodgers": "洛杉磯道奇",
-            "Miami Marlins": "邁阿密馬林魚",
-            "Milwaukee Brewers": "密爾瓦基釀酒人",
-            "Minnesota Twins": "明尼蘇達雙城",
-            "New York Mets": "紐約大都會",
-            "New York Yankees": "紐約洋基",
-            "Athletics Athletics": "奧克蘭運動家",
-            "Athletics": "奧克蘭運動家",
-            "Oakland Athletics": "奧克蘭運動家",
-            "Philadelphia Phillies": "費城費城人",
-            "Pittsburgh Pirates": "匹茲堡海盜",
-            "San Diego Padres": "聖地牙哥教士",
-            "San Francisco Giants": "舊金山巨人",
-            "Seattle Mariners": "西雅圖水手",
-            "St. Louis Cardinals": "聖路易紅雀",
-            "Tampa Bay Rays": "坦帕灣光芒",
-            "Texas Rangers": "德州遊騎兵",
-            "Toronto Blue Jays": "多倫多藍鳥",
-            "Washington Nationals": "華盛頓國民",
-            "Diamondbacks": "亞利桑那響尾蛇",
-            "Braves": "亞特蘭大勇士",
-            "Orioles": "巴爾的摩金鶯",
-            "Red Sox": "波士頓紅襪",
-            "Cubs": "芝加哥小熊",
-            "White Sox": "芝加哥白襪",
-            "Reds": "辛辛那提紅人",
-            "Guardians": "克里夫蘭守護者",
-            "Rockies": "科羅拉多落磯",
-            "Tigers": "底特律老虎",
-            "Astros": "休士頓太空人",
-            "Royals": "堪薩斯皇家",
-            "Angels": "洛杉磯天使",
-            "Dodgers": "洛杉磯道奇",
-            "Marlins": "邁阿密馬林魚",
-            "Brewers": "密爾瓦基釀酒人",
-            "Twins": "明尼蘇達雙城",
-            "Mets": "紐約大都會",
-            "Yankees": "紐約洋基",
-            "Phillies": "費城費城人",
-            "Pirates": "匹茲堡海盜",
-            "Padres": "聖地牙哥教士",
-            "Giants": "舊金山巨人",
-            "Mariners": "西雅圖水手",
-            "Cardinals": "聖路易紅雀",
-            "Rays": "坦帕灣光芒",
-            "Rangers": "德州遊騎兵",
-            "Blue Jays": "多倫多藍鳥",
-            "Nationals": "華盛頓國民"
-        }};
-
-        // 每次載入固定預設繁體中文 (不記憶上次切換，避免曾切過英文後預設變英文)
-        let currentLanguage = 'zh';
-
-        function translateText(text) {{
-            if (!text) return text;
-            if (currentLanguage === 'en') {{
-                return text.replace(/Athletics Athletics/g, "Athletics");
-            }}
-            let translated = text;
-            const sortedKeys = Object.keys(teamTranslations).sort((a, b) => b.length - a.length);
-            for (const key of sortedKeys) {{
-                const regex = new RegExp(key, 'g');
-                translated = translated.replace(regex, teamTranslations[key]);
-            }}
-            return translated;
-        }}
-
-        function toggleLanguage() {{
-            currentLanguage = currentLanguage === 'zh' ? 'en' : 'zh';
-            const btn = document.getElementById('lang-toggle');
-            if (btn) {{
-                btn.innerHTML = `🌐 隊伍名稱：${{currentLanguage === 'zh' ? '中文' : 'English'}}`;
-            }}
-            
-            renderAiTop5();
-            renderTopLists();
-            renderNearMisses();
-            renderMatchups();
-        }}
-
-        let allMatchups = [];
-        let topSides = [];
-        let topTotals = [];
-        let topAi = [];
-        let currentTab = 'all';
-        let searchQuery = '';
-
-        window.addEventListener('DOMContentLoaded', () => {{
-            const btn = document.getElementById('lang-toggle');
-            if (btn) {{
-                btn.innerHTML = `🌐 隊伍名稱：${{currentLanguage === 'zh' ? '中文' : 'English'}}`;
-            }}
-
-            const rawData = document.getElementById('matchups-data').textContent;
-            const rawSides = document.getElementById('top-sides-data').textContent;
-            const rawTotals = document.getElementById('top-totals-data').textContent;
-            const rawAi = document.getElementById('top-ai-data').textContent;
-            try {{
-                allMatchups = JSON.parse(rawData);
-                topSides = JSON.parse(rawSides);
-                topTotals = JSON.parse(rawTotals);
-                topAi = JSON.parse(rawAi);
-                
-                renderAiTop5();
-                renderTopLists();
-                renderNearMisses();
-                renderMatchups();
-            }} catch(e) {{
-                console.error("解析 JSON 數據出錯:", e);
-                document.getElementById('matchups-container').innerHTML = `
-                    <div class="no-data-card">
-                        <div class="no-data-icon">⚠️</div>
-                        <h2>數據加載錯誤</h2>
-                        <p>無法讀取嵌入的 JSON 對戰數據。</p>
-                    </div>
-                `;
-            }}
-        }});
-
-        // Recent Form 句子裡的球隊簡稱以 @@Rays@@ 形式標記，依目前語言設定翻譯
-        function renderRecentFormText(zh) {{
-            return zh.replace(/@@([^@]+)@@/g, (_, name) => translateText(name));
-        }}
-
-        // 詳細趨勢區的單行文字。中文模式優先用 Python 譯好的 text_zh（隊名是 @@佔位符@@，
-        // 與 Recent Form 共用同一套替換機制）；英文模式或翻不出來時退回 covers 原文。
-        function renderTrendText(t) {{
-            if (currentLanguage === 'zh' && t.text_zh) {{
-                return renderRecentFormText(t.text_zh);
-            }}
-            return (t.text || '').replace(/Athletics Athletics/g, 'Athletics');
-        }}
-
-        // 勝負盤（獨贏／讓分）的近期走勢評估——單場卡片與 Top 5 共用的唯一判斷來源。
-        //
-        // covers 的 Recent Form 只有「直接勝負」紀錄，沒有讓分資料，但兩者關聯依盤口而異：
-        //   受讓 +1.5：直接獲勝**必定**過盤（獲勝是過盤的子集），因此直接勝負是有效佐證。
-        //   讓分 -1.5：直接獲勝只是必要條件，還得贏 2 分以上，故標為「較弱」。
-        // 實測 30 隊的獨贏命中率與讓分過盤率相關係數僅 0.407，不足以等同看待。
-        function recentFormSideEval(m, rec) {{
-            if (!m || !rec || rec.market !== 'Moneyline' && rec.market !== 'Run Line') return null;
-            const rf = m.recent_form || [];
-            const forCount = rf.filter(t => t.win_team && t.win_team === rec.bet_on).length;
-            const againstCount = rf.filter(t => t.win_team && t.win_team === rec.bet_against).length;
-            const diff = forCount - againstCount;
-            if (Math.abs(diff) < 2) return null;
-            return {{
-                status: diff > 0 ? 'agree' : 'conflict',
-                forCount, againstCount,
-                weak: rec.market === 'Run Line' && rec.spread_side === '讓分'
-            }};
-        }}
-
-        // Top 5 清單用的精簡版標記。規則與單場卡片完全一致，差別只在版面。
-        function recentFormStatus(rec) {{
-            const m = (allMatchups || []).find(x => x.path.split('/').pop() === String(rec.matchup_id));
-            if (!m) return null;
-            if (rec.type === 'double') {{
-                const lean = (m.rf_lean || {{}}).lean;
-                if (!lean || !rec.direction) return null;
-                return {{ status: lean === rec.direction ? 'agree' : 'conflict', weak: false }};
-            }}
-            if (rec.type === 'opposing') {{
-                const ev = recentFormSideEval(m, rec);
-                return ev ? {{ status: ev.status, weak: ev.weak }} : null;
-            }}
-            return null;
-        }}
-
-        function recentFormPill(rec) {{
-            const ev = recentFormStatus(rec);
-            if (!ev) return '';
-            const label = (ev.status === 'agree' ? '✅ 走勢同向' : '⚠️ 走勢反向') + (ev.weak ? '(弱)' : '');
-            return `<span class="rf-pill rf-pill-${{ev.status}}">${{label}}</span>`;
-        }}
-
-        // 勝負盤推薦的完整旁證標記，資料來源一律是「直接勝負」紀錄，文案依盤口說清楚適用性。
-        function recentFormSideFlag(m, rec) {{
-            const ev = recentFormSideEval(m, rec);
-            if (!ev) return '';
-            const agree = ev.status === 'agree';
-            const focus = agree ? rec.bet_on : rec.bet_against;
-            let applicability = '';
-            if (rec.market === 'Run Line') {{
-                applicability = ev.weak
-                    ? '——但本推薦為讓分 1.5，需贏 2 分以上才過盤，直接勝負僅供參考'
-                    : '——本推薦為受讓 1.5，直接獲勝即必定過盤';
-            }}
-            return `
-                <div class="rf-flag ${{agree ? 'rf-flag-agree' : 'rf-flag-conflict'}}">
-                    ${{agree ? '✅ 近期走勢同向' : '⚠️ 近期走勢反向'}}${{ev.weak ? '（較弱）' : ''}}：近期直接勝負的連勝紀錄集中在
-                    ${{translateText(focus)}}（${{ev.forCount}} 比 ${{ev.againstCount}}）${{applicability}}
-                    <span class="rf-flag-note">（僅旁證，未計入分數）</span>
-                </div>
-            `;
-        }}
-
-        // 推薦方向 vs 近期走勢的旁證標記。只在近期走勢明顯一面倒時顯示，
-        // 且刻意不影響分數與排序——這些趨勢樣本太小且經過篩選，只能當提醒。
-        function recentFormFlag(m, direction) {{
-            const lean = (m.rf_lean || {{}}).lean;
-            if (!direction || !lean) return '';
-            const agree = lean === direction;
-            const leanZh = lean === 'Over' ? '大分' : '小分';
-            return `
-                <div class="rf-flag ${{agree ? 'rf-flag-agree' : 'rf-flag-conflict'}}">
-                    ${{agree ? '✅ 近期走勢同向' : '⚠️ 近期走勢反向'}}：該場近期連勝紀錄偏向${{leanZh}}
-                    <span class="rf-flag-note">（僅旁證，未計入分數）</span>
-                </div>
-            `;
-        }}
-
-        // 全場趨勢皆為 0 代表 covers 尚未發佈（並非篩選後沒有結果），兩者要分開提示
-        function trendsPending() {{
-            if (!allMatchups || allMatchups.length === 0) return false;
-            return allMatchups.reduce((sum, m) => sum + (m.processed_trends || []).length, 0) === 0;
-        }}
-
-        // 依情境回傳空狀態文案：無賽事 / covers 未發佈 / 有趨勢但無合格組合
-        function emptyStateText(marketLabel) {{
-            if (!allMatchups || allMatchups.length === 0) {{
-                return '今日無賽事資料。';
-            }}
-            if (trendsPending()) {{
-                return '⏳ covers.com 尚未發佈今日趨勢（通常美東上午發佈完畢），稍後的自動更新會補上，請晚點再看。';
-            }}
-            return `今日暫無符合篩選標準的「${{marketLabel}}」推薦組合。`;
-        }}
-
-        // 依「保守命中率下界」強弱回傳顏色：綠 >=55 強 / 黃 50~55 普通 / 灰 <50 弱
-        function scoreColor(s) {{
-            if (s >= 55) return 'var(--accent-green)';
-            if (s >= 50) return '#ffd200';
-            return 'var(--text-muted)';
-        }}
-
-        function scoreBadgeStyle(s) {{
-            if (s >= 55) return 'color: var(--accent-green); background: rgba(0, 230, 118, 0.12); border: 1px solid rgba(0, 230, 118, 0.25);';
-            if (s >= 50) return 'color: #ffd200; background: rgba(255, 210, 0, 0.1); border: 1px solid rgba(255, 210, 0, 0.25);';
-            return 'color: var(--text-muted); background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color);';
-        }}
-
-        function renderAiTop5() {{
-            const section = document.getElementById('ai-top5-section');
-            if (!section) return;
-            
-            if (topAi.length === 0) {{
-                // 整區隱藏會讓人以為網站壞了（使用者實際反映過），所以三種空狀態都要講清楚：
-                // covers 未發佈 / 今日無賽事 / 有趨勢但沒有推薦達到 50% 門檻
-                const pending = trendsPending();
-                const msg = pending
-                    ? `⏳ <strong style="color: #ffd200;">covers.com 尚未發佈今日趨勢</strong>，因此暫時沒有推薦。
-                       趨勢通常在美東上午發佈完畢，之後的自動更新會補上——請稍後再重新整理。`
-                    : `😴 <strong style="color: #ffd200;">今日沒有達標的推薦</strong>：所有組合的保守命中率都低於
-                       ${{TOP_PICK_MIN_SCORE}}%，依本站標準屬於「僅供參考」等級，因此不列入精選。
-                       <strong>這是正常結果，不是資料出錯</strong>——冷門日寧可不推。`;
-                section.innerHTML = `
-                    <div class="ai-title-row">
-                        <h2 class="ai-main-title">🤖 今日 AI 智慧精選 Top 5 黃金推薦</h2>
-                    </div>
-                    <div class="score-legend" style="border-color: rgba(255, 210, 0, 0.3);">
-                        ${{msg}}
-                    </div>
-                `;
-                section.style.display = '';
-                return;
-            }}
-            
-            let cardsHtml = '';
-            topAi.forEach((rec, idx) => {{
-                const rankNum = idx + 1;
-                const tagClass = rec.type === 'opposing' ? 'side-tag' : 'total-tag';
-                const tagText = rec.type === 'opposing' ? '🎯 勝負/讓分' : '🔥 大小總分';
-                const roiLabel = '保守命中率';
-                
-                let logosHtml = '';
-                if (rec.logo_b) {{
-                    logosHtml = `
-                        <img src="${{rec.logo_a}}" class="ai-card-logo" onerror="this.style.display='none'" />
-                        <img src="${{rec.logo_b}}" class="ai-card-logo" onerror="this.style.display='none'" />
-                    `;
-                }} else {{
-                    logosHtml = `
-                        <img src="${{rec.logo_a}}" class="ai-card-logo" onerror="this.style.display='none'" />
-                    `;
-                }}
-                
-                const dayGameBadge = rec.is_day_game 
-                    ? `<span class="ai-card-tag day-game-tag-ai">⚠️ ${{currentLanguage === 'zh' ? '下午場' : 'Day Game'}}</span>` 
-                    : '';
-                
-                cardsHtml += `
-                    <div class="ai-card" onclick="scrollToMatch('match-card-${{rec.matchup_id}}')">
-                        <div class="ai-card-rank">#0${{rankNum}}</div>
-                        <div class="ai-card-header">
-                            <span class="ai-card-tag ${{tagClass}}">${{tagText}}</span>
-                            ${{dayGameBadge}}
-                            ${{recentFormPill(rec)}}
-                            <span class="ai-card-match">${{translateText(rec.matchup_name)}}</span>
-                        </div>
-                        <div>
-                            <div class="ai-card-bet">${{translateText(rec.recommendation)}}</div>
-                        </div>
-                        <div class="ai-card-logos">
-                            ${{logosHtml}}
-                        </div>
-                        <div class="ai-card-rationale">
-                            ${{translateText(rec.rationale)}}
-                        </div>
-                        <div class="ai-card-footer">
-                            <span class="ai-card-roi-label">${{roiLabel}}</span>
-                            <span class="ai-card-roi-val" style="color: ${{scoreColor(rec.score)}}">${{rec.score}}%</span>
-                        </div>
-                    </div>
-                `;
-            }});
-            
-            section.innerHTML = `
-                <div class="ai-title-row">
-                    <h2 class="ai-main-title">
-                        🤖 今日 AI 智慧精選 Top 5 黃金推薦
-                    </h2>
-                    <span class="ai-badge-glow">AI OPTIMIZED</span>
-                </div>
-                <div class="score-legend">
-                    📖 保守命中率怎麼看：<span style="color: var(--accent-green); font-weight: 700;">≥55% 強訊號</span> ·
-                    <span style="color: #ffd200; font-weight: 700;">50~55% 普通</span> ·
-                    <span style="color: var(--text-muted); font-weight: 700;">&lt;50% 僅供參考</span>
-                    （過盤率已依樣本數扣除運氣水分，小樣本會被自動壓低）
-                </div>
-                <div class="ai-cards-grid">
-                    ${{cardsHtml}}
-                </div>
-            `;
-        }}
-
-        // 「差一點」的判定門檻。近期走勢刻意不影響排序，所以落榜的推薦本來就代表
-        // 命中率證據較弱——只有在分數差小到沒有實質意義時，走勢同向才值得拿來補救。
-        const NEAR_MISS_MARGIN = 3.0;   // 與該類 Top 5 最低分的差距上限
-        // 由 Python 的 TOP_PICK_MIN_SCORE 帶入，讓正榜與向隅區共用同一個門檻。
-        // 以前兩邊各寫各的：向隅區擋掉 <50%，正榜卻放行，導致 49 分的推薦
-        // 進不了向隅區反而進得了 Top 5。改門檻只要改 Python 那一個常數。
-        const TOP_PICK_MIN_SCORE = {TOP_PICK_MIN_SCORE};
-        const NEAR_MISS_MIN_SCORE = TOP_PICK_MIN_SCORE;
-
-        function collectNearMisses() {{
-            if (!allMatchups || allMatchups.length === 0) return [];
-            const inTop = new Set(
-                [...topSides, ...topTotals].map(r => `${{r.matchup_id}}|${{r.recommendation}}`)
-            );
-            // Top 5 已列出同場同隊的推薦時，這裡不再列出它的另一種盤口版本
-            // （買 X 獨贏與買 X 讓 1.5 是同一個看法，重複列出只會佔版面）
-            const shownTeams = new Set(
-                [...topSides, ...topTotals]
-                    .filter(r => r.bet_on)
-                    .map(r => `${{r.matchup_id}}|${{r.bet_on}}`)
-            );
-            const cutSides = topSides.length ? Math.min(...topSides.map(r => r.score)) : null;
-            const cutTotals = topTotals.length ? Math.min(...topTotals.map(r => r.score)) : null;
-            const out = [];
-            allMatchups.forEach(m => {{
-                const mid = m.path.split('/').pop();
-                const consider = (rec, type, cutoff, marketLabel) => {{
-                    if (cutoff === null) return;
-                    if (inTop.has(`${{mid}}|${{rec.recommendation}}`)) return;
-                    if (rec.bet_on && shownTeams.has(`${{mid}}|${{rec.bet_on}}`)) return;
-                    if (rec.score < NEAR_MISS_MIN_SCORE) return;
-                    if (cutoff - rec.score > NEAR_MISS_MARGIN) return;
-                    const ev = recentFormStatus(Object.assign({{}}, rec, {{ matchup_id: mid, type }}));
-                    if (!ev || ev.status !== 'agree') return;
-                    out.push({{
-                        matchup_id: mid,
-                        matchup_name: `${{m.team_a}} vs ${{m.team_b}}`,
-                        market_label: marketLabel,
-                        bet_on: rec.bet_on || null,
-                        recommendation: rec.recommendation,
-                        score: rec.score,
-                        gap: Math.round((cutoff - rec.score) * 10) / 10,
-                        weak: ev.weak
-                    }});
-                }};
-                (m.opposing_trends || []).forEach(r => consider(r, 'opposing', cutSides, r.market_zh));
-                (m.double_positive || []).forEach(r => consider(r, 'double', cutTotals, r.market_type));
-            }});
-            // 與 Top 5 相同的去重原則：同場同隊只留分數最高的一筆
-            // （否則「買 X 受讓 1.5」與「買 X 獨贏」會在這裡並列，等於換個地方重複）
-            out.sort((a, b) => b.score - a.score);
-            const kept = [];
-            const seenTeam = new Set();
-            out.forEach(it => {{
-                if (it.bet_on) {{
-                    const key = `${{it.matchup_id}}|${{it.bet_on}}`;
-                    if (seenTeam.has(key)) return;
-                    seenTeam.add(key);
-                }}
-                kept.push(it);
-            }});
-            return kept.slice(0, 5);
-        }}
-
-        function renderNearMisses() {{
-            const section = document.getElementById('near-miss-section');
-            if (!section) return;
-            const items = collectNearMisses();
-            if (items.length === 0) {{
-                section.style.display = 'none';
-                section.innerHTML = '';
-                return;
-            }}
-            const rows = items.map(it => `
-                <div class="near-miss-item" onclick="scrollToMatch('match-card-${{it.matchup_id}}')">
-                    <div class="near-miss-info">
-                        <span class="near-miss-match">${{translateText(it.matchup_name)}} • ${{it.market_label}}</span>
-                        <span class="near-miss-bet">
-                            ${{translateText(it.recommendation)}}
-                            <span class="rf-pill rf-pill-agree">✅ 走勢同向${{it.weak ? '(弱)' : ''}}</span>
-                        </span>
-                    </div>
-                    <div class="near-miss-right">
-                        <span class="top-rec-item-roi" style="${{scoreBadgeStyle(it.score)}}">保守 ${{it.score}}%</span>
-                        <span class="near-miss-gap">差 ${{it.gap}} 分</span>
-                    </div>
-                </div>
-            `).join('');
-            section.innerHTML = `
-                <h2 class="section-main-title">👀 差一點進 Top 5，但近期走勢同向</h2>
-                <p class="near-miss-caveat">
-                    以下推薦的保守命中率只比 Top 5 門檻低 ${{NEAR_MISS_MARGIN}} 分以內（等於實質平手），
-                    且近期走勢方向一致，因此一併列出供你留意。
-                    <strong>排序仍只看保守命中率</strong>，近期走勢不加分；分數低於 ${{NEAR_MISS_MIN_SCORE}}% 的一律不列。
-                </p>
-                <div class="near-miss-list">${{rows}}</div>
-            `;
-            section.style.display = '';
-        }}
-
-        function renderTopLists() {{
-            const sidesContainer = document.getElementById('top-sides-container');
-            sidesContainer.innerHTML = '';
-            
-            if (topSides.length === 0) {{
-                sidesContainer.innerHTML = `<div class="no-data-card" style="padding: 24px;"><p style="font-size: 13px; color: var(--text-muted); font-style: italic;">${{emptyStateText('勝負/讓分盤')}}</p></div>`;
-            }} else {{
-                topSides.forEach(rec => {{
-                    const cardHtml = `
-                        <div class="top-rec-list-item" style="--hover-glow-color: var(--accent-blue); --hover-shadow-color: rgba(0, 176, 255, 0.15);" onclick="scrollToMatch('match-card-${{rec.matchup_id}}')">
-                            <div class="top-rec-item-left">
-                                <div class="top-rec-logo-container">
-                                    <img src="${{rec.logo}}" class="top-rec-logo" onerror="this.style.display='none'" />
-                                </div>
-                                <div class="top-rec-item-info">
-                                    <span class="top-rec-item-match">
-                                        ${{translateText(rec.matchup_name)}} • ${{rec.market_type}}
-                                        ${{rec.is_day_game ? `<span style="color: #fbbf24; font-weight: 700; margin-left: 6px;">⚠️ ${{currentLanguage === 'zh' ? '下午場' : 'Day Game'}}</span>` : ''}}
-                                    </span>
-                                    <span class="top-rec-item-bet">${{translateText(rec.recommendation)}} ${{recentFormPill(rec)}}</span>
-                                </div>
-                            </div>
-                            <div class="top-rec-item-right">
-                                <span class="top-rec-item-roi" style="${{scoreBadgeStyle(rec.score)}}">保守 ${{rec.score}}%</span>
-                            </div>
-                        </div>
-                    `;
-                    sidesContainer.insertAdjacentHTML('beforeend', cardHtml);
-                }});
-            }}
-
-            const totalsContainer = document.getElementById('top-totals-container');
-            totalsContainer.innerHTML = '';
-            
-            if (topTotals.length === 0) {{
-                totalsContainer.innerHTML = `<div class="no-data-card" style="padding: 24px;"><p style="font-size: 13px; color: var(--text-muted); font-style: italic;">${{emptyStateText('大小分總分')}}</p></div>`;
-            }} else {{
-                topTotals.forEach(rec => {{
-                    const cardHtml = `
-                        <div class="top-rec-list-item" style="--hover-glow-color: var(--accent-green); --hover-shadow-color: rgba(0, 230, 118, 0.15);" onclick="scrollToMatch('match-card-${{rec.matchup_id}}')">
-                            <div class="top-rec-item-left">
-                                <div class="top-rec-logo-container">
-                                    <img src="${{rec.logo_a}}" class="top-rec-logo" onerror="this.style.display='none'" />
-                                    <img src="${{rec.logo_b}}" class="top-rec-logo" onerror="this.style.display='none'" />
-                                </div>
-                                <div class="top-rec-item-info">
-                                    <span class="top-rec-item-match">
-                                        ${{translateText(rec.matchup_name)}} • ${{rec.market_type}}
-                                        ${{rec.is_day_game ? `<span style="color: #fbbf24; font-weight: 700; margin-left: 6px;">⚠️ ${{currentLanguage === 'zh' ? '下午場' : 'Day Game'}}</span>` : ''}}
-                                    </span>
-                                    <span class="top-rec-item-bet">${{translateText(rec.recommendation)}} ${{recentFormPill(rec)}}</span>
-                                </div>
-                            </div>
-                            <div class="top-rec-item-right">
-                                <span class="top-rec-item-roi" style="${{scoreBadgeStyle(rec.score)}}">保守 ${{rec.score}}%</span>
-                            </div>
-                        </div>
-                    `;
-                    totalsContainer.insertAdjacentHTML('beforeend', cardHtml);
-                }});
-            }}
-        }}
-
-        function scrollToMatch(id) {{
-            const el = document.getElementById(id);
-            if (el) {{
-                if (!el.classList.contains('expanded')) {{
-                    el.classList.add('expanded');
-                    syncAccordionHeight(el);
-                }}
-                el.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
-                el.classList.add('highlight-flash');
-                setTimeout(() => {{
-                    el.classList.remove('highlight-flash');
-                }}, 2000);
-            }}
-        }}
-
-        // 切換頁籤
-        function switchTab(tab, element) {{
-            currentTab = tab;
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            element.classList.add('active');
-            renderMatchups();
-        }}
-
-        // 搜尋隊伍名稱與清除按鈕處理
-        function handleSearch() {{
-            const box = document.getElementById('search-box');
-            const clearBtn = document.getElementById('search-clear');
-            searchQuery = box.value.trim().toLowerCase();
-            if (clearBtn) {{
-                clearBtn.style.display = searchQuery ? 'flex' : 'none';
-            }}
-            renderMatchups();
-        }}
-
-        // 清除搜尋框內容
-        function clearSearch() {{
-            const box = document.getElementById('search-box');
-            const clearBtn = document.getElementById('search-clear');
-            if (box) {{
-                box.value = '';
-            }}
-            if (clearBtn) {{
-                clearBtn.style.display = 'none';
-            }}
-            searchQuery = '';
-            renderMatchups();
-        }}
-
-        // 監聽滾動以顯示/隱藏「回到頂部」按鈕
-        window.addEventListener('scroll', () => {{
-            const btn = document.getElementById('back-to-top-btn');
-            if (btn) {{
-                if (window.scrollY > 400) {{
-                    btn.classList.add('show');
-                }} else {{
-                    btn.classList.remove('show');
-                }}
-            }}
-        }});
-
-        // 平滑滾動到頂部
-        function scrollToTop() {{
-            window.scrollTo({{
-                top: 0,
-                behavior: 'smooth'
-            }});
-        }}
-
-        // 依實際內容高度設定摺疊區的 max-height（收合時清成空字串讓 CSS 的 0 生效）。
-        // 不能用固定值：窄螢幕是單欄排版，趨勢兩欄加上近期走勢會超過任何寫死的數字，
-        // 超出的部分會被 overflow: hidden 吃掉，看起來像「只剩前一兩條」。
-        function syncAccordionHeight(cardElement) {{
-            const content = cardElement.querySelector('.accordion-content');
-            if (!content) return;
-            if (cardElement.classList.contains('expanded')) {{
-                content.style.maxHeight = content.scrollHeight + 'px';
-            }} else {{
-                content.style.maxHeight = '';
-            }}
-        }}
-
-        // 展開/收合卡片摺疊區
-        function toggleExpand(cardElement) {{
-            cardElement.classList.toggle('expanded');
-            syncAccordionHeight(cardElement);
-        }}
-
-        // 轉向橫式或改變視窗寬度時欄數會變，已展開的卡片要重新量一次
-        window.addEventListener('resize', () => {{
-            document.querySelectorAll('.match-card.expanded').forEach(syncAccordionHeight);
-        }});
-
-        // 渲染賽事清單
-        function renderMatchups() {{
-            const container = document.getElementById('matchups-container');
-            container.innerHTML = '';
-            
-            const filtered = allMatchups.filter(m => {{
-                if (currentTab === 'double' && m.double_positive.length === 0) return false;
-                if (currentTab === 'opposing' && m.opposing_trends.length === 0) return false;
-                
-                if (searchQuery) {{
-                    const titleEn = (m.team_a + " vs " + m.team_b).toLowerCase();
-                    const titleZh = (translateText(m.team_a) + " vs " + translateText(m.team_b)).toLowerCase();
-                    if (!titleEn.includes(searchQuery) && !titleZh.includes(searchQuery)) return false;
-                }}
-                
-                return true;
-            }});
-
-            if (filtered.length === 0) {{
-                container.innerHTML = `
-                    <div class="no-data-card">
-                        <div class="no-data-icon">🛸</div>
-                        <h2>無符合條件的對戰組合</h2>
-                        <p>請嘗試清除搜尋詞或切換其他分類頁籤。</p>
-                    </div>
-                `;
-                return;
-            }}
-
-            filtered.forEach(m => {{
-                const doubleTags = m.double_positive.length > 0 ? `<span class="match-tag double-tag">🔥 大小分總分 (${{m.double_positive.length}})</span>` : '';
-                const opposingTags = m.opposing_trends.length > 0 ? `<span class="match-tag opposing-tag">🎯 勝負/讓分盤 (${{m.opposing_trends.length}})</span>` : '';
-                const dayGameTag = m.is_day_game 
-                    ? `<span class="match-tag day-game-tag">\u26a0\ufe0f ${{currentLanguage === 'zh' ? '\u4e0b\u5348\u5834' : 'Day Game'}}</span>` 
-                    : '';
-                
-                let dayGameBanner = '';
-                if (m.is_day_game) {{
-                    const bannerText = currentLanguage === 'zh' 
-                        ? '<strong>此賽事為下午場 (Day Game)</strong>：主場當地時間 17:00 前開打（多數落在 13:00~14:00）。下午場由於球員生理時鐘、陣容輪替(主力休息、備用捕手先發)與牛棚調度等變數極多，盤口<strong>極易開出反邊</strong>，建議<strong>避開</strong>或考慮<strong>反下</strong>。'
-                        : '<strong>This is a Day Game</strong>: First pitch before 5:00 PM home local time (most start 1:00-2:00 PM). Day games have high volatility due to circadian rhythm shifts, lineup rotations (resting stars/starting backup catchers), and bullpen fatigue. They are <strong>prone to upset/reverse results</strong>. Consider <strong>avoiding</strong> or <strong>betting against</strong> the trend.';
-                    dayGameBanner = `
-                        <div class="day-game-banner">
-                            <span class="day-game-icon">⚠️</span>
-                            <div class="day-game-text">
-                                ${{bannerText}}
-                            </div>
-                        </div>
-                    `;
-                }}
-                
-                let recsHtml = '';
-                
-                if (m.double_positive.length > 0 && (currentTab === 'all' || currentTab === 'double')) {{
-                    recsHtml += `
-                        <div class="section-title">
-                            <span>🔥 大小分總分黃金推薦</span>
-                        </div>
-                        <div class="rec-container">
-                    `;
-                    m.double_positive.forEach(rec => {{
-                        recsHtml += `
-                            <div class="rec-box double-box">
-                                <div class="rec-title-row">
-                                    <span class="rec-type-badge">大小分總分 • ${{rec.market_type}}</span>
-                                    <span class="roi-badge" style="${{scoreBadgeStyle(rec.score)}}">過盤: ${{rec.hit_detail}} | 保守 ${{rec.score}}%</span>
-                                </div>
-                                <div class="rec-headline">${{translateText(rec.recommendation)}}</div>
-                                <div class="rec-desc">${{translateText(rec.confidence)}}</div>
-                                ${{recentFormFlag(m, rec.direction)}}
-                            </div>
-                        `;
-                    }});
-                    recsHtml += `</div>`;
-                }}
-                
-                if (m.opposing_trends.length > 0 && (currentTab === 'all' || currentTab === 'opposing')) {{
-                    recsHtml += `
-                        <div class="section-title">
-                            <span>🎯 勝負/讓分盤黃金推薦</span>
-                        </div>
-                        <div class="rec-container">
-                    `;
-                    m.opposing_trends.forEach(rec => {{
-                        recsHtml += `
-                            <div class="rec-box opposing-box">
-                                <div class="rec-title-row">
-                                    <span class="rec-type-badge">勝負/讓分盤 • ${{rec.market_zh}}</span>
-                                    <span class="roi-badge" style="${{scoreBadgeStyle(rec.score)}}">過盤: ${{rec.hit_detail}} | 保守 ${{rec.score}}%</span>
-                                </div>
-                                <div class="rec-headline">${{translateText(rec.recommendation)}}</div>
-                                <div class="rec-desc">${{translateText(rec.confidence)}}</div>
-                                ${{recentFormSideFlag(m, rec)}}
-                            </div>
-                        `;
-                    }});
-                    recsHtml += `</div>`;
-                }}
-
-                if (m.double_positive.length === 0 && m.opposing_trends.length === 0) {{
-                    const cardEmptyText = (m.processed_trends || []).length === 0
-                        ? '⏳ covers.com 尚未發佈此賽事的趨勢，稍後自動更新會補上。'
-                        : '此賽事今日無符合篩選標準的黃金推薦投注組合。';
-                    recsHtml += `
-                        <div style="padding: 10px 0; color: var(--text-muted); font-size: 13px; font-style: italic;">
-                            ${{cardEmptyText}}
-                        </div>
-                    `;
-                }}
-
-                let teamATrendsHtml = '';
-                let teamBTrendsHtml = '';
-                
-                const highTrendsA = m.processed_trends.filter(t => t.team === m.team_a && t.class === 'High');
-                const lowTrendsA = m.processed_trends.filter(t => t.team === m.team_a && t.class === 'Low');
-                const highTrendsB = m.processed_trends.filter(t => t.team === m.team_b && t.class === 'High');
-                const lowTrendsB = m.processed_trends.filter(t => t.team === m.team_b && t.class === 'Low');
-
-                const trendRow = t => {{
-                    const klassName = t.class === 'High' ? 'trend-high' : 'trend-low';
-                    return `
-                        <li class="trend-item ${{klassName}}">
-                            <span class="trend-class-dot"></span>
-                            <div>${{renderTrendText(t)}}</div>
-                        </li>
-                    `;
-                }};
-
-                [...highTrendsA, ...lowTrendsA].forEach(t => {{ teamATrendsHtml += trendRow(t); }});
-                [...highTrendsB, ...lowTrendsB].forEach(t => {{ teamBTrendsHtml += trendRow(t); }});
-
-                if (!teamATrendsHtml) teamATrendsHtml = '<li class="trend-item" style="color: var(--text-muted);">無趨勢數據</li>';
-                if (!teamBTrendsHtml) teamBTrendsHtml = '<li class="trend-item" style="color: var(--text-muted);">無趨勢數據</li>';
-
-                // Recent Form 參考區：樣本 4~9 場且幾乎全勝，是 covers 篩選過的結果，只顯示不計分
-                let recentFormHtml = '';
-                const rf = m.recent_form || [];
-                if (rf.length > 0) {{
-                    const lean = m.rf_lean || {{}};
-                    let leanTag = '';
-                    if (lean.lean) {{
-                        const leanZh = lean.lean === 'Over' ? '大分' : '小分';
-                        leanTag = `<span class="rf-lean-tag">近期偏 ${{leanZh}}（大 ${{lean.over}} / 小 ${{lean.under}}）</span>`;
-                    }} else {{
-                        leanTag = `<span class="rf-lean-tag rf-lean-mixed">方向分歧（大 ${{lean.over || 0}} / 小 ${{lean.under || 0}}）</span>`;
-                    }}
-                    const rows = rf.map(t => {{
-                        let dirClass = 'rf-neutral';
-                        if (t.side === 'Over') dirClass = 'rf-over';
-                        else if (t.side === 'Under') dirClass = 'rf-under';
-                        return `<li class="rf-item ${{dirClass}}"><span class="rf-dot"></span><div>${{renderRecentFormText(t.zh)}}</div></li>`;
-                    }}).join('');
-                    recentFormHtml = `
-                        <div class="rf-block">
-                            <div class="rf-head">
-                                <span class="rf-title">📈 近期走勢（僅供參考）</span>
-                                ${{leanTag}}
-                            </div>
-                            <p class="rf-caveat">
-                                covers 從大量條件切法中挑出的連勝紀錄，樣本僅 4~9 場、幾乎都是全勝，
-                                <strong>是被挑過的結果而非隨機樣本</strong>，因此不列入保守命中率評分，只當旁證看。
-                                此區只有<strong>大小分</strong>與<strong>直接勝負</strong>兩種市場，covers 未提供讓分走勢——
-                                讓分盤的標記是借用直接勝負推得：<strong>受讓 1.5</strong> 直接獲勝即必定過盤（有效），
-                                <strong>讓分 1.5</strong> 還需贏 2 分以上（僅標為較弱）。
-                            </p>
-                            <ul class="rf-list">${{rows}}</ul>
-                        </div>
-                    `;
-                }}
-
-                const cardHtml = `
-                    <div class="match-card" id="match-card-${{m.path.split('/').pop()}}">
-                        <div class="match-header">
-                            <div class="match-meta-left">
-                                <div class="teams-versus">
-                                <span class="team-name-badge">
-                                    <img src="${{m.team_a_logo}}" class="team-logo" onerror="this.style.display='none'" />
-                                    ${{translateText(m.team_a)}}
-                                </span>
-                                <span class="vs-text">vs</span>
-                                <span class="team-name-badge">
-                                    <img src="${{m.team_b_logo}}" class="team-logo" onerror="this.style.display='none'" />
-                                    ${{translateText(m.team_b)}}
-                                </span>
-                            </div>
-                                <div class="match-time-sub">\U0001f552 ${{m.game_time}}</div>
-                            </div>
-                            <div class="match-tags">
-                                ${{dayGameTag}}
-                                ${{doubleTags}}
-                                ${{opposingTags}}
-                            </div>
-                        </div>
-                        
-                        <div class="match-body">
-                            ${{dayGameBanner}}
-                            ${{recsHtml}}
-                            
-                            <button class="details-trigger" onclick="toggleExpand(this.closest('.match-card'))">
-                                <span>顯示該賽事完整詳細趨勢數據 (High / Low Trends)</span>
-                                <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" fill="none"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                            </button>
-                            
-                            <div class="accordion-content">
-                                <div class="accordion-inner">
-                                    <div class="team-trends-col">
-                                        <h4>
-                                            <img src="${{m.team_a_logo}}" class="team-logo" style="width: 24px; height: 24px; border-radius: 6px; padding: 2px;" onerror="this.style.display='none'" />
-                                            ${{translateText(m.team_a)}} 趨勢數據
-                                        </h4>
-                                        <ul class="trend-list">
-                                            ${{teamATrendsHtml}}
-                                        </ul>
-                                    </div>
-                                    <div class="team-trends-col">
-                                        <h4>
-                                            <img src="${{m.team_b_logo}}" class="team-logo" style="width: 24px; height: 24px; border-radius: 6px; padding: 2px;" onerror="this.style.display='none'" />
-                                            ${{translateText(m.team_b)}} 趨勢數據
-                                        </h4>
-                                        <ul class="trend-list">
-                                            ${{teamBTrendsHtml}}
-                                        </ul>
-                                    </div>
-                                </div>
-                                ${{recentFormHtml}}
-                            </div>
-                        </div>
-                    </div>
-                `;
-                container.insertAdjacentHTML('beforeend', cardHtml);
-            }});
-        }}
+{dashboard_js}
 
     </script>
 </body>
@@ -3657,6 +3675,60 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
         except Exception as e:
             print(f"[錯誤] 無法寫入 HTML 儀表板文件 {output_filename}: {e}")
 
+def replay_from_html(path="index.html"):
+    """
+    不連網，從既有 index.html 內嵌的 JSON 重新產生 HTML（`python scrape.py --replay`）。
+
+    純粹是為了改 UI：跑一次完整爬蟲要 16 次 HTTP 請求、等一分鐘，還會多打擾 covers 一次；
+    只是改一行 CSS 卻要付這個代價，改版時會很痛。頁面本來就內嵌了四份 JSON
+    （matchups-data / top-sides-data / top-totals-data / top-ai-data），
+    剛好就是 generate_html_dashboard 的四個資料參數，直接讀回來重畫即可。
+
+    因為輸入輸出都是同一份資料，**重跑必須產生位元組完全相同的檔案**——
+    這也讓它可以拿來驗證「只改樣板、不改行為」的重構有沒有改壞東西。
+    """
+    try:
+        with open(path, encoding="utf-8") as f:
+            html_text = f.read()
+    except OSError as e:
+        print(f"[錯誤] 無法讀取 {path}：{e}")
+        print("      --replay 需要先有一份既有的 index.html（請先正常跑一次）。")
+        return
+
+    def grab(elem_id):
+        m = re.search(r'id="%s"[^>]*>(.*?)</script>' % elem_id, html_text, re.DOTALL)
+        if not m:
+            return None
+        try:
+            return json.loads(m.group(1))
+        except json.JSONDecodeError as err:
+            print(f"[錯誤] {elem_id} 的內嵌 JSON 解析失敗：{err}")
+            return None
+
+    matchups_data = grab("matchups-data")
+    if matchups_data is None:
+        print("[錯誤] 找不到可用的 matchups-data，無法 replay。")
+        return
+    top_sides = grab("top-sides-data") or []
+    top_totals = grab("top-totals-data") or []
+    top_ai = grab("top-ai-data") or []
+
+    m_date = re.search(r'賽事日期：<strong>(\d{4}-\d{2}-\d{2})</strong>', html_text)
+    date_str = m_date.group(1) if m_date else get_eastern_today()
+
+    # 抓取失敗警告列只有失敗時才會輸出，沒有就代表當時全部抓成功
+    failed_count, expected_count = 0, None
+    m_warn = re.search(r'今日有 (\d+) 場沒有抓取成功（賽事列表共 (\d+) 場', html_text)
+    if m_warn:
+        failed_count, expected_count = int(m_warn.group(1)), int(m_warn.group(2))
+
+    print(f"[*] Replay 模式：從 {path} 讀回 {len(matchups_data)} 場賽事資料（{date_str}），不連網。")
+    print(f"    Top 5 勝負 {len(top_sides)} 筆 / 大小分 {len(top_totals)} 筆 / AI {len(top_ai)} 筆"
+          + (f" / 當時有 {failed_count} 場抓取失敗" if failed_count else ""))
+    generate_html_dashboard(matchups_data, top_sides, top_totals, top_ai, date_str,
+                            failed_count=failed_count, expected_count=expected_count)
+
+
 # ==========================================
 # 主流程控制
 # ==========================================
@@ -3665,6 +3737,11 @@ def main():
     print("      MLB 賽事趨勢爬蟲與智能黃金推薦篩選系統")
     print("====================================================")
     
+    # 改 UI 用的離線重畫模式：不連網，直接用既有 index.html 的資料重新產生頁面
+    if '--replay' in sys.argv:
+        replay_from_html()
+        return
+
     # 檢查是否有指定日期參數
     date_str = None
     if len(sys.argv) > 1:
