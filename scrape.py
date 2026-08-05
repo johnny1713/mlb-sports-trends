@@ -9,7 +9,7 @@ import sys
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "1.6"
+APP_VERSION = "1.7"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -76,6 +76,76 @@ _ROI_PAREN_RE = re.compile(r'\s*\([^()]*\b(?:Units?|ROI)\b[^()]*\)')
 def strip_roi_text(text):
     """移除趨勢句尾的 Units/ROI 括號，其餘原樣保留（過盤紀錄本身在句子裡）。"""
     return _ROI_PAREN_RE.sub('', text).strip()
+
+
+# ------------------------------------------
+# 詳細趨勢區的中譯
+# ------------------------------------------
+# covers 這批句子高度模板化：歷史 4224 句只有 78 種骨架，而且骨架可以拆成
+# 「否定 / only / 盤口 / 樣本寫法 / 主客場」五個彼此獨立的欄位。因此這裡用一條
+# 結構化 regex，而不是 Recent Form 那種 RF_PHRASES 片語表——片語表要窮舉組合，
+# 這種正交結構用拆欄位的方式才不會漏。
+#
+# 比對不到、或盤口／範圍不在字典裡時一律回傳 None，前端原樣顯示英文原文，
+# 寧可沒翻也不要翻錯或吃掉資訊。
+_TREND_RE = re.compile(
+    r'^The\s+(?P<team>.+?)\s+have\s+'
+    r'(?P<neg>not\s+)?'
+    r'(?P<only>only\s+)?'
+    r'(?:hit|covered)\s+the\s+'
+    r'(?P<market>.+?)\s+in\s+'
+    r'(?:(?P<wins>\d+)\s+of\s+|any\s+of\s+)?'
+    r'their\s+last\s+(?P<n>\d+)\s+'
+    r'(?P<scope>games\s+at\s+home|away\s+games|games)\s*$'
+)
+
+# 盤口名稱用完全比對（不是子字串），沒收錄的一律不翻，避免 Team Total 被當成 Game Total
+TREND_MARKET_ZH = {
+    'Moneyline': '獨贏',
+    'Run Line': '讓分',
+    'Game Total Over': '全場大分',
+    'Game Total Under': '全場小分',
+    'Team Total Over': '該隊得分大分',
+    'Team Total Under': '該隊得分小分',
+    '1st Five Innings (F5) Moneyline': '首五局獨贏',
+    '1st Five Innings (F5) Run Line': '首五局讓分',
+    '1st Five Innings (F5) Team Total Over': '首五局該隊得分大分',
+    '1st Five Innings (F5) Team Total Under': '首五局該隊得分小分',
+}
+
+# 量詞跟著主客場走：「最近 13 場」/「最近 35 個客場」
+TREND_SCOPE_ZH = {
+    'games': '場',
+    'away games': '個客場',
+    'games at home': '個主場',
+}
+
+
+def translate_trend_text(text):
+    """
+    把一句 covers 趨勢原文翻成中文，隊名輸出成 `@@隊名@@` 佔位符，
+    由前端 renderRecentFormText() 依語言設定翻譯（與 Recent Form 共用同一套機制，
+    才不會和既有的中英切換打架）。無法確定語意時回傳 None。
+    """
+    m = _TREND_RE.match(text.strip())
+    if not m:
+        return None
+    market = TREND_MARKET_ZH.get(m.group('market'))
+    unit = TREND_SCOPE_ZH.get(re.sub(r'\s+', ' ', m.group('scope')))
+    if market is None or unit is None:
+        return None
+
+    team = m.group('team').replace('Athletics Athletics', 'Athletics')
+    head = f"@@{team}@@ 最近 {int(m.group('n'))} {unit}"
+    wins = m.group('wins')
+
+    if m.group('neg'):                       # "not ... in any of their last N"
+        return f"{head}一場都沒過「{market}」"
+    if wins is None:                         # "in their last N" = 全數命中
+        return f"{head}全部過「{market}」"
+    if m.group('only'):                      # "only hit ..." = covers 標記的弱勢趨勢
+        return f"{head}只有 {wins} 場過「{market}」"
+    return f"{head}有 {wins} 場過「{market}」"
 
 
 # ==========================================
@@ -507,6 +577,8 @@ def classify_and_process_trends(matchup):
             'class': klass,
             # Units/ROI 只在上面用來判方向，不外流到任何顯示欄位
             'text': strip_roi_text(text),
+            # 中譯；翻不出來時為 None，前端會退回顯示英文原文
+            'text_zh': translate_trend_text(strip_roi_text(text)),
             'market': market,
             'direction': direction,
             'units': units,
@@ -2819,6 +2891,15 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             return zh.replace(/@@([^@]+)@@/g, (_, name) => translateText(name));
         }}
 
+        // 詳細趨勢區的單行文字。中文模式優先用 Python 譯好的 text_zh（隊名是 @@佔位符@@，
+        // 與 Recent Form 共用同一套替換機制）；英文模式或翻不出來時退回 covers 原文。
+        function renderTrendText(t) {{
+            if (currentLanguage === 'zh' && t.text_zh) {{
+                return renderRecentFormText(t.text_zh);
+            }}
+            return (t.text || '').replace(/Athletics Athletics/g, 'Athletics');
+        }}
+
         // 勝負盤（獨贏／讓分）的近期走勢評估——單場卡片與 Top 5 共用的唯一判斷來源。
         //
         // covers 的 Recent Form 只有「直接勝負」紀錄，沒有讓分資料，但兩者關聯依盤口而異：
@@ -3395,27 +3476,18 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                 const highTrendsB = m.processed_trends.filter(t => t.team === m.team_b && t.class === 'High');
                 const lowTrendsB = m.processed_trends.filter(t => t.team === m.team_b && t.class === 'Low');
 
-                [...highTrendsA, ...lowTrendsA].forEach(t => {{
+                const trendRow = t => {{
                     const klassName = t.class === 'High' ? 'trend-high' : 'trend-low';
-                    const cleanText = t.text.replace(/Athletics Athletics/g, "Athletics");
-                    teamATrendsHtml += `
+                    return `
                         <li class="trend-item ${{klassName}}">
                             <span class="trend-class-dot"></span>
-                            <div>${{cleanText}}</div>
+                            <div>${{renderTrendText(t)}}</div>
                         </li>
                     `;
-                }});
+                }};
 
-                [...highTrendsB, ...lowTrendsB].forEach(t => {{
-                    const klassName = t.class === 'High' ? 'trend-high' : 'trend-low';
-                    const cleanText = t.text.replace(/Athletics Athletics/g, "Athletics");
-                    teamBTrendsHtml += `
-                        <li class="trend-item ${{klassName}}">
-                            <span class="trend-class-dot"></span>
-                            <div>${{cleanText}}</div>
-                        </li>
-                    `;
-                }});
+                [...highTrendsA, ...lowTrendsA].forEach(t => {{ teamATrendsHtml += trendRow(t); }});
+                [...highTrendsB, ...lowTrendsB].forEach(t => {{ teamBTrendsHtml += trendRow(t); }});
 
                 if (!teamATrendsHtml) teamATrendsHtml = '<li class="trend-item" style="color: var(--text-muted);">無趨勢數據</li>';
                 if (!teamBTrendsHtml) teamBTrendsHtml = '<li class="trend-item" style="color: var(--text-muted);">無趨勢數據</li>';

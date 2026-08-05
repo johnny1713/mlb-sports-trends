@@ -134,6 +134,21 @@ covers 省略撇號（"Gausmans" = Gausman，`starts` 代表投手、`behind hom
   否則畫面上會出現「分數較低卻排在前面」的矛盾。
   該函式的門檻與前端 `recentFormStatus()` 相同，改動請同步兩處。
 
+### 詳細趨勢區的中譯（`translate_trend_text`，2026-08-05 加）
+
+ROI Trends 原文以前是全站唯一沒中譯的區塊。**這裡刻意不用 `RF_PHRASES` 那種片語表**——
+實測歷史 4224 句只有 78 種骨架，而骨架是「否定 / only / 盤口 / 樣本寫法 / 主客場」
+五個**正交**欄位的組合；片語表要窮舉組合會漏，拆欄位的結構化 regex 才蓋得完。
+實測翻譯率 100%，且樣本數字、隊名、only／not 語意全部保留。
+
+- 盤口名用**完全比對**（`TREND_MARKET_ZH`），不是子字串比對，否則 `Team Total Over`
+  會被 `Game Total Over` 的規則吃掉。沒收錄的盤口一律回傳 `None`。
+- 比對不到就回 `None`，前端 `renderTrendText()` 退回顯示英文原文——**寧可沒翻，不要翻錯**。
+- 隊名輸出 `@@隊名@@` 佔位符，與 Recent Form **共用** `renderRecentFormText()` 替換，
+  才不會和中英切換打架。英文模式直接顯示 `text`（covers 原文），中文模式用 `text_zh`。
+- 樣本寫法有兩種：`in N of their last M`（一般）與 `in their last M`（全數命中，
+  沒有 N）；另有 `not ... in any of their last M`（掛零）。三種都要處理。
+
 ## GitHub Actions 排程（.github/workflows/scrape.yml）
 
 - 每天 6 輪：UTC 11:17/12:17/13:17/15:17（台灣 19:17~23:17）＋ 補救輪 16:17/17:17（台灣 00:17/01:17）。
