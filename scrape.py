@@ -829,31 +829,18 @@ def dedupe_same_team_picks(recs):
 _RF_RANK = {True: 0, None: 1, False: 2}
 
 
-def dedupe_totals_picks(recs):
-    """
-    大小分推薦的去重與互斥檢查（勝負盤的對應物是 dedupe_same_team_picks +
-    picks_are_contradictory，2026-08-02 就補了，大小分這邊當時漏掉）。
-
-    同場同方向只留分數最高的一筆；同場若同時出現「買大分」與「買小分」則兩筆都不列入
-    精選——兩隊各自有相反方向的強趨勢時理論上會發生，此時等於沒有共識，
-    列出任一邊都是誤導。實測 69 天尚未真的發生過，這裡純粹是補上缺的防線。
-    """
-    best = {}
-    for r in recs:
-        key = (r['matchup_id'], r.get('direction'))
-        if key not in best or r['score'] > best[key]['score']:
-            best[key] = r
-
-    by_matchup = {}
-    for (m_id, _), r in best.items():
-        by_matchup.setdefault(m_id, []).append(r)
-
-    out = []
-    for m_id, group in by_matchup.items():
-        if len({r.get('direction') for r in group}) > 1:
-            continue  # 同場方向互斥，整場略過
-        out.extend(group)
-    return out
+# 大小分「不需要」勝負盤那套去重／互斥檢查。單場的 double_positive 結構上最多 1 筆：
+# analyze_betting_recommendations 的「全場大小分避碰」（三個分支都只 append 一筆）
+# 已經在源頭決定了方向，同場不可能同時產出買大分與買小分。
+#
+# 2026-08-05 曾加過一支 dedupe_totals_picks 來「補防線」，2026-08-06 移除。它不只
+# 永遠不會執行，而且在唯一可能被喚醒的情境下是錯的：歷史上單場出現 2 筆的 14 場
+# （2026-05-29/30，F5 尚未排除時）長這樣——
+#     買 全場小分 (Game Under) ＋ 買 首五局大分 (F5 Over)
+# 那是**不同市場**、可以同時成立，但該函式只看 direction 不看 market，會判為互斥
+# 把兩筆都丟掉；去重鍵 (matchup_id, direction) 也會把「全場小分」與「首五局小分」
+# 誤當成重複。它只有在「單場只有一個市場」的前提下才正確，而那正是它不可達的原因。
+# 要動大小分的取捨邏輯，請改上游那個避碰，別在下游再疊一層。
 
 
 def _margin_lower_bound(rec):
@@ -3802,8 +3789,8 @@ def main():
             
     # 精選清單先去除「同場同隊」的重複推薦（獨贏與讓分常成對出現，是同一個看法）
     sides_for_top = dedupe_same_team_picks(sides_recs)
-    # 大小分同樣去重，並排除同場方向互斥的情形
-    totals_for_top = dedupe_totals_picks(totals_recs)
+    # 大小分不需要對應處理：單場最多 1 筆，源頭的「全場大小分避碰」已經決定方向
+    totals_for_top = totals_recs
 
     # 低於 TOP_PICK_MIN_SCORE 的推薦不進任何精選清單：網站自己標示 <50% 為可忽略，
     # 讓它上榜等於自打嘴巴。寧可當日列不滿 5 筆（前端有對應空狀態文案）。
