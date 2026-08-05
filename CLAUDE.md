@@ -172,6 +172,31 @@ ROI Trends 原文以前是全站唯一沒中譯的區塊。**這裡刻意不用 
 - 標題列的 `PRO v{APP_VERSION}` 取自模組頂端的 `APP_VERSION` 常數（不再硬寫在模板裡）。
   **使用者看得到，有新增或改變功能時記得往上調**；歷史上曾一路改功能卻忘了進版。
 
+## 網路抓取的韌性（2026-08-05 調整）
+
+- `fetch_url` 退避改為 `backoff_factor ** (attempt + 1)`＝ **3s / 9s**。
+  舊版是 `1.5 ** attempt`，第一次退避是 `1.5**0 = 1 秒`（指數從 0 起算，等於浪費一次機會），
+  三次總共只等 2.5 秒。**關鍵在「失敗得很快」的情境**：逾時的話三次橫跨約 47 秒還合理，
+  但 covers 直接回 429/503 時，三次會在 2.5 秒內打完——對方限流 30 秒、我們 2.5 秒就放棄。
+  一次執行要打 16 次請求（列表 1 + 單場 15）、間隔只 1 秒，本來就容易踩限流。
+  另外會優先聽 `Retry-After` 標頭（上限 60 秒，垃圾值則退回預設退避）。
+- **抓取失敗以前是完全靜默的**：某場失敗 → `parse_matchup_details` 回 None → 印「[跳過]」→
+  該場**整場從當日資料消失**，網頁上毫無跡象。現在 `main()` 會收集 `failed_matchups`，
+  透過 `generate_html_dashboard(failed_count=, expected_count=)` 在頁首輸出黃色警告列
+  （`.fetch-warning`），明說「有 N 場沒抓到，不是當天沒有這場比賽」。沒失敗時完全不輸出。
+  這與「趨勢未發佈」是**不同**的狀況，兩者文案要分開，別混用。
+
+## 前端外部資源
+
+- Google Fonts 改為 `media="print" onload="this.media='all'"` 非阻塞載入（另有 `<noscript>` 備援）。
+  原本是一般 stylesheet，會**阻塞首次繪製**，而 Noto Sans TC 是中文字型、檔案不小——
+  使用者在台灣用手機看，這是最可能拖慢首屏的一項。`font-family` 尾端有 `sans-serif` 墊底。
+- **球隊 logo 刻意「不」內嵌**（30 個 SVG，來自 img.covers.com）。實測數據：
+  原始 SVG 合計 128 KB，base64 內嵌後頁面 188→359 KB（gzip 31→91 KB），
+  URL-encode 內嵌 188→351 KB（**gzip 31→79 KB，增加 49 KB**）。
+  logo 是 `<img>`、**不阻塞首次繪製**且有 `onerror` 隱藏；內嵌等於把 49 KB 搬到
+  **會阻塞的 HTML 主文件**上，首屏反而變慢。要重新評估時記得：換到的是離線韌性，不是速度。
+
 ## 技術地雷
 
 - `generate_html_dashboard` 是一個巨大的 f-string，**所有 JS/CSS 的大括號都要寫成 `{{ }}`**。

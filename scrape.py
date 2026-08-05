@@ -151,10 +151,15 @@ def translate_trend_text(text):
 # ==========================================
 # 網路請求模組與防擋策略
 # ==========================================
-def fetch_url(url, max_retries=3, backoff_factor=1.5):
+def fetch_url(url, max_retries=3, backoff_factor=3.0):
     """
     使用自訂瀏覽器標頭發送 HTTP 請求，防止被 covers.com 封鎖。
-    支援重試機制以提高網路抓取的穩定性。
+
+    退避倍數是 3 而不是原本的 1.5。原因是「失敗得很快」的情況：
+    連線逾時的話三次嘗試橫跨約 47 秒還算合理，但 covers 若直接回 429/503，
+    三次請求會在 **2.5 秒內全部打完**——對方限流 30 秒、我們 2.5 秒就放棄，
+    重試形同虛設。本專案一次執行要打 16 次請求（列表 1 + 單場 15），
+    間隔只有 1 秒，本來就容易踩到限流。改成 3s / 9s，並優先聽 Retry-After。
     """
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -167,13 +172,22 @@ def fetch_url(url, max_retries=3, backoff_factor=1.5):
             with urllib.request.urlopen(req, timeout=15) as response:
                 return response.read().decode('utf-8', errors='ignore')
         except Exception as e:
-            if attempt < max_retries - 1:
-                sleep_time = backoff_factor ** attempt
-                print(f"  [警告] 抓取 {url} 失敗 ({e})，將在 {sleep_time:.1f} 秒後進行第 {attempt+2} 次重試...")
-                time.sleep(sleep_time)
-            else:
+            if attempt >= max_retries - 1:
                 print(f"  [錯誤] 在嘗試 {max_retries} 次後仍無法抓取網頁 {url}: {e}")
                 return None
+
+            # 指數從 1 起算（3s、9s）。原本是 `** attempt`，第一次退避是 factor**0 = 1 秒，
+            # 等於白白浪費一次重試機會。
+            sleep_time = backoff_factor ** (attempt + 1)
+            # 對方明確指示等多久時以它為準（429/503 常帶 Retry-After，單位為秒）
+            retry_after = getattr(e, 'headers', None) and e.headers.get('Retry-After')
+            if retry_after:
+                try:
+                    sleep_time = max(sleep_time, min(float(retry_after), 60.0))
+                except (TypeError, ValueError):
+                    pass
+            print(f"  [警告] 抓取 {url} 失敗 ({e})，將在 {sleep_time:.1f} 秒後進行第 {attempt+2} 次重試...")
+            time.sleep(sleep_time)
 
 def parse_run_lines(html_str):
     """
@@ -810,6 +824,11 @@ def dedupe_same_team_picks(recs):
     return list(best.values())
 
 
+# 同分決勝時的近期走勢優先序：同向 > 無意見 > 反向。
+# 只在分數完全相同時生效，不會讓低分排到高分前面（見 recent_form_agreement）。
+_RF_RANK = {True: 0, None: 1, False: 2}
+
+
 def dedupe_totals_picks(recs):
     """
     大小分推薦的去重與互斥檢查（勝負盤的對應物是 dedupe_same_team_picks +
@@ -1018,14 +1037,32 @@ def analyze_betting_recommendations(matchup, processed_trends):
 # ==========================================
 # 質感中文化 HTML 儀表板文件生成器
 # ==========================================
-def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, date_str):
+def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, date_str,
+                            failed_count=0, expected_count=None):
     """
     將爬取與運算後的結果導出為一個極具質感的本機互動式繁體中文 HTML 網頁。
+
+    failed_count / expected_count 用來在頁面上明示「有幾場沒抓到」——抓取失敗原本是
+    完全靜默的（那場直接從資料裡消失），使用者只會看到今天少了一場，無從分辨是
+    covers 沒排還是我們漏抓。
     """
     total_matches = len(matchups_data)
     total_double_pos = sum(len(m['double_positive']) for m in matchups_data)
     total_opposing = sum(len(m['opposing_trends']) for m in matchups_data)
-    
+
+    # 抓取失敗警告列（沒失敗時完全不輸出，不佔版面）
+    fetch_warning = ''
+    if failed_count:
+        expected = expected_count if expected_count else total_matches + failed_count
+        fetch_warning = (
+            '<div class="fetch-warning">'
+            f'⚠️ <strong>今日有 {failed_count} 場沒有抓取成功</strong>'
+            f'（賽事列表共 {expected} 場，實際分析 {total_matches} 場）。'
+            '缺少的場次不會出現在下方清單與推薦中，並非當天沒有該場比賽——'
+            '通常是 covers.com 暫時無回應，下一輪自動更新會重試。'
+            '</div>'
+        )
+
     display_date = date_str if date_str else datetime.now().strftime("%Y-%m-%d")
     tw_dates = taiwan_play_dates(display_date, matchups_data)
     # 只標美東日期會讓台灣使用者以為賽事已結束（他看的當地日期通常已是隔天）
@@ -1042,11 +1079,21 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MLB 每日賽事黃金趨勢篩選系統</title>
-    <!-- Google Fonts Inter 字型與思源黑體 -->
+    <!-- Google Fonts Inter 字型與思源黑體。
+         以 media="print" + onload 切換載入，**不阻塞首次繪製**：原本是一般
+         stylesheet，瀏覽器要等 Google 回應才畫第一個像素，而 Noto Sans TC 是
+         中文字型、檔案不小——使用者在台灣用手機看，這是最可能拖慢首屏的一項。
+         字型還沒到之前先用系統字型（font-family 尾端有 sans-serif 墊底），
+         到了再無縫換上。noscript 分支保留給關掉 JS 的情況。 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-    
+    <link rel="stylesheet" media="print" onload="this.media='all'; this.onload=null;"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap">
+    <noscript>
+        <link rel="stylesheet"
+              href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap">
+    </noscript>
+
     <style>
         /* ==========================================
            1. 變數與基礎樣式 (Core Palette & Reset)
@@ -1178,6 +1225,22 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
 
         .date-badge strong {{
             color: var(--text-primary);
+        }}
+
+        /* 抓取失敗警告列：只有真的漏抓時才會輸出（見 generate_html_dashboard） */
+        .fetch-warning {{
+            margin: 0 0 24px;
+            padding: 14px 18px;
+            border-radius: 12px;
+            font-size: 13px;
+            line-height: 1.8;
+            color: #ffd200;
+            background: rgba(255, 210, 0, 0.07);
+            border: 1px solid rgba(255, 210, 0, 0.3);
+        }}
+
+        .fetch-warning strong {{
+            color: #ffe066;
         }}
 
         /* 統計面板網格 */
@@ -2664,6 +2727,8 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             </div>
         </header>
 
+        {fetch_warning}
+
         <!-- 今日 AI 精選 Top 5 推薦專區 -->
         <section class="ai-section" id="ai-top5-section">
             <!-- 由 JS 動態渲染 -->
@@ -3634,14 +3699,18 @@ def main():
         return
         
     all_matchups_data = []
-    
+    failed_matchups = []   # 抓取/解析失敗的場次，用於在網頁上顯示警告
+
     # 2. 迴圈抓取每對賽事的 picks 頁面並進行解析
     for i, matchup in enumerate(matchups_list):
         print(f"\n[{i+1}/{len(matchups_list)}] 正在處理對戰組合...")
         
         matchup_data = parse_matchup_details(matchup)
         if not matchup_data:
+            # 靜默失敗是這個專案最危險的失敗模式：該場會整場從當日資料消失，
+            # 網站上不會有任何跡象。記下來，最後交給前端顯示警告。
             print(f"  [跳過] 無法抓取或解析該場對戰: {matchup['path']}")
+            failed_matchups.append(matchup['path'].split('/')[-1])
             continue
             
         print(f"  對戰雙方: {matchup_data['team_a']} vs {matchup_data['team_b']}")
@@ -3743,7 +3812,11 @@ def main():
 
     # 分別對兩組推薦以「命中率 Wilson 下界」由大到小排序，取各自的前 5 名 (Top 5)
     # 同分時才用近期走勢決勝（見 recent_form_agreement 說明），否則純看保守命中率
-    rank_key = lambda x: (-x['score'], 0 if x.get('rf_agree') else 1)
+    # rf_agree 是三態：True 同向 / None 無明顯方向 / False 反向。
+    # 舊寫法 `0 if x.get('rf_agree') else 1` 會把 False 和 None 併成同一組，
+    # 等於「走勢明確唱反調」和「走勢沒意見」同等對待。這個決勝點常被用到——
+    # 實測第 5 與第 6 名有 14% 的日子完全同分、64% 相差不到 1 分（中位數 0.5 分）。
+    rank_key = lambda x: (-x['score'], _RF_RANK.get(x.get('rf_agree'), 1))
     top_5_sides = sorted(qualified(sides_for_top), key=rank_key)[:5]
     top_5_totals = sorted(qualified(totals_for_top), key=rank_key)[:5]
 
@@ -3806,9 +3879,13 @@ def main():
     
     print(f"\n[+] 成功計算出今日「勝負/讓分盤」與「大小分總分」雙欄 Top 5 黃金投注推薦。")
     print(f"[+] 成功計算出今日「AI 推薦 Top 5」精選：{len(top_5_ai)} 項組合。")
-    
+    if failed_matchups:
+        print(f"[!] 有 {len(failed_matchups)} 場抓取失敗，網頁上會顯示警告：{failed_matchups}")
+
     # 6. 生成動態互動式 HTML 數據儀表板
-    generate_html_dashboard(all_matchups_data, top_5_sides, top_5_totals, top_5_ai, date_str)
+    generate_html_dashboard(all_matchups_data, top_5_sides, top_5_totals, top_5_ai, date_str,
+                            failed_count=len(failed_matchups),
+                            expected_count=len(matchups_list))
     
     print("====================================================")
     print("                  抓取與分析完成！")
