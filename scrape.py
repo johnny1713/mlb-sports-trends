@@ -9,7 +9,7 @@ import sys
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "1.5"
+APP_VERSION = "1.5.1"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -1758,8 +1758,11 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             border-bottom-right-radius: 12px;
         }}
 
+        /* 這裡的數值只是「沒有 JS 時的保底」。實際展開高度由 syncAccordionHeight()
+           以 scrollHeight 寫成 inline style，因為窄螢幕單欄排版時內容遠超過任何固定值
+           （近期走勢那 8 條就會撐爆），寫死會被 overflow: hidden 直接切掉。 */
         .match-card.expanded .accordion-content {{
-            max-height: 1500px;
+            max-height: 4000px;
         }}
 
         .accordion-inner {{
@@ -1776,9 +1779,12 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
         }}
 
         /* Recent Form 參考區（不計分，樣式刻意低調於主推薦） */
+        /* rf-block 是 accordion-inner 的兄弟節點，拿不到它的 24px padding，
+           要自己補左右與底部，否則文字會貼齊卡片邊框（底部原本是 0）。
+           分隔線刻意維持整寬，所以用 padding 而不是 margin。 */
         .rf-block {{
             margin-top: 20px;
-            padding-top: 18px;
+            padding: 18px 24px 24px;
             border-top: 1px dashed var(--border-color);
         }}
 
@@ -3123,6 +3129,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             if (el) {{
                 if (!el.classList.contains('expanded')) {{
                     el.classList.add('expanded');
+                    syncAccordionHeight(el);
                 }}
                 el.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
                 el.classList.add('highlight-flash');
@@ -3185,10 +3192,29 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             }});
         }}
 
+        // 依實際內容高度設定摺疊區的 max-height（收合時清成空字串讓 CSS 的 0 生效）。
+        // 不能用固定值：窄螢幕是單欄排版，趨勢兩欄加上近期走勢會超過任何寫死的數字，
+        // 超出的部分會被 overflow: hidden 吃掉，看起來像「只剩前一兩條」。
+        function syncAccordionHeight(cardElement) {{
+            const content = cardElement.querySelector('.accordion-content');
+            if (!content) return;
+            if (cardElement.classList.contains('expanded')) {{
+                content.style.maxHeight = content.scrollHeight + 'px';
+            }} else {{
+                content.style.maxHeight = '';
+            }}
+        }}
+
         // 展開/收合卡片摺疊區
         function toggleExpand(cardElement) {{
             cardElement.classList.toggle('expanded');
+            syncAccordionHeight(cardElement);
         }}
+
+        // 轉向橫式或改變視窗寬度時欄數會變，已展開的卡片要重新量一次
+        window.addEventListener('resize', () => {{
+            document.querySelectorAll('.match-card.expanded').forEach(syncAccordionHeight);
+        }});
 
         // 渲染賽事清單
         function renderMatchups() {{

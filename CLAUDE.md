@@ -144,6 +144,18 @@ covers 省略撇號（"Gausmans" = Gausman，`starts` 代表投手、`behind hom
 
 - `generate_html_dashboard` 是一個巨大的 f-string，**所有 JS/CSS 的大括號都要寫成 `{{ }}`**。
   歷史上已因此出過兩次 JS 語法錯誤。改模板後務必跑一次並檢查產出。
+- **摺疊區 `.accordion-content` 的展開高度不可寫死**（2026-08-05 修）。
+  它是 `max-height` + `overflow: hidden` 做動畫，原本 `.expanded` 寫死 `max-height: 1500px`。
+  桌機雙欄時內容才 ~720px 沒事，**窄螢幕 `.accordion-inner` 與 `.rf-list` 都塌成單欄**，
+  兩欄趨勢加上 8 條近期走勢實測要 1650~1965px，15 張卡**全部**被切掉最多 465px。
+  症狀很容易誤判：近期走勢「只看得到第一、二條」，但長按選取文字往下拖又能把內容拖出來
+  （那是 overflow 容器被選取行為捲動）。
+  現在由 `syncAccordionHeight()` 在 `toggleExpand()`／`scrollToMatch()`／`resize` 時
+  以 `scrollHeight` 寫成 inline style，CSS 那個 4000px 只是無 JS 時的保底。
+  **在摺疊區裡加任何新區塊都不必再調數字，但別把它改回固定值。**
+- `.rf-block` 是 `.accordion-inner` 的**兄弟節點**（不在裡面），拿不到那 24px padding，
+  所以自己帶 `padding: 18px 24px 24px`。分隔線要整寬，故用 padding 不用 margin。
+  在摺疊區加同層區塊時記得比照，否則文字會貼齊卡片邊框。
 - **在 Top 5 清單那類卡片裡塞新標籤前，先確認窄螢幕不會橫向溢出**。
   `.top-col` 是 grid 項目、`.top-rec-item-info` 是 flex 項目，兩者 `min-width` 預設 `auto`(=min-content)，
   只要內部有不換行的內容（例如 `white-space: nowrap` 的走勢藥丸）就會把整欄撐爆、整頁可橫向捲動。
