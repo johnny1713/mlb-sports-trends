@@ -168,8 +168,15 @@ ROI Trends 原文以前是全站唯一沒中譯的區塊。**這裡刻意不用 
 
 ### ⚠️ Pages 部署會失敗，而且會和「內容沒變不 commit」疊成長期卡住（2026-08-06）
 
-那天三次 Pages 部署**掛了兩次**（`fac6d82`、`7388057`），`build` 三個步驟全過、
-只有 `Deploy to GitHub Pages` 這步 failure——是 GitHub 自己的部署服務，不是我們的程式。
+那天四次 Pages 部署掛了三次，兩種失敗模式：`fac6d82`／`7388057` 是 build 全過、
+只有 `Deploy to GitHub Pages` failure；`dddcf72` 是 build 跑 15 分鐘被 cancelled、deploy skipped。
+
+⚠️ **但那天 GitHub 有全站故障**（githubstatus.com 的 Actions/Pages 都是 `major_outage`，
+公告寫 "Workflow runs are still failing or delayed in starting, and some queued jobs may time out"）。
+**不要把「一天掛三次」當成日常頻率**——那是故障日的數字，平時大多正常。
+下面的修法之所以仍該留著，理由不是「常失敗」而是**失敗的後果是無限期的**（見下），
+這一點與發生頻率無關。查故障時第一件事先看 <https://www.githubstatus.com>，
+別急著懷疑自己的 workflow。
 
 單獨一次失敗還好，可怕的是和上面那條疊起來：部署失敗後，**下一輪若抓到相同內容就不 commit，
 也就不會再觸發部署**，網站可以無限期停在舊頁面。那天實際發生的：
