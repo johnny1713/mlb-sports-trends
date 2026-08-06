@@ -161,9 +161,37 @@ ROI Trends 原文以前是全站唯一沒中譯的區塊。**這裡刻意不用 
   (b) 後面輪次用更完整趨勢刷新；(c) 補救輪專門處理 covers 延遲到美東中午才發佈的日子。
   目標是保證台灣 22:00 前必有當日資料，最差情況也在美東開賽前補齊。
 - 有 `concurrency` group 防止延遲輪與準時輪同時執行撞 push；push 前先 `git pull --rebase`。
-- 內容沒變就不會產生 commit（`git commit || exit 0`）。
+- 內容沒變就不會產生 commit（`Commit and Push Changes` 步驟以 `git diff --cached --quiet` 判斷，
+  並把結果寫進 `steps.commit.outputs.changed`）。
   ⚠️ 副作用：趨勢連續多輪都空白時，輸出位元組完全相同 → 不 commit → Pages 不重新部署，
   **網站看起來像「整天沒更新」**。要判斷是否真的沒跑，看 Actions 執行紀錄而不是 commit 紀錄。
+
+### ⚠️ Pages 部署會失敗，而且會和「內容沒變不 commit」疊成長期卡住（2026-08-06）
+
+那天三次 Pages 部署**掛了兩次**（`fac6d82`、`7388057`），`build` 三個步驟全過、
+只有 `Deploy to GitHub Pages` 這步 failure——是 GitHub 自己的部署服務，不是我們的程式。
+
+單獨一次失敗還好，可怕的是和上面那條疊起來：部署失敗後，**下一輪若抓到相同內容就不 commit，
+也就不會再觸發部署**，網站可以無限期停在舊頁面。那天實際發生的：
+
+| 台灣時間 | 事件 |
+|---|---|
+| 21:03 | 爬蟲 commit 8/6 資料成功，Pages 部署**失敗** → 站上還是 8/5 |
+| 22:37 | 爬蟲再跑，內容相同 → 不 commit → 不部署 → 站上仍是 8/5（**使用者看盤時段**） |
+| 23:22 | 這輪內容剛好有變 → commit → 部署成功 → 8/6 資料才上線 |
+
+**能恢復純屬運氣**（23:22 那輪資料剛好變了）。若整晚趨勢都沒動，會卡到隔天。
+
+修法是 `Verify Deployment` 步驟：**只在「這輪沒有新 commit」時**抓線上頁面比對 sha256，
+不一致就 `git commit --allow-empty` 逼 Pages 重新部署。幾個關鍵前提：
+
+- **可以整檔比 hash**：實測線上頁面與 `git show <sha>:index.html` 正規化換行後**位元組相同**，
+  Jekyll 是原樣輸出、不會改檔案。所以不必只比日期（只比日期會漏掉「日期對但資料舊」的情況）。
+- **有 push 的那輪一定不能檢查**：部署才剛觸發，比一定不會過，每輪都會多出一個空 commit。
+- 抓取時加 `?cachebust=$(date +%s)` 繞過 Fastly CDN（Pages 的 `Cache-Control` 是 600 秒）。
+  沒有這個的話，剛部署完的那幾分鐘會拿到舊快取而誤判。
+- curl 失敗就 `exit 0` 略過，不要因為抓不到線上頁面就亂塞 commit。
+- 最壞情況（GitHub 部署持續掛）每天最多多 6 個空 commit，而且那本身就是故障訊號。
 - ⚠️ **public repo 60 天無 commit 會被 GitHub 自動停用排程**——MLB 休賽期（10 月底~3 月）
   會觸發，隔年開季要去 Actions 頁面手動 re-enable。
 
