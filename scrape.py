@@ -4153,34 +4153,44 @@ def render_track_record(track):
         label = track['market_zh'].get(key, key)
         rows.append(f'<tr><th>{label}</th>' + cell(recent) + cell(whole) + '</tr>')
 
-    def split_rows(names):
-        out = []
+    def split_table(title, names):
+        """
+        分組小表。**一定要有「命中率」欄位標題與合計列**——沒有標題時，三組並列的
+        百分比很容易被讀成「佔比」而困惑於「為什麼加起來不是 100%」。
+        會相加的是筆數（各組互斥、合計即該切片的全部推薦），不是百分比。
+        """
+        rows = []
+        hit_sum = total_sum = 0
         for name in names:
             stat = track['splits'].get(name)
             if not stat:
                 continue
-            out.append(
+            hit_sum += stat['hit']
+            total_sum += stat['total']
+            rows.append(
                 f'<tr><th>{name}</th>'
                 f'<td><span class="tr-rate">{stat["rate"]}%</span>'
                 f'<span class="tr-n">{stat["hit"]}/{stat["total"]}</span></td></tr>')
-        return out
+        if not rows:
+            return ''
+        rate = round(100 * hit_sum / total_sum, 1) if total_sum else 0
+        rows.append(
+            f'<tr class="tr-total"><th>合計</th>'
+            f'<td><span class="tr-rate">{rate}%</span>'
+            f'<span class="tr-n">{hit_sum}/{total_sum}</span></td></tr>')
+        return (f'<div class="tr-split"><h4>{title}</h4>'
+                '<table class="tr-table">'
+                '<thead><tr><th></th><th>命中率</th></tr></thead>'
+                f'<tbody>{"".join(rows)}</tbody></table></div>')
 
-    splits_block = ''
-    day_rows = split_rows(['非下午場', '下午場'])
-    rf_rows = split_rows(['走勢同向', '走勢反向', '走勢無方向'])
-    parts = []
-    if day_rows:
-        parts.append(
-            '<div class="tr-split"><h4>依時段（全期間）</h4>'
-            '<table class="tr-table"><tbody>' + ''.join(day_rows) + '</tbody></table></div>')
-    if rf_rows:
-        since = track.get('rf_from') or ''
-        note = f'（{since} 起才有近期走勢資料）' if since else ''
-        parts.append(
-            f'<div class="tr-split"><h4>依近期走勢{note}</h4>'
-            '<table class="tr-table"><tbody>' + ''.join(rf_rows) + '</tbody></table></div>')
-    if parts:
-        splits_block = '<div class="tr-splits">' + ''.join(parts) + '</div>'
+    since = track.get('rf_from') or ''
+    rf_title = '依近期走勢' + (f'（{since} 起才有資料）' if since else '')
+    parts = [
+        split_table('依時段（全期間）', ['非下午場', '下午場']),
+        split_table(rf_title, ['走勢同向', '走勢反向', '走勢無方向']),
+    ]
+    parts = [x for x in parts if x]
+    splits_block = ('<div class="tr-splits">' + ''.join(parts) + '</div>') if parts else ''
 
     yesterday_block = ''
     y = track.get('yesterday')
@@ -4216,6 +4226,8 @@ def render_track_record(track):
                     這是「有沒有過盤」的紀錄，<strong>不含賠率</strong>——命中率高不等於賺錢。
                     樣本數少的欄位波動很大，<strong>請一併看分母</strong>——
                     8 筆的 50% 和 70 筆的 50% 完全是兩回事。
+                    分組表裡的百分比是<strong>各組自己的命中率</strong>，不是佔比——
+                    會相加的是筆數（各組互斥），不是百分比。
                     此區純粹顯示，<strong>不影響任何推薦與排序</strong>。
                 </p>
             </div>
