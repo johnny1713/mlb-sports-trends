@@ -810,7 +810,11 @@ def compute_track_record(history, today_str, recent_days=TRACK_RECENT_DAYS):
             bucket[0] += verdict
             if 'rf' in pick:
                 rf_days.add(day_str)
-                bucket = splits['走勢同向' if pick['rf'] is True else '走勢未同向']
+                # 三態一定要分開列。把「反向」和「無方向」併成「未同向」會得到相反的結論：
+                # 實測反向 38.5%、無方向 65.2%，合併後 59.3% 看起來像「不同向反而比較準」，
+                # 但真正的順序是 反向 < 同向 < 無方向。
+                rf_label = {True: '走勢同向', False: '走勢反向'}.get(pick['rf'], '走勢無方向')
+                bucket = splits[rf_label]
                 bucket[1] += 1
                 bucket[0] += verdict
             for scope in ('all',) + (('recent',) if day_str >= cutoff else ()):
@@ -4163,7 +4167,7 @@ def render_track_record(track):
 
     splits_block = ''
     day_rows = split_rows(['非下午場', '下午場'])
-    rf_rows = split_rows(['走勢同向', '走勢未同向'])
+    rf_rows = split_rows(['走勢同向', '走勢反向', '走勢無方向'])
     parts = []
     if day_rows:
         parts.append(
