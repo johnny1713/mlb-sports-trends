@@ -577,14 +577,18 @@ def _pick_rows(matchups_data, top_5_ai):
         hit = re.search(r'([0-9]+(?:\.[0-9]+)?)', text or '')
         return hit.group(1) if hit else None
 
-    top_keys = set()
+    # rf_agree（近期走勢是否同向）只存在於 top-ai-data，單場推薦陣列裡沒有，
+    # 所以在這裡順手帶進來。三態 True/False/None 要原樣保留：None 代表「沒有明顯方向」，
+    # 和「這天根本還沒有 Recent Form 資料」是兩回事，後者不會有 rf 這個 key。
+    top_meta = {}
     for r in top_5_ai:
         market = r.get('market_type') or ''
         key = _market_key(market)
         if not key:
             continue
         line = line_of(market) if key in ('Over', 'Under') else None
-        top_keys.add((r.get('matchup_id'), key, r.get('bet_on'), line))
+        top_meta[(r.get('matchup_id'), key, r.get('bet_on'), line)] = (
+            r.get('rf_agree') if 'rf_agree' in r else '__absent__')
 
     rows = []
     games = {}
@@ -597,9 +601,12 @@ def _pick_rows(matchups_data, top_5_ai):
             key = _market_key(raw)
             if not key:
                 continue
+            meta_key = (gid, key, r.get('bet_on'), None)
             row = {'gid': gid, 'market': key, 'bet_on': r.get('bet_on'),
                    'score': r.get('score'),
-                   'top5': (gid, key, r.get('bet_on'), None) in top_keys}
+                   'top5': meta_key in top_meta}
+            if row['top5'] and top_meta[meta_key] != '__absent__':
+                row['rf'] = top_meta[meta_key]
             # 2026-08-21 之前顯示過 alternate run line（受讓 2.0 之類，見 CLAUDE.md）。
             # 判定一律以「畫面上當時寫的那個數字」為準，並留下原文供事後稽核。
             line = line_of(raw)
@@ -608,13 +615,19 @@ def _pick_rows(matchups_data, top_5_ai):
                 row['market_raw'] = raw
             rows.append(row)
         for r in m.get('double_positive', []):
-            key = _market_key(r.get('direction'))
+            # `direction` 是後來才加的欄位，2026-08-01 之前的資料沒有；
+            # 退回用 market_type（"Under (小 8.5)"）判斷，否則回填時整批大小分會被跳過。
+            key = _market_key(r.get('direction') or r.get('market_type'))
             if key not in ('Over', 'Under'):
                 continue
             line = line_of(r.get('market_type'))
-            rows.append({'gid': gid, 'market': key, 'bet_on': None,
-                         'line': line, 'score': r.get('score'),
-                         'top5': (gid, key, None, line) in top_keys})
+            meta_key = (gid, key, None, line)
+            row = {'gid': gid, 'market': key, 'bet_on': None,
+                   'line': line, 'score': r.get('score'),
+                   'top5': meta_key in top_meta}
+            if row['top5'] and top_meta[meta_key] != '__absent__':
+                row['rf'] = top_meta[meta_key]
+            rows.append(row)
     return rows, games
 
 
@@ -767,6 +780,9 @@ def compute_track_record(history, today_str, recent_days=TRACK_RECENT_DAYS):
         return None
 
     tally = {'recent': collections_counter(), 'all': collections_counter()}
+    # 分組比較：下午場與近期走勢。兩者都只是切片，不改變主表的統計。
+    splits = collections_counter()
+    rf_days = set()
     yesterday = None
     days_with_data = set()
 
@@ -787,6 +803,16 @@ def compute_track_record(history, today_str, recent_days=TRACK_RECENT_DAYS):
                 continue
             days_with_data.add(day_str)
             marks.append(verdict)
+
+            is_day_game_pick = bool((games.get(pick.get('gid')) or {}).get('day'))
+            bucket = splits['下午場' if is_day_game_pick else '非下午場']
+            bucket[1] += 1
+            bucket[0] += verdict
+            if 'rf' in pick:
+                rf_days.add(day_str)
+                bucket = splits['走勢同向' if pick['rf'] is True else '走勢未同向']
+                bucket[1] += 1
+                bucket[0] += verdict
             for scope in ('all',) + (('recent',) if day_str >= cutoff else ()):
                 bucket = tally[scope]
                 bucket['總計'][1] += 1
@@ -813,6 +839,8 @@ def compute_track_record(history, today_str, recent_days=TRACK_RECENT_DAYS):
         'recent_days': recent_days,
         'recent': pack(tally['recent']),
         'all': pack(tally['all']),
+        'splits': pack(splits),
+        'rf_from': min(rf_days) if rf_days else None,
         'yesterday': yesterday,
         'days': len(days_with_data),
         'markets': TRACK_MARKETS,
@@ -3042,6 +3070,22 @@ DASHBOARD_CSS = """
         .tr-lb { display: block; font-size: 11px; color: #a5b4fc; }
         .tr-empty { color: var(--text-secondary); }
 
+        .tr-splits {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 4px 24px;
+            padding: 16px 20px 0;
+        }
+
+        .tr-split { min-width: 0; }
+
+        .tr-split h4 {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
         .tr-note {
             padding: 14px 20px 20px;
             font-size: 12px;
@@ -4105,6 +4149,36 @@ def render_track_record(track):
         label = track['market_zh'].get(key, key)
         rows.append(f'<tr><th>{label}</th>' + cell(recent) + cell(whole) + '</tr>')
 
+    def split_rows(names):
+        out = []
+        for name in names:
+            stat = track['splits'].get(name)
+            if not stat:
+                continue
+            out.append(
+                f'<tr><th>{name}</th>'
+                f'<td><span class="tr-rate">{stat["rate"]}%</span>'
+                f'<span class="tr-n">{stat["hit"]}/{stat["total"]}</span>'
+                f'<span class="tr-lb">保守 {stat["lb"]}%</span></td></tr>')
+        return out
+
+    splits_block = ''
+    day_rows = split_rows(['非下午場', '下午場'])
+    rf_rows = split_rows(['走勢同向', '走勢未同向'])
+    parts = []
+    if day_rows:
+        parts.append(
+            '<div class="tr-split"><h4>依時段（全期間）</h4>'
+            '<table class="tr-table"><tbody>' + ''.join(day_rows) + '</tbody></table></div>')
+    if rf_rows:
+        since = track.get('rf_from') or ''
+        note = f'（{since} 起才有近期走勢資料）' if since else ''
+        parts.append(
+            f'<div class="tr-split"><h4>依近期走勢{note}</h4>'
+            '<table class="tr-table"><tbody>' + ''.join(rf_rows) + '</tbody></table></div>')
+    if parts:
+        splits_block = '<div class="tr-splits">' + ''.join(parts) + '</div>'
+
     yesterday_block = ''
     y = track.get('yesterday')
     if y:
@@ -4134,6 +4208,7 @@ def render_track_record(track):
                         <tbody>{''.join(rows)}</tbody>
                     </table>
                 </div>
+                {splits_block}
                 <p class="tr-note">
                     這是「有沒有過盤」的紀錄，<strong>不含賠率</strong>——命中率高不等於賺錢。
                     樣本數少的欄位波動很大，請一併看分母與保守命中率。
