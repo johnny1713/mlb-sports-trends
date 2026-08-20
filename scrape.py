@@ -6,10 +6,11 @@ import math
 import time
 import os
 import sys
+from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "1.7"
+APP_VERSION = "1.8"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -189,61 +190,107 @@ def fetch_url(url, max_retries=3, backoff_factor=3.0):
             print(f"  [警告] 抓取 {url} 失敗 ({e})，將在 {sleep_time:.1f} 秒後進行第 {attempt+2} 次重試...")
             time.sleep(sleep_time)
 
+# covers 的盤口表是「各家運彩公司報價」的清單，同一個市場會有多列。
+# 其中會混入 alternate run line（±2.0/±2.5/±3.0），且個別莊家（實測 williamhill）
+# 還會把主客兩欄的正負號寫反。詳見 CLAUDE.md 的說明。
+RUN_LINE_LABEL = 'Game Line - Run Line - FT'
+GAME_TOTAL_LABEL = 'Game Line - Total - FT'
+STANDARD_RUN_LINE = '1.5'
+
+
+def _market_segments(html_str, label, max_window=20000):
+    """
+    取出某個市場標籤底下的所有報價列。同市場的後續列不會重複標籤，
+    因此以「下一個內容不同的 other-odds-label」作為區段終點。
+    """
+    segments = []
+    for mark in re.finditer(re.escape(label), html_str):
+        seg = html_str[mark.end():mark.end() + max_window]
+        end = len(seg)
+        for lab in re.finditer(r'<div class="other-odds-label">\s*(.*?)\s*</div>', seg, re.S):
+            if lab.group(1).strip() != label:
+                end = lab.start()
+                break
+        segments.append(seg[:end])
+    return segments
+
+
+def _odds_cells(segment):
+    """回傳 [(欄位, 數值), ...]，欄位 over = 客隊欄、under = 主隊欄。"""
+    cells = []
+    for cell in re.finditer(
+            r'class="other-(over|under)-odds"[^>]*>(.*?)'
+            r'(?=class="other-(?:over|under)-odds"|<div class="other-odds-label">|$)',
+            segment, re.S):
+        column, body = cell.group(1), cell.group(2)
+        value = re.search(r'<div class="odds upper-block">\s*<span>\s*(.*?)\s*</span>', body, re.S)
+        if not value:
+            continue
+        text = html.unescape(value.group(1)).replace('&#x2B;', '+').strip()
+        if text:
+            cells.append((column, text))
+    return cells
+
+
+def _parse_total_line(html_str):
+    """
+    全場大小分盤口。優先取頁面頂端摘要表的 Total 列——實測它與各家報價的第一列
+    完全一致，但在沒有 Game Line - Total - FT 區段的頁面上仍然存在。
+    """
+    summary = re.search(
+        r'<div class="other-odds-label">\s*Total\s*</div>(.*?)(?=<div class="other-odds-label">)',
+        html_str, re.S)
+    if summary:
+        for raw in re.findall(r'<div class="odds upper-block">\s*<span>\s*(.*?)\s*</span>',
+                              summary.group(1), re.S):
+            text = html.unescape(raw).strip()
+            if re.fullmatch(r'\d+(?:\.\d+)?', text):
+                return text
+
+    for segment in _market_segments(html_str, GAME_TOTAL_LABEL):
+        for _column, text in _odds_cells(segment):
+            hit = re.fullmatch(r'[ou](\d+(?:\.\d+)?)', text, re.IGNORECASE)
+            if hit:
+                return hit.group(1)
+    return None
+
+
 def parse_run_lines(html_str):
     """
-    從 covers.com matchup picks 頁面 HTML 中解析兩隊的全場讓分 (Run Line) 與隊伍簡寫，
-    並判斷誰是讓分方 (-) 與受讓方 (+)。同時解析全場大小分總分盤口。
+    解析全場讓分 (Run Line) 與大小分盤口。
+
+    ⚠️ 只承認標準的 ±1.5，並以多數決決定誰是讓分方——不可以直接取第一列。
+    covers 列的是各家報價，會混入 alternate run line，也會有莊家把正負號寫反；
+    而 covers 自己的 Run Line 趨勢統計一律以標準 ±1.5 為準，取到別的數字等於
+    叫使用者去下一個與趨勢不同的盤口。判斷不出來時回 None，讓畫面退回不帶數字的
+    「讓分／受讓」，寧可不顯示也不要顯示錯的。
     """
     try:
-        rl_indices = [m.start() for m in re.finditer(r'Game Line - Run Line - FT', html_str)]
-        if not rl_indices:
-            return None
-        
-        idx = rl_indices[0]
-        block = html_str[max(0, idx-1000):min(len(html_str), idx+2000)]
-        
-        team_a_match = re.search(r'class="other-over-odds th-label"[^>]*>\s*([A-Za-z0-9]+)\s*</', block, re.IGNORECASE)
-        team_b_match = re.search(r'class="other-under-odds th-label"[^>]*>\s*([A-Za-z0-9]+)\s*</', block, re.IGNORECASE)
-        
-        if not team_a_match or not team_b_match:
-            return None
-            
-        team_a_abbr = team_a_match.group(1).upper()
-        team_b_abbr = team_b_match.group(1).upper()
-        
-        post_rl = block[block.find("Game Line - Run Line - FT"):]
-        col_a_match = re.search(r'class="other-over-odds"[^>]*>.*?<div class="odds upper-block">.*?<span>\s*(.*?)\s*</span>', post_rl, re.DOTALL | re.IGNORECASE)
-        col_b_match = re.search(r'class="other-under-odds"[^>]*>.*?<div class="odds upper-block">.*?<span>\s*(.*?)\s*</span>', post_rl, re.DOTALL | re.IGNORECASE)
-        
-        if not col_a_match or not col_b_match:
-            return None
-            
-        spread_a = col_a_match.group(1).strip()
-        spread_b = col_b_match.group(1).strip()
-        
-        spread_a = html.unescape(spread_a).replace('&#x2B;', '+')
-        spread_b = html.unescape(spread_b).replace('&#x2B;', '+')
-        
-        # 解析全場大小總分盤口值
-        total_line = None
-        tot_indices = [m.start() for m in re.finditer(r'Game Line - Total - FT', html_str)]
-        if tot_indices:
-            idx_tot = tot_indices[0]
-            block_tot = html_str[idx_tot:idx_tot+1000]
-            tot_match = re.search(r'<span>\s*[ou](\d+(?:\.\d+)?)\s*</span>', block_tot, re.IGNORECASE)
-            if tot_match:
-                total_line = tot_match.group(1).strip()
-        
+        votes = Counter()
+        for segment in _market_segments(html_str, RUN_LINE_LABEL):
+            for column, text in _odds_cells(segment):
+                if text.lstrip('+-') != STANDARD_RUN_LINE:
+                    continue
+                # over 欄是客隊：客隊 +1.5 代表主隊為讓分方；under 欄則相反
+                home_is_favorite = (text[0] == '+') if column == 'over' else (text[0] == '-')
+                votes['home' if home_is_favorite else 'away'] += 1
+
+        spread_a = spread_b = None
+        if votes['home'] != votes['away']:
+            if votes['home'] > votes['away']:
+                spread_a, spread_b = '+1.5', '-1.5'
+            else:
+                spread_a, spread_b = '-1.5', '+1.5'
+
         return {
-            'team_a': team_a_abbr,
-            'team_b': team_b_abbr,
             'spread_a': spread_a,
             'spread_b': spread_b,
-            'total_line': total_line
+            'total_line': _parse_total_line(html_str),
         }
     except Exception as e:
         print(f"  [警告] 提取盤口讓分值與大小值時發生錯誤: {e}")
         return None
+
 
 # ==========================================
 # 賽事抓取與路徑提取
@@ -255,6 +302,38 @@ HOME_TZ_OFFSET = {
     'col': -2,                                                                               # 山區
     'az': -3, 'ath': -3, 'laa': -3, 'lad': -3, 'sd': -3, 'sea': -3, 'sf': -3,               # 太平洋/亞利桑那
 }
+
+def parse_start_time_et(html_str):
+    """
+    從單場頁面的 schema.org 資料取開賽時間，轉成與賽事列表相同的 "H:MM AM/PM ET" 格式。
+
+    賽事列表的 gamebox 在比賽開打後會把開賽時間換成比分／局數，該場的時間就變成 "None"
+    （實測最早那輪 UTC 11:17 有 56% 場次抓不到）。單場頁面的 startDate 是 UTC 絕對時間、
+    不受賽況影響，而且那頁本來就要抓，不必多發一次請求。
+    已完賽的頁面同樣沒有 startDate，那種情況仍然回 None。
+    """
+    hit = re.search(r'"startDate"\s*:\s*"([^"]+)"', html_str or '')
+    if not hit:
+        return None
+    raw = html.unescape(hit.group(1)).replace('&#x2B;', '+').strip()
+    stamp = re.match(r'(\d{2})/(\d{2})/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})', raw)
+    if not stamp:
+        return None
+    month, day, year, hour, minute, second = (int(x) for x in stamp.groups())
+    try:
+        from datetime import timezone
+        utc_dt = datetime(year, month, day, hour, minute, second, tzinfo=timezone.utc)
+        try:
+            from zoneinfo import ZoneInfo
+            et_dt = utc_dt.astimezone(ZoneInfo("America/New_York"))
+        except Exception:
+            # 無時區資料庫時以 UTC-4 近似，MLB 賽季均落在美東夏令時間內
+            from datetime import timedelta
+            et_dt = utc_dt.astimezone(timezone(timedelta(hours=-4)))
+    except (ValueError, OverflowError):
+        return None
+    return f"{et_dt.strftime('%I:%M %p').lstrip('0')} ET"
+
 
 def is_day_game(time_str, home_short=""):
     """
@@ -468,6 +547,15 @@ def parse_matchup_details(matchup):
     team_a_side = determine_side_term(team_a_spread)
     team_b_side = determine_side_term(team_b_spread)
         
+    # 賽事列表在比賽開打後拿不到開賽時間，改用單場頁面的 schema.org startDate 補上
+    game_time = matchup.get('game_time', 'None')
+    is_day = matchup.get('is_day_game', False)
+    if not game_time or game_time == 'None':
+        recovered = parse_start_time_et(html_content)
+        if recovered:
+            game_time = recovered
+            is_day = is_day_game(game_time, matchup.get('home_short', ''))
+
     return {
         'path': matchup_path,
         'team_a': team_a, # 依照 Schema，通常為 Away 球隊 (客隊)
@@ -481,8 +569,8 @@ def parse_matchup_details(matchup):
         'total_line': total_line,
         'trends': raw_trends,
         'recent_form': recent_form,
-        'game_time': matchup.get('game_time', 'None'),
-        'is_day_game': matchup.get('is_day_game', False)
+        'game_time': game_time,
+        'is_day_game': is_day
     }
 
 def classify_and_process_trends(matchup):
@@ -3416,7 +3504,7 @@ DASHBOARD_JS = """        // ==========================================
                                     ${translateText(m.team_b)}
                                 </span>
                             </div>
-                                <div class="match-time-sub">\U0001f552 ${m.game_time}</div>
+                                <div class="match-time-sub">\U0001f552 ${!m.game_time || m.game_time === 'None' ? '開賽時間未提供' : m.game_time}</div>
                             </div>
                             <div class="match-tags">
                                 ${dayGameTag}
