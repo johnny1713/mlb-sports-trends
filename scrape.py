@@ -832,6 +832,8 @@ def compute_track_record(history, today_str, recent_days=TRACK_RECENT_DAYS):
             if total:
                 out[key] = {'hit': hit, 'total': total,
                             'rate': round(100 * hit / total, 1),
+                            # 保守命中率（Wilson 下界）仍然算著但不顯示——2026-08-21
+                            # 使用者反映畫面太雜要求拿掉。分母已足以提醒樣本厚度。
                             'lb': round(100 * wilson_lower_bound(hit, total), 1)}
         return out
 
@@ -3067,7 +3069,6 @@ DASHBOARD_CSS = """
 
         .tr-rate { display: block; font-weight: 700; }
         .tr-n { display: block; font-size: 11px; color: var(--text-secondary); }
-        .tr-lb { display: block; font-size: 11px; color: #a5b4fc; }
         .tr-empty { color: var(--text-secondary); }
 
         .tr-splits {
@@ -4133,8 +4134,7 @@ def render_track_record(track):
         if not stat:
             return '<td class="tr-empty">—</td>'
         return (f'<td><span class="tr-rate">{stat["rate"]}%</span>'
-                f'<span class="tr-n">{stat["hit"]}/{stat["total"]}</span>'
-                f'<span class="tr-lb">保守 {stat["lb"]}%</span></td>')
+                f'<span class="tr-n">{stat["hit"]}/{stat["total"]}</span></td>')
 
     rows = []
     overall_recent = track['recent'].get('總計')
@@ -4158,8 +4158,7 @@ def render_track_record(track):
             out.append(
                 f'<tr><th>{name}</th>'
                 f'<td><span class="tr-rate">{stat["rate"]}%</span>'
-                f'<span class="tr-n">{stat["hit"]}/{stat["total"]}</span>'
-                f'<span class="tr-lb">保守 {stat["lb"]}%</span></td></tr>')
+                f'<span class="tr-n">{stat["hit"]}/{stat["total"]}</span></td></tr>')
         return out
 
     splits_block = ''
@@ -4211,7 +4210,8 @@ def render_track_record(track):
                 {splits_block}
                 <p class="tr-note">
                     這是「有沒有過盤」的紀錄，<strong>不含賠率</strong>——命中率高不等於賺錢。
-                    樣本數少的欄位波動很大，請一併看分母與保守命中率。
+                    樣本數少的欄位波動很大，<strong>請一併看分母</strong>——
+                    8 筆的 50% 和 70 筆的 50% 完全是兩回事。
                     此區純粹顯示，<strong>不影響任何推薦與排序</strong>。
                 </p>
             </div>
