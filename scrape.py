@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "1.8"
+APP_VERSION = "1.9"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -232,10 +232,25 @@ def _odds_cells(segment):
     return cells
 
 
+# 全場大小分盤口的合理範圍。MLB 全場總分實測落在 6.0~14.5（14.5 是落磯隊主場
+# Coors Field 的高海拔球場，屬真實盤口），首五局總分則是 4.5 上下。
+# 2026-07-27 出現過「買 全場小分 (小 4.5)」——那是首五局的數字混進全場市場。
+MIN_GAME_TOTAL, MAX_GAME_TOTAL = 5.5, 15.0
+
+
+def _valid_game_total(text):
+    """數字看起來像全場總分才承認，否則當作沒抓到。"""
+    try:
+        return MIN_GAME_TOTAL <= float(text) <= MAX_GAME_TOTAL
+    except (TypeError, ValueError):
+        return False
+
+
 def _parse_total_line(html_str):
     """
     全場大小分盤口。優先取頁面頂端摘要表的 Total 列——實測它與各家報價的第一列
     完全一致，但在沒有 Game Line - Total - FT 區段的頁面上仍然存在。
+    取到的數字一律過 _valid_game_total()，不合理就繼續找下一個候選。
     """
     summary = re.search(
         r'<div class="other-odds-label">\s*Total\s*</div>(.*?)(?=<div class="other-odds-label">)',
@@ -244,13 +259,13 @@ def _parse_total_line(html_str):
         for raw in re.findall(r'<div class="odds upper-block">\s*<span>\s*(.*?)\s*</span>',
                               summary.group(1), re.S):
             text = html.unescape(raw).strip()
-            if re.fullmatch(r'\d+(?:\.\d+)?', text):
+            if re.fullmatch(r'\d+(?:\.\d+)?', text) and _valid_game_total(text):
                 return text
 
     for segment in _market_segments(html_str, GAME_TOTAL_LABEL):
         for _column, text in _odds_cells(segment):
             hit = re.fullmatch(r'[ou](\d+(?:\.\d+)?)', text, re.IGNORECASE)
-            if hit:
+            if hit and _valid_game_total(hit.group(1)):
                 return hit.group(1)
     return None
 
@@ -697,13 +712,7 @@ def classify_and_process_trends(matchup):
 # Recent Form 條件片語的中譯表。依字串長度由長到短比對，避免短語先吃掉長語。
 # 語料來自 2026-08-01 實抓的 64 條趨勢，句型高度模板化。
 RF_PHRASES = [
-    ('when their opponent scores 2 runs or less in their previous game', '對手前一場得分 ≤2 時'),
-    ('when their opponent scores 5 runs or more in their previous game', '對手前一場得分 ≥5 時'),
-    ('when their opponent allows 5 runs or more in their previous game', '對手前一場失分 ≥5 時'),
     ('following a Quality Start in his last appearance', '上一場優質先發之後'),
-    ('after allowing 2 runs or less in their previous game', '前一場失分 ≤2 之後'),
-    ('after scoring 2 runs or less in their previous game', '前一場得分 ≤2 之後'),
-    ('after scoring 5 runs or more in their previous game', '前一場得分 ≥5 之後'),
     ('vs. a team with a winning record', '對戰勝率過五成的球隊'),
     ('vs. a team with a losing record', '對戰勝率不到五成的球隊'),
     ('vs. a right-handed starter', '對戰右投先發'),
@@ -722,7 +731,6 @@ RF_PHRASES = [
     ('as a road underdog', '客場冷門時'),
     ('as a home favorite', '主場熱門時'),
     ('as a road favorite', '客場熱門時'),
-    ('with 5 days of rest', '休息 5 天時'),
     ('behind home plate', '擔任主審時'),
     ('as an underdog', '冷門時'),
     ('as a favorite', '熱門時'),
@@ -738,6 +746,64 @@ RF_PHRASES = [
     ('in Cleveland', '在克里夫蘭'),
 ]
 
+# 帶數字／可自由組合的條件片語只能用 regex，寫死一定會漏。
+# 實測歷史 1783 句：光是「N runs or more」「N days of rest」「WHIP greater than X」
+# 「winning % of greater than .XXX」這幾類沒收，就有 15% 的走勢項目卡著英文沒翻。
+# ⚠️ 這些 regex 一定要在 RF_PHRASES 之前套用，否則表尾的 'home'/'road' 單字規則
+# 會先把英文子句裡的字換成中文，產生「vs. a team with a 客場 winning % of ...」那種夾雜句。
+_MORE_LESS = {'more': '≥', 'less': '≤'}
+_HI_LO = {'greater': '高於', 'above': '高於', 'less': '低於', 'below': '低於'}
+_HOME_ROAD = {'home': '主場', 'road': '客場'}
+
+RF_PATTERNS = [
+    (re.compile(r'when their opponent (allows|scores) (\d+) runs? or (more|less) in their previous game'),
+     lambda m: '對手前一場%s %s%s 時' % ('失分' if m.group(1) == 'allows' else '得分',
+                                        _MORE_LESS[m.group(3)], m.group(2))),
+    (re.compile(r'after (allowing|scoring) (\d+) runs? or (more|less) in their previous game'),
+     lambda m: '前一場%s %s%s 之後' % ('失分' if m.group(1) == 'allowing' else '得分',
+                                      _MORE_LESS[m.group(3)], m.group(2))),
+    (re.compile(r'vs\. a team with a (winning|losing) (home|road) record'),
+     lambda m: '對戰%s戰績%s五成的球隊' % (_HOME_ROAD[m.group(2)],
+                                          '過' if m.group(1) == 'winning' else '不到')),
+    (re.compile(r'vs\. a team with a (home|road) winning % of (greater|less) than (\.\d+)'),
+     lambda m: '對戰%s勝率%s %s 的球隊' % (_HOME_ROAD[m.group(1)], _HI_LO[m.group(2)], m.group(3))),
+    (re.compile(r'vs\. a team with a winning % (above|below) (\.\d+)'),
+     lambda m: '對戰勝率%s %s 的球隊' % (_HI_LO[m.group(1)], m.group(2))),
+    (re.compile(r'vs\. a starter with a WHIP (greater|less) than ([\d.]+)'),
+     lambda m: '對戰 WHIP %s %s 的先發投手' % (_HI_LO[m.group(1)], m.group(2))),
+    (re.compile(r'following a (home|road) trip of (\d+) or more days'),
+     lambda m: '結束 ≥%s 天的%s之旅後' % (m.group(2), _HOME_ROAD[m.group(1)])),
+    (re.compile(r'following a team (loss|win) in their previous game'),
+     lambda m: '球隊前一場%s之後' % ('落敗' if m.group(1) == 'loss' else '獲勝')),
+    (re.compile(r'with (\d+) or more days of rest'), lambda m: '休息 ≥%s 天時' % m.group(1)),
+    (re.compile(r'with (\d+) days? of rest'), lambda m: '休息 %s 天時' % m.group(1)),
+    (re.compile(r"with ([A-Z][A-Za-z.'-]*(?: [IVX]+)?) behind home plate"),
+     lambda m: '主審 %s 時' % m.group(1)),
+    (re.compile(r'following a (loss|win)\b'),
+     lambda m: '%s之後' % ('落敗' if m.group(1) == 'loss' else '獲勝')),
+]
+
+# covers 句尾會用城市名指場地（in X）或對手（vs. X）。只收錄 MLB 城市，避免把人名誤譯。
+RF_CITIES = {
+    'Arizona': '亞利桑那', 'Atlanta': '亞特蘭大', 'Baltimore': '巴爾的摩', 'Boston': '波士頓',
+    'Chicago': '芝加哥', 'Cincinnati': '辛辛那提', 'Cleveland': '克里夫蘭', 'Colorado': '科羅拉多',
+    'Detroit': '底特律', 'Houston': '休士頓', 'Kansas City': '堪薩斯城', 'Los Angeles': '洛杉磯',
+    'Miami': '邁阿密', 'Milwaukee': '密爾瓦基', 'Minnesota': '明尼蘇達', 'New York': '紐約',
+    'Oakland': '奧克蘭', 'Philadelphia': '費城', 'Pittsburgh': '匹茲堡', 'San Diego': '聖地牙哥',
+    'San Francisco': '舊金山', 'Seattle': '西雅圖', 'St. Louis': '聖路易', 'Tampa Bay': '坦帕灣',
+    'Texas': '德州', 'Toronto': '多倫多', 'Washington': '華盛頓',
+}
+# 長名排前面，避免 'New York' 被更短的鍵切斷
+RF_CITY_PATTERN = re.compile(
+    r'\b(in|vs\.) (%s)\b' % '|'.join(re.escape(c) for c in sorted(RF_CITIES, key=len, reverse=True))
+)
+RF_PATTERNS.append(
+    (RF_CITY_PATTERN,
+     lambda m: ('在%s' if m.group(1) == 'in' else '對戰%s') % RF_CITIES[m.group(2)])
+)
+
+MARK = chr(0)
+
 RECORD_RE = re.compile(r'\b(\d+)-(\d+)(?:-(\d+))?\b')
 
 
@@ -748,6 +814,9 @@ def _translate_rf_condition(text):
         return ''
     # 譯文以 \x00 包住，標出片語邊界；否則「前一場失分 ≤2 之後」這種
     # 片語內部本來就有的空白，會被下面的頓號規則誤判成片語分隔。
+    # regex 規則必須先跑，否則 RF_PHRASES 表尾的單字規則會先啃掉英文子句裡的字
+    for pattern, repl in RF_PATTERNS:
+        out = pattern.sub(lambda m: MARK + repl(m) + MARK, out)
     for en, zh in RF_PHRASES:
         out = out.replace(en, f'\x00{zh}\x00')
     out = re.sub(r'\x00\s+\x00', '\x00、\x00', out)
@@ -3763,6 +3832,42 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
         except Exception as e:
             print(f"[錯誤] 無法寫入 HTML 儀表板文件 {output_filename}: {e}")
 
+def load_known_game_times(date_str, path="index.html"):
+    """
+    從既有 index.html 讀回「上一輪已經抓到的開賽時間」，key 為 matchup id。
+
+    比賽一旦開打，賽事列表與單場頁面**都**拿不到開賽時間（單場頁面的 startDate
+    只有賽前才有，進行中會變成 InProgress）。但每天跑六輪，早一輪多半在賽前就抓到了，
+    直接沿用即可——開賽時間本來就不太會變。
+    只有在既有頁面的賽事日期與本次相同時才沿用，避免把昨天的時間帶到今天。
+    """
+    try:
+        with open(path, encoding="utf-8") as f:
+            html_text = f.read()
+    except OSError:
+        return {}
+
+    stamped = re.search(r'賽事日期：<strong>(\d{4}-\d{2}-\d{2})</strong>', html_text)
+    if not stamped or stamped.group(1) != date_str:
+        return {}
+
+    block = re.search(r'id="matchups-data"[^>]*>(.*?)</script>', html_text, re.DOTALL)
+    if not block:
+        return {}
+    try:
+        previous = json.loads(block.group(1))
+    except json.JSONDecodeError:
+        return {}
+
+    known = {}
+    for item in previous:
+        game_time = item.get('game_time')
+        path_value = item.get('path') or ''
+        if game_time and game_time != 'None' and path_value:
+            known[path_value.rsplit('/', 1)[-1]] = game_time
+    return known
+
+
 def replay_from_html(path="index.html"):
     """
     不連網，從既有 index.html 內嵌的 JSON 重新產生 HTML（`python scrape.py --replay`）。
@@ -3844,6 +3949,9 @@ def main():
     if not date_str:
         date_str = get_eastern_today()
 
+    # 比賽開打後就抓不到開賽時間了，先把上一輪已知的讀回來備用
+    known_game_times = load_known_game_times(date_str)
+
     # 1. 抓取對戰清單與球隊縮寫
     matchups_list = get_matchups_data(date_str)
     if not matchups_list:
@@ -3865,6 +3973,13 @@ def main():
             failed_matchups.append(matchup['path'].split('/')[-1])
             continue
             
+        # 賽事列表與單場頁面都沒有開賽時間時（比賽已開打），沿用上一輪抓到的
+        if matchup_data.get('game_time') in (None, '', 'None'):
+            recalled = known_game_times.get(matchup['path'].rsplit('/', 1)[-1])
+            if recalled:
+                matchup_data['game_time'] = recalled
+                matchup_data['is_day_game'] = is_day_game(recalled, matchup.get('home_short', ''))
+
         print(f"  對戰雙方: {matchup_data['team_a']} vs {matchup_data['team_b']}")
         print(f"  原始趨勢數: {len(matchup_data['trends'])} 條")
         

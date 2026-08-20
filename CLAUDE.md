@@ -53,9 +53,15 @@ MLB 每日賽事趨勢爬蟲 + GitHub Pages 儀表板。抓 covers.com 的賽前
    **千萬不要改成取多數決**——實測多數決有 3/9 場與 covers 顯示的主盤口不符。
 9. **賽事列表在比賽開打後就沒有開賽時間**：`gamebox-time` 會換成比分／局數，
    該場 `game_time` 變成 `"None"`（實測全歷史 17.3%，最早那輪 UTC 11:17 高達 56%）。
-   單場頁面的 schema.org `"startDate"`（UTC 絕對時間）不受賽況影響，且那頁本來就要抓，
-   故由 `parse_start_time_et()` 換算成 ET 補上，實測 9/9 場與列表值完全一致。
-   **已完賽的頁面連 startDate 都沒有**，那種情況前端顯示「開賽時間未提供」。
+   ⚠️ **單場頁面的 `startDate` 只有賽前才有**——實測進行中的頁面是 `InProgress`、
+   已完賽的頁面兩者皆無。所以退回機制是三層，缺一不可：
+   1. 賽事列表的 `gamebox-time`（正常情況）
+   2. 單場頁面 schema.org 的 `"startDate"`（UTC 絕對時間，`parse_start_time_et()` 換算成 ET，
+      實測 9/9 場與列表值完全一致）——只救得到**尚未開打**的場次
+   3. `load_known_game_times()` 沿用**上一輪 index.html 已抓到**的時間——救進行中／已完賽的場次。
+      每天跑六輪，早幾輪（美東 07:00~11:00）一定在賽前，所以後面幾輪一定有東西可沿用。
+      只在既有頁面的賽事日期與本次相同時才沿用，避免把昨天的時間帶到今天。
+   三層都沒有時前端顯示「開賽時間未提供」，不要再讓 `None` 直接印到畫面上。
 
 ## 推薦演算法（scrape.py）
 
@@ -68,6 +74,26 @@ MLB 每日賽事趨勢爬蟲 + GitHub Pages 儀表板。抓 covers.com 的賽前
 - 判讀門檻（網頁上有說明列 + 顏色）：**≥55% 綠/強、50~55% 黃/普通、<50% 灰/忽略**。
 - 首五局 (F5) 與 Team Total 趨勢刻意排除，只做全場市場。
 - 下午場判定以**主場當地時間**（當地 17:00 前開打），非 ET。
+
+### Recent Form 中譯：條件子句要用 regex，不能只靠片語表（2026-08-20 修）
+
+`RF_PHRASES` 是純字串替換表，原本只寫死了幾個條件子句（`with 5 days of rest`、
+`after allowing 2 runs or less...`）。但這些子句帶**可變數字**，寫死必然漏：
+實測歷史 1783 句有 235 句（13.2%）夾著英文，換算成畫面上**每天約 15% 的走勢項目**。
+
+更糟的是「翻一半」——表尾有 `('home', '主場')`／`('road', '客場')` 這種單字規則，
+會啃掉英文子句裡的字，產生：
+
+    原文  ...home games vs. a team with a road winning % of greater than .600
+    舊譯  ...（主場 vs. a team with a 客場 winning % of greater than .600）
+
+所以新增 `RF_PATTERNS`（regex），並且**一定要在 `RF_PHRASES` 之前套用**。
+涵蓋：N runs or more／N days of rest／WHIP greater than X／winning % of .XXX／
+winning|losing home|road record／following a loss|win／road trip of N days／
+主審姓名／MLB 城市名（`RF_CITIES`，只收城市避免把人名誤譯）。
+實測 235 → 2 句殘留（一句是主審人名 `Gibson III`，本來就該留英文；
+一句是 covers 自己漏了隊名的 `are 7-0 in Lopezs last 7...`）。
+移除的 7 條寫死片語經逐句比對確認譯文完全相同，零回歸。
 
 ### Recent Form 趨勢：只顯示，**永遠不計分**（2026-08-01 加入）
 
