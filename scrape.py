@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "2.0"
+APP_VERSION = "2.1"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -516,6 +516,315 @@ def get_matchups_data(date_str):
         
     print(f"[+] 成功從賽事列表解析到 {len(matchups)} 場對戰與其開賽時間。")
     return matchups
+
+# ==========================================
+# 戰績累積（history.json）
+# ==========================================
+# covers 只給賽前趨勢，比賽結果不在專案裡。想回答「推薦到底準不準」就得每次重抓
+# 幾十天的計分板，慢、多打擾 covers、而且對方哪天改版舊資料就永遠拿不回來。
+# 因此每輪把「當天的推薦」與「前一天的比分」累積進 history.json：
+#   一天約 15 場 × 幾十位元組，整季不到 1 MB，跟著 index.html 一起進版控。
+#
+# ⚠️ 這份資料**只用來顯示**，不參與任何排序或篩選。理由和 Recent Form 相同：
+# 拿三位數的樣本回頭調參數，過擬合的風險遠大於訊號。要動排序請先確認樣本厚度。
+HISTORY_PATH = "history.json"
+RESULT_LOOKBACK_DAYS = 7      # 往回補幾天的賽果（延賽的場次不會無限重試）
+TRACK_RECENT_DAYS = 30        # 「近期」統計的天數
+
+
+def load_history(path=HISTORY_PATH):
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def save_history(history, path=HISTORY_PATH):
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        json.dump(history, f, ensure_ascii=False, sort_keys=True, indent=1)
+        f.write("\n")
+
+
+def _market_key(text):
+    """
+    把盤口名正規化成統計用的 key。
+
+    ⚠️ Top 5 那邊給的是 `market_type`（"受讓 1.5"、"Over (大 7.5)"），單場推薦給的是
+    `market_zh`（"受讓 1.5"）。兩邊**一定要走同一個函式**——之前各自處理，Top 5 用
+    `split(' ')[0]` 切出 "受讓"、單場用 "受讓 1.5"，比對永遠不成立，
+    讓分盤的 top5 旗標整批沒被標到（實測 108 筆裡一筆讓分都沒有），
+    而讓分又剛好是命中率最低的盤口，統計因此被系統性高估。
+    """
+    market = (text or '').strip()
+    if market.startswith('獨贏'):
+        return '獨贏'
+    if market.startswith('受讓'):
+        return '受讓 1.5'
+    if market.startswith('讓'):
+        return '讓 1.5'
+    if market.startswith('Over'):
+        return 'Over'
+    if market.startswith('Under'):
+        return 'Under'
+    return None
+
+
+def _pick_rows(matchups_data, top_5_ai):
+    """把當天所有推薦壓成可長期保存的最小結構。"""
+    def line_of(text):
+        hit = re.search(r'([0-9]+(?:\.[0-9]+)?)', text or '')
+        return hit.group(1) if hit else None
+
+    top_keys = set()
+    for r in top_5_ai:
+        market = r.get('market_type') or ''
+        key = _market_key(market)
+        if not key:
+            continue
+        line = line_of(market) if key in ('Over', 'Under') else None
+        top_keys.add((r.get('matchup_id'), key, r.get('bet_on'), line))
+
+    rows = []
+    games = {}
+    for m in matchups_data:
+        gid = m['path'].rsplit('/', 1)[-1]
+        games[gid] = {'away': m.get('team_a'), 'home': m.get('team_b'),
+                      'day': bool(m.get('is_day_game'))}
+        for r in m.get('opposing_trends', []):
+            raw = r.get('market_zh') or ''
+            key = _market_key(raw)
+            if not key:
+                continue
+            row = {'gid': gid, 'market': key, 'bet_on': r.get('bet_on'),
+                   'score': r.get('score'),
+                   'top5': (gid, key, r.get('bet_on'), None) in top_keys}
+            # 2026-08-21 之前顯示過 alternate run line（受讓 2.0 之類，見 CLAUDE.md）。
+            # 判定一律以「畫面上當時寫的那個數字」為準，並留下原文供事後稽核。
+            line = line_of(raw)
+            if line and line != '1.5':
+                row['line'] = line
+                row['market_raw'] = raw
+            rows.append(row)
+        for r in m.get('double_positive', []):
+            key = _market_key(r.get('direction'))
+            if key not in ('Over', 'Under'):
+                continue
+            line = line_of(r.get('market_type'))
+            rows.append({'gid': gid, 'market': key, 'bet_on': None,
+                         'line': line, 'score': r.get('score'),
+                         'top5': (gid, key, None, line) in top_keys})
+    return rows, games
+
+
+def record_daily_picks(history, date_str, matchups_data, top_5_ai):
+    """
+    記下當天的推薦。同一天會被後面幾輪覆蓋——這是刻意的：
+    使用者晚上看到的是最後一輪的版本，統計就該以那一份為準。
+    """
+    rows, games = _pick_rows(matchups_data, top_5_ai)
+    if not rows:
+        return history
+    day = history.setdefault(date_str, {})
+    day['picks'] = rows
+    day['games'] = games
+    day.setdefault('results', {})
+    return history
+
+
+_SB_ARTICLE_RE = re.compile(r'(<article\s+[^>]*class="[^"]*gamebox[^"]*"[^>]*>.*?</article>)', re.S | re.I)
+_SB_GID_RE = re.compile(r'data-url=["\']?/sports/game/(\d+)', re.I)
+_SB_FINAL_RE = re.compile(r'post-game-status[^>]*>\s*Final', re.I)
+_SB_SCORE_RE = re.compile(
+    r'<strong class="team-score position-relative d-none d-xl-inline-block[^"]*">\s*(\d+)\s*</strong>', re.I)
+
+
+def fetch_final_scores(date_str):
+    """
+    抓某一天的計分板，取出已完賽場次的最終比分。
+
+    用「一天一次請求」而不是「一場一次」——同樣的資料，請求數差 15 倍。
+    比分在 gamebox 內是兩個 team-score，依序為客隊、主隊。
+    """
+    html_text = fetch_url(f"https://www.covers.com/sports/mlb/matchups?selectedDate={date_str}")
+    if not html_text:
+        return None
+    finals = {}
+    for art in _SB_ARTICLE_RE.findall(html_text):
+        gid_hit = _SB_GID_RE.search(art)
+        if not gid_hit or not _SB_FINAL_RE.search(art):
+            continue
+        nums = _SB_SCORE_RE.findall(art)
+        if len(nums) >= 2:
+            finals[gid_hit.group(1)] = {'away': int(nums[0]), 'home': int(nums[1])}
+    return finals
+
+
+def backfill_results(history, today_str):
+    """
+    補上還缺結果的日子（不含今天，今天的比賽還沒打完）。
+
+    只回看 RESULT_LOOKBACK_DAYS 天，且每輪最多補一天：延賽或取消的場次永遠不會有
+    比分，沒有上限的話會每輪都重抓。已經補過的日子不會再打一次請求。
+    """
+    from datetime import timedelta
+    try:
+        today = datetime.strptime(today_str, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return history
+
+    for back in range(1, RESULT_LOOKBACK_DAYS + 1):
+        day_str = (today - timedelta(days=back)).strftime("%Y-%m-%d")
+        day = history.get(day_str)
+        if not day or not day.get('picks'):
+            continue
+        wanted = set(day.get('games') or {})
+        have = set(day.get('results') or {})
+        if not wanted - have:
+            continue
+        print(f"[*] 補抓 {day_str} 的比賽結果...")
+        finals = fetch_final_scores(day_str)
+        if finals is None:
+            print(f"    [警告] {day_str} 的計分板抓取失敗，下一輪再試。")
+            return history
+        day.setdefault('results', {}).update(
+            {gid: sc for gid, sc in finals.items() if gid in wanted})
+        got = len(set(day['results']) & wanted)
+        print(f"    -> {day_str}: {got}/{len(wanted)} 場已有結果")
+        return history          # 一輪只補一天，控制請求量
+    return history
+
+
+def _judge_pick(pick, games, results):
+    """
+    這筆推薦有沒有過盤。回傳 True/False，無法判定（沒結果、和局）回 None。
+    判定規則與網頁上的盤口說明一致：
+      獨贏 = 直接獲勝；讓 1.5 = 贏 2 分以上；受讓 1.5 = 輸 1 分以內或獲勝。
+    """
+    gid = pick.get('gid')
+    score = results.get(gid)
+    if not score:
+        return None
+    market = pick.get('market')
+
+    if market in ('Over', 'Under'):
+        try:
+            line = float(pick.get('line'))
+        except (TypeError, ValueError):
+            return None
+        total = score['away'] + score['home']
+        if total == line:
+            return None                      # 整數盤口打平，不計入
+        return total > line if market == 'Over' else total < line
+
+    teams = (games.get(gid) or {})
+    bet_on = pick.get('bet_on')
+    if bet_on == teams.get('away'):
+        diff = score['away'] - score['home']
+    elif bet_on == teams.get('home'):
+        diff = score['home'] - score['away']
+    else:
+        return None
+
+    if market == '獨贏':
+        return diff > 0
+
+    # 讓分：以畫面上實際顯示的盤口判定（未標示則為標準的 1.5）。
+    # 整數盤口會有和局，例如「受讓 2.0」輸剛好 2 分是和局而非不過，回 None 不計入。
+    try:
+        line = float(pick.get('line') or 1.5)
+    except (TypeError, ValueError):
+        line = 1.5
+    if market == '讓 1.5':
+        if diff == line:
+            return None
+        return diff > line
+    if market == '受讓 1.5':
+        if diff == -line:
+            return None
+        return diff > -line
+    return None
+
+
+TRACK_MARKETS = ['獨贏', '受讓 1.5', '讓 1.5', 'Over', 'Under']
+TRACK_MARKET_ZH = {'獨贏': '獨贏', '受讓 1.5': '受讓 1.5', '讓 1.5': '讓 1.5',
+                   'Over': '全場大分', 'Under': '全場小分'}
+
+
+def compute_track_record(history, today_str, recent_days=TRACK_RECENT_DAYS):
+    """
+    算出 Top 5 推薦的實際過盤紀錄，供頁面底部的「過往命中率」區顯示。
+
+    只統計 top5 為真的推薦——那才是網站真正端出來的建議；
+    單場卡片上的其他推薦沒有被推薦過，混進來會稀釋掉這份紀錄的意義。
+    """
+    from datetime import timedelta
+    try:
+        today = datetime.strptime(today_str, "%Y-%m-%d").date()
+        cutoff = (today - timedelta(days=recent_days)).strftime("%Y-%m-%d")
+    except (ValueError, TypeError):
+        return None
+
+    tally = {'recent': collections_counter(), 'all': collections_counter()}
+    yesterday = None
+    days_with_data = set()
+
+    for day_str in sorted(history):
+        if day_str >= today_str:
+            continue
+        day = history[day_str] or {}
+        games = day.get('games') or {}
+        results = day.get('results') or {}
+        if not results:
+            continue
+        marks = []
+        for pick in day.get('picks') or []:
+            if not pick.get('top5'):
+                continue
+            verdict = _judge_pick(pick, games, results)
+            if verdict is None:
+                continue
+            days_with_data.add(day_str)
+            marks.append(verdict)
+            for scope in ('all',) + (('recent',) if day_str >= cutoff else ()):
+                bucket = tally[scope]
+                bucket['總計'][1] += 1
+                bucket['總計'][0] += verdict
+                key = pick.get('market')
+                bucket[key][1] += 1
+                bucket[key][0] += verdict
+        if marks:
+            yesterday = {'date': day_str, 'marks': marks}
+
+    if not tally['all']['總計'][1]:
+        return None
+
+    def pack(bucket):
+        out = {}
+        for key, (hit, total) in bucket.items():
+            if total:
+                out[key] = {'hit': hit, 'total': total,
+                            'rate': round(100 * hit / total, 1),
+                            'lb': round(100 * wilson_lower_bound(hit, total), 1)}
+        return out
+
+    return {
+        'recent_days': recent_days,
+        'recent': pack(tally['recent']),
+        'all': pack(tally['all']),
+        'yesterday': yesterday,
+        'days': len(days_with_data),
+        'markets': TRACK_MARKETS,
+        'market_zh': TRACK_MARKET_ZH,
+    }
+
+
+def collections_counter():
+    """{盤口: [命中數, 總數]}，用 defaultdict 省掉初始化判斷。"""
+    from collections import defaultdict
+    return defaultdict(lambda: [0, 0])
+
 
 # ==========================================
 # 趨勢數據解析與分類演算法
@@ -2627,6 +2936,125 @@ DASHBOARD_CSS = """
             flex-wrap: wrap;
         }
 
+        /* 過往命中率（頁面底部，預設收合） */
+        .track-record {
+            max-width: 1600px;
+            margin: 0 auto 40px;
+            padding: 0 24px;
+        }
+
+        .tr-toggle {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-family: inherit;
+            text-align: left;
+            transition: border-color 0.25s ease;
+        }
+
+        .tr-toggle:hover { border-color: #a5b4fc; }
+
+        .tr-title { font-size: 15px; font-weight: 700; }
+
+        .tr-sub {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-left: auto;
+        }
+
+        .tr-caret {
+            font-size: 14px;
+            color: var(--text-secondary);
+            transition: transform 0.25s ease;
+        }
+
+        .track-record.expanded .tr-caret { transform: rotate(180deg); }
+
+        .tr-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        /* 無 JS 時的保底；實際高度由 toggleTrackRecord() 以 scrollHeight 寫成 inline style */
+        .track-record.expanded .tr-body { max-height: 2000px; }
+
+        .tr-yesterday {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 18px 20px 6px;
+            font-size: 13px;
+        }
+
+        .tr-yesterday-label { color: var(--text-secondary); }
+        .tr-marks { display: inline-flex; gap: 4px; }
+        .tr-mark { font-size: 15px; line-height: 1; }
+        .tr-yesterday-score { font-weight: 700; }
+
+        /* 表格可能比窄螢幕寬，讓它自己捲，不要撐爆頁面 */
+        .tr-table-wrap {
+            overflow-x: auto;
+            padding: 12px 20px 0;
+        }
+
+        .tr-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            min-width: 320px;
+        }
+
+        .tr-table th, .tr-table td {
+            padding: 10px 8px;
+            text-align: right;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        .tr-table thead th {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .tr-table tbody th {
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .tr-table .tr-total th, .tr-table .tr-total td {
+            background: rgba(165, 180, 252, 0.06);
+            font-weight: 700;
+        }
+
+        .tr-rate { display: block; font-weight: 700; }
+        .tr-n { display: block; font-size: 11px; color: var(--text-secondary); }
+        .tr-lb { display: block; font-size: 11px; color: #a5b4fc; }
+        .tr-empty { color: var(--text-secondary); }
+
+        .tr-note {
+            padding: 14px 20px 20px;
+            font-size: 12px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+        }
+
+        @media (max-width: 768px) {
+            .track-record { padding: 0 16px; }
+            .tr-sub { width: 100%; margin-left: 0; order: 3; }
+            .tr-table th, .tr-table td { padding: 9px 6px; }
+        }
+
         /* 搜尋清除按鈕 */
         .search-clear-btn {
             position: absolute;
@@ -2908,6 +3336,18 @@ DASHBOARD_JS = """        // ==========================================
                 `;
             }
         });
+
+        // 過往命中率的展開／收合。高度用 scrollHeight 實測寫成 inline style——
+        // 和摺疊卡片同一個理由：寫死的 max-height 在窄螢幕會把內容切掉。
+        function toggleTrackRecord() {
+            const section = document.getElementById('track-record');
+            const body = document.getElementById('tr-body');
+            if (!section || !body) return;
+            const open = section.classList.toggle('expanded');
+            body.style.maxHeight = open ? body.scrollHeight + 'px' : '0px';
+            const btn = section.querySelector('.tr-toggle');
+            if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
 
         // 開賽時間：主場當地時間 + 台灣時間（都由 Python 算好存在 JSON 裡）。
         // 舊的 index.html 沒有這兩個欄位，退回顯示原本的美東時間，--replay 才不會壞。
@@ -3371,6 +3811,14 @@ DASHBOARD_JS = """        // ==========================================
         // 依實際內容高度設定摺疊區的 max-height（收合時清成空字串讓 CSS 的 0 生效）。
         // 不能用固定值：窄螢幕是單欄排版，趨勢兩欄加上近期走勢會超過任何寫死的數字，
         // 超出的部分會被 overflow: hidden 吃掉，看起來像「只剩前一兩條」。
+        function syncTrackHeight() {
+            const section = document.getElementById('track-record');
+            const body = document.getElementById('tr-body');
+            if (section && body && section.classList.contains('expanded')) {
+                body.style.maxHeight = body.scrollHeight + 'px';
+            }
+        }
+
         function syncAccordionHeight(cardElement) {
             const content = cardElement.querySelector('.accordion-content');
             if (!content) return;
@@ -3390,6 +3838,7 @@ DASHBOARD_JS = """        // ==========================================
         // 轉向橫式或改變視窗寬度時欄數會變，已展開的卡片要重新量一次
         window.addEventListener('resize', () => {
             document.querySelectorAll('.match-card.expanded').forEach(syncAccordionHeight);
+            syncTrackHeight();
         });
 
         // 渲染賽事清單
@@ -3624,8 +4073,79 @@ DASHBOARD_JS = """        // ==========================================
         }"""
 
 
+def render_track_record(track):
+    """
+    頁面底部的「過往命中率」區。沒有資料時回空字串——整區不輸出，不佔版面。
+
+    刻意的幾件事：
+    - 分母和百分比一樣大。17 筆的 41% 和 170 筆的 41% 是兩回事，只寫百分比會把雜訊當訊號。
+    - 一併顯示保守命中率（Wilson 下界），與推薦卡片同一套算法與用語。
+    - 預設收合，放在最下面。網站在台灣 22:00 的任務是「今天買什麼」，戰績是事後參考。
+    """
+    if not track:
+        return ''
+
+    def cell(stat):
+        if not stat:
+            return '<td class="tr-empty">—</td>'
+        return (f'<td><span class="tr-rate">{stat["rate"]}%</span>'
+                f'<span class="tr-n">{stat["hit"]}/{stat["total"]}</span>'
+                f'<span class="tr-lb">保守 {stat["lb"]}%</span></td>')
+
+    rows = []
+    overall_recent = track['recent'].get('總計')
+    overall_all = track['all'].get('總計')
+    rows.append('<tr class="tr-total"><th>AI Top 5 合計</th>'
+                + cell(overall_recent) + cell(overall_all) + '</tr>')
+    for key in track['markets']:
+        recent = track['recent'].get(key)
+        whole = track['all'].get(key)
+        if not recent and not whole:
+            continue
+        label = track['market_zh'].get(key, key)
+        rows.append(f'<tr><th>{label}</th>' + cell(recent) + cell(whole) + '</tr>')
+
+    yesterday_block = ''
+    y = track.get('yesterday')
+    if y:
+        marks = ''.join('<span class="tr-mark hit">\u2705</span>' if ok
+                        else '<span class="tr-mark miss">\u274c</span>' for ok in y['marks'])
+        hit = sum(1 for ok in y['marks'] if ok)
+        month_day = '/'.join(str(int(x)) for x in y['date'].split('-')[1:])
+        yesterday_block = (
+            '<div class="tr-yesterday">'
+            f'<span class="tr-yesterday-label">最近一次結算（{month_day}）</span>'
+            f'<span class="tr-marks">{marks}</span>'
+            f'<span class="tr-yesterday-score">{hit}/{len(y["marks"])}</span>'
+            '</div>')
+
+    return f"""
+        <section class="track-record" id="track-record">
+            <button class="tr-toggle" onclick="toggleTrackRecord()" aria-expanded="false">
+                <span class="tr-title">\U0001f4ca 過往命中率</span>
+                <span class="tr-sub">{track['days']} 天 / {overall_all['total']} 筆推薦</span>
+                <span class="tr-caret" id="tr-caret">\u25be</span>
+            </button>
+            <div class="tr-body" id="tr-body">
+                {yesterday_block}
+                <div class="tr-table-wrap">
+                    <table class="tr-table">
+                        <thead><tr><th></th><th>近 {track['recent_days']} 天</th><th>全期間</th></tr></thead>
+                        <tbody>{''.join(rows)}</tbody>
+                    </table>
+                </div>
+                <p class="tr-note">
+                    這是「有沒有過盤」的紀錄，<strong>不含賠率</strong>——命中率高不等於賺錢。
+                    樣本數少的欄位波動很大，請一併看分母與保守命中率。
+                    此區純粹顯示，<strong>不影響任何推薦與排序</strong>。
+                </p>
+            </div>
+        </section>
+"""
+
+
 def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, date_str,
-                            failed_count=0, expected_count=None):
+                            failed_count=0, expected_count=None, track_record=None):
     """
     將爬取與運算後的結果導出為一個極具質感的本機互動式繁體中文 HTML 網頁。
 
@@ -3633,6 +4153,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
     完全靜默的（那場直接從資料裡消失），使用者只會看到今天少了一場，無從分辨是
     covers 沒排還是我們漏抓。
     """
+    track_section = render_track_record(track_record)
     total_matches = len(matchups_data)
     total_double_pos = sum(len(m['double_positive']) for m in matchups_data)
     total_opposing = sum(len(m['opposing_trends']) for m in matchups_data)
@@ -3796,6 +4317,8 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
     </button>
 
+    {track_section}
+
     <footer>
         數據抓取自 covers.com • 本地動態儀表板 • 僅供分析參考，請理性投注
     </footer>
@@ -3917,7 +4440,9 @@ def replay_from_html(path="index.html"):
     print(f"[*] Replay 模式：從 {path} 讀回 {len(matchups_data)} 場賽事資料（{date_str}），不連網。")
     print(f"    Top 5 勝負 {len(top_sides)} 筆 / 大小分 {len(top_totals)} 筆 / AI {len(top_ai)} 筆"
           + (f" / 當時有 {failed_count} 場抓取失敗" if failed_count else ""))
+    track_record = compute_track_record(load_history(), date_str)
     generate_html_dashboard(matchups_data, top_sides, top_totals, top_ai, date_str,
+                            track_record=track_record,
                             failed_count=failed_count, expected_count=expected_count)
 
 
@@ -4153,10 +4678,23 @@ def main():
     if failed_matchups:
         print(f"[!] 有 {len(failed_matchups)} 場抓取失敗，網頁上會顯示警告：{failed_matchups}")
 
-    # 6. 生成動態互動式 HTML 數據儀表板
+    # 6. 累積戰績：記下今天的推薦，並補抓前幾天的比賽結果
+    history = load_history()
+    record_daily_picks(history, date_str, all_matchups_data, top_5_ai)
+    backfill_results(history, date_str)
+    save_history(history)
+    track_record = compute_track_record(history, date_str)
+    if track_record:
+        overall = track_record['all'].get('總計')
+        if overall:
+            print(f"[+] 戰績累積：{track_record['days']} 天，Top 5 過盤 "
+                  f"{overall['hit']}/{overall['total']}（{overall['rate']}%）")
+
+    # 7. 生成動態互動式 HTML 數據儀表板
     generate_html_dashboard(all_matchups_data, top_5_sides, top_5_totals, top_5_ai, date_str,
                             failed_count=len(failed_matchups),
-                            expected_count=len(matchups_list))
+                            expected_count=len(matchups_list),
+                            track_record=track_record)
     
     print("====================================================")
     print("                  抓取與分析完成！")
