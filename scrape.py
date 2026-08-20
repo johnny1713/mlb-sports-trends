@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "2.4"
+APP_VERSION = "2.5"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -3060,12 +3060,6 @@ DASHBOARD_CSS = """
             font-weight: 600;
         }
 
-        /* 左上角那格標明「表格內的數字是什麼」，欄位標題留給時間區間。
-           接在欄位標題後面寫「近 30 天命中率」會變長，窄螢幕吃虧。
-           ⚠️ 選擇器要寫到 `.tr-table thead th.tr-corner`：只寫 `.tr-corner` 的特異性
-           (0,1,0) 低於 `.tr-table th` 的 (0,1,1)，會被上面的 text-align: right 蓋掉，
-           和下方靠左的列名對不齊。 */
-        .tr-table thead th.tr-corner { text-align: left; }
 
         .tr-table tbody th {
             text-align: left;
@@ -4224,7 +4218,7 @@ def render_track_record(track):
                 {yesterday_block}
                 <div class="tr-table-wrap">
                     <table class="tr-table">
-                        <thead><tr><th class="tr-corner">命中率</th><th>近 {track['recent_days']} 天</th><th>全期間</th></tr></thead>
+                        <thead><tr><th></th><th>近 {track['recent_days']} 天</th><th>全期間</th></tr></thead>
                         <tbody>{''.join(rows)}</tbody>
                     </table>
                 </div>
