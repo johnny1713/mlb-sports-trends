@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "1.9"
+APP_VERSION = "2.0"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -365,6 +365,49 @@ def is_day_game(time_str, home_short=""):
         hour += 12
     local_hour = hour + HOME_TZ_OFFSET.get(home_short, 0)
     return local_hour < 17
+
+def game_time_variants(game_time_et, home_short, date_str):
+    """
+    把 covers 給的美東開賽時間換算成「主場當地時間」與「台灣時間」。
+
+    使用者在台灣，看 ET 要自己加 12 小時；而下午場的判定又是以主場當地時間為準
+    （見 is_day_game），畫面上只寫 ET 兩邊都對不起來。故兩個都直接算好存進 JSON，
+    前端只負責顯示——時區換算集中在 Python 一處，不要散到 JS 去。
+
+    台灣時間一定帶日期：美東晚場對應台灣隔天凌晨，不寫日期會被誤讀成當天。
+    回傳 (主場當地時間, 台灣時間)，算不出來就回 (None, None)。
+    """
+    stamp = re.match(r'(\d{1,2}):(\d{2})\s*([AP]M)', str(game_time_et or ''), re.IGNORECASE)
+    if not stamp:
+        return None, None
+    hour, minute, ampm = int(stamp.group(1)), int(stamp.group(2)), stamp.group(3).upper()
+    if ampm == 'PM' and hour != 12:
+        hour += 12
+    elif ampm == 'AM' and hour == 12:
+        hour = 0
+
+    def to_ampm(h, m):
+        return '%d:%02d %s' % (h % 12 or 12, m, 'AM' if h < 12 else 'PM')
+
+    # 主場當地時間：HOME_TZ_OFFSET 是相對 ET 的時差（亞利桑那不實施夏令時間，已含在表內）
+    local_text = to_ampm((hour + HOME_TZ_OFFSET.get(home_short, 0)) % 24, minute)
+
+    try:
+        try:
+            from zoneinfo import ZoneInfo
+            et_tz, tw_tz = ZoneInfo("America/New_York"), ZoneInfo("Asia/Taipei")
+        except Exception:
+            from datetime import timezone, timedelta
+            et_tz, tw_tz = timezone(timedelta(hours=-4)), timezone(timedelta(hours=8))
+        base = datetime.strptime(date_str, "%Y-%m-%d")
+        tw_dt = base.replace(hour=hour, minute=minute, tzinfo=et_tz).astimezone(tw_tz)
+        # 台灣時間用 24 小時制：多數比賽落在台灣半夜，00:40 比 12:40 AM 好判讀
+        taiwan_text = '%d/%d %02d:%02d' % (tw_dt.month, tw_dt.day, tw_dt.hour, tw_dt.minute)
+    except (ValueError, TypeError, OverflowError):
+        taiwan_text = None
+
+    return local_text, taiwan_text
+
 
 def get_eastern_today():
     """
@@ -2584,34 +2627,6 @@ DASHBOARD_CSS = """
             flex-wrap: wrap;
         }
 
-        .lang-toggle-btn {
-            font-size: 14px;
-            font-weight: 600;
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(165, 180, 252, 0.05) 100%);
-            border: 1px solid rgba(165, 180, 252, 0.3);
-            padding: 8px 16px;
-            border-radius: 8px;
-            color: #a5b4fc;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            user-select: none;
-        }
-
-        .lang-toggle-btn:hover {
-            border-color: #a5b4fc;
-            color: #ffffff;
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(165, 180, 252, 0.15) 100%);
-            box-shadow: 0 0 15px rgba(165, 180, 252, 0.2);
-            transform: translateY(-1px);
-        }
-
-        .lang-toggle-btn:active {
-            transform: translateY(1px);
-        }
-
         /* 搜尋清除按鈕 */
         .search-clear-btn {
             position: absolute;
@@ -2847,14 +2862,10 @@ DASHBOARD_JS = """        // ==========================================
             "Nationals": "華盛頓國民"
         };
 
-        // 每次載入固定預設繁體中文 (不記憶上次切換，避免曾切過英文後預設變英文)
-        let currentLanguage = 'zh';
-
+        // 全站固定繁體中文。中英切換鈕已於 2026-08-21 移除（使用者從來沒用過），
+        // 但隊名字典仍然要留著——畫面上的隊名、推薦文案、趨勢原文都靠它翻。
         function translateText(text) {
             if (!text) return text;
-            if (currentLanguage === 'en') {
-                return text.replace(/Athletics Athletics/g, "Athletics");
-            }
             let translated = text;
             const sortedKeys = Object.keys(teamTranslations).sort((a, b) => b.length - a.length);
             for (const key of sortedKeys) {
@@ -2862,19 +2873,6 @@ DASHBOARD_JS = """        // ==========================================
                 translated = translated.replace(regex, teamTranslations[key]);
             }
             return translated;
-        }
-
-        function toggleLanguage() {
-            currentLanguage = currentLanguage === 'zh' ? 'en' : 'zh';
-            const btn = document.getElementById('lang-toggle');
-            if (btn) {
-                btn.innerHTML = `🌐 隊伍名稱：${currentLanguage === 'zh' ? '中文' : 'English'}`;
-            }
-            
-            renderAiTop5();
-            renderTopLists();
-            renderNearMisses();
-            renderMatchups();
         }
 
         let allMatchups = [];
@@ -2885,11 +2883,6 @@ DASHBOARD_JS = """        // ==========================================
         let searchQuery = '';
 
         window.addEventListener('DOMContentLoaded', () => {
-            const btn = document.getElementById('lang-toggle');
-            if (btn) {
-                btn.innerHTML = `🌐 隊伍名稱：${currentLanguage === 'zh' ? '中文' : 'English'}`;
-            }
-
             const rawData = document.getElementById('matchups-data').textContent;
             const rawSides = document.getElementById('top-sides-data').textContent;
             const rawTotals = document.getElementById('top-totals-data').textContent;
@@ -2916,15 +2909,26 @@ DASHBOARD_JS = """        // ==========================================
             }
         });
 
-        // Recent Form 句子裡的球隊簡稱以 @@Rays@@ 形式標記，依目前語言設定翻譯
+        // 開賽時間：主場當地時間 + 台灣時間（都由 Python 算好存在 JSON 裡）。
+        // 舊的 index.html 沒有這兩個欄位，退回顯示原本的美東時間，--replay 才不會壞。
+        function formatGameTime(m) {
+            const parts = [];
+            if (m.local_time) parts.push('當地 ' + m.local_time);
+            if (m.taiwan_time) parts.push('台灣 ' + m.taiwan_time);
+            if (parts.length) return parts.join(' ｜ ');
+            if (m.game_time && m.game_time !== 'None') return m.game_time;
+            return '開賽時間未提供';
+        }
+
+        // Recent Form 句子裡的球隊簡稱以 @@Rays@@ 形式標記，翻成中文隊名
         function renderRecentFormText(zh) {
             return zh.replace(/@@([^@]+)@@/g, (_, name) => translateText(name));
         }
 
-        // 詳細趨勢區的單行文字。中文模式優先用 Python 譯好的 text_zh（隊名是 @@佔位符@@，
-        // 與 Recent Form 共用同一套替換機制）；英文模式或翻不出來時退回 covers 原文。
+        // 詳細趨勢區的單行文字。優先用 Python 譯好的 text_zh（隊名是 @@佔位符@@，
+        // 與 Recent Form 共用同一套替換機制）；翻不出來時退回 covers 原文。
         function renderTrendText(t) {
-            if (currentLanguage === 'zh' && t.text_zh) {
+            if (t.text_zh) {
                 return renderRecentFormText(t.text_zh);
             }
             return (t.text || '').replace(/Athletics Athletics/g, 'Athletics');
@@ -3085,7 +3089,7 @@ DASHBOARD_JS = """        // ==========================================
                 }
                 
                 const dayGameBadge = rec.is_day_game 
-                    ? `<span class="ai-card-tag day-game-tag-ai">⚠️ ${currentLanguage === 'zh' ? '下午場' : 'Day Game'}</span>` 
+                    ? `<span class="ai-card-tag day-game-tag-ai">⚠️ 下午場</span>` 
                     : '';
                 
                 cardsHtml += `
@@ -3250,7 +3254,7 @@ DASHBOARD_JS = """        // ==========================================
                                 <div class="top-rec-item-info">
                                     <span class="top-rec-item-match">
                                         ${translateText(rec.matchup_name)} • ${rec.market_type}
-                                        ${rec.is_day_game ? `<span style="color: #fbbf24; font-weight: 700; margin-left: 6px;">⚠️ ${currentLanguage === 'zh' ? '下午場' : 'Day Game'}</span>` : ''}
+                                        ${rec.is_day_game ? `<span style="color: #fbbf24; font-weight: 700; margin-left: 6px;">⚠️ 下午場</span>` : ''}
                                     </span>
                                     <span class="top-rec-item-bet">${translateText(rec.recommendation)} ${recentFormPill(rec)}</span>
                                 </div>
@@ -3281,7 +3285,7 @@ DASHBOARD_JS = """        // ==========================================
                                 <div class="top-rec-item-info">
                                     <span class="top-rec-item-match">
                                         ${translateText(rec.matchup_name)} • ${rec.market_type}
-                                        ${rec.is_day_game ? `<span style="color: #fbbf24; font-weight: 700; margin-left: 6px;">⚠️ ${currentLanguage === 'zh' ? '下午場' : 'Day Game'}</span>` : ''}
+                                        ${rec.is_day_game ? `<span style="color: #fbbf24; font-weight: 700; margin-left: 6px;">⚠️ 下午場</span>` : ''}
                                     </span>
                                     <span class="top-rec-item-bet">${translateText(rec.recommendation)} ${recentFormPill(rec)}</span>
                                 </div>
@@ -3421,14 +3425,12 @@ DASHBOARD_JS = """        // ==========================================
                 const doubleTags = m.double_positive.length > 0 ? `<span class="match-tag double-tag">🔥 大小分總分 (${m.double_positive.length})</span>` : '';
                 const opposingTags = m.opposing_trends.length > 0 ? `<span class="match-tag opposing-tag">🎯 勝負/讓分盤 (${m.opposing_trends.length})</span>` : '';
                 const dayGameTag = m.is_day_game 
-                    ? `<span class="match-tag day-game-tag">\u26a0\ufe0f ${currentLanguage === 'zh' ? '\u4e0b\u5348\u5834' : 'Day Game'}</span>` 
+                    ? `<span class="match-tag day-game-tag">\u26a0\ufe0f \u4e0b\u5348\u5834</span>` 
                     : '';
                 
                 let dayGameBanner = '';
                 if (m.is_day_game) {
-                    const bannerText = currentLanguage === 'zh' 
-                        ? '<strong>此賽事為下午場 (Day Game)</strong>：主場當地時間 17:00 前開打（多數落在 13:00~14:00）。下午場由於球員生理時鐘、陣容輪替(主力休息、備用捕手先發)與牛棚調度等變數極多，盤口<strong>極易開出反邊</strong>，建議<strong>避開</strong>或考慮<strong>反下</strong>。'
-                        : '<strong>This is a Day Game</strong>: First pitch before 5:00 PM home local time (most start 1:00-2:00 PM). Day games have high volatility due to circadian rhythm shifts, lineup rotations (resting stars/starting backup catchers), and bullpen fatigue. They are <strong>prone to upset/reverse results</strong>. Consider <strong>avoiding</strong> or <strong>betting against</strong> the trend.';
+                    const bannerText = '<strong>此賽事為下午場 (Day Game)</strong>：主場當地時間 17:00 前開打（多數落在 13:00~14:00）。下午場由於球員生理時鐘、陣容輪替(主力休息、備用捕手先發)與牛棚調度等變數極多，盤口<strong>極易開出反邊</strong>，建議<strong>避開</strong>或考慮<strong>反下</strong>。';
                     dayGameBanner = `
                         <div class="day-game-banner">
                             <span class="day-game-icon">⚠️</span>
@@ -3573,7 +3575,7 @@ DASHBOARD_JS = """        // ==========================================
                                     ${translateText(m.team_b)}
                                 </span>
                             </div>
-                                <div class="match-time-sub">\U0001f552 ${!m.game_time || m.game_time === 'None' ? '開賽時間未提供' : m.game_time}</div>
+                                <div class="match-time-sub">\U0001f552 ${formatGameTime(m)}</div>
                             </div>
                             <div class="match-tags">
                                 ${dayGameTag}
@@ -3696,9 +3698,6 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
                         賽事日期：<strong>{display_date}</strong><span class="date-badge-et">美東</span>
                         {tw_hint}
                     </div>
-                    <button class="lang-toggle-btn" id="lang-toggle" onclick="toggleLanguage()">
-                        🌐 隊伍名稱：中文
-                    </button>
                 </div>
             </div>
             
@@ -3997,6 +3996,9 @@ def main():
             matchup_data['team_a'], matchup_data['team_b'])
         rf_lean = recent_form_lean(recent_form)
 
+        local_time, taiwan_time = game_time_variants(
+            matchup_data['game_time'], matchup.get('home_short', ''), date_str)
+
         all_matchups_data.append({
             'path': matchup_data['path'],
             'team_a': matchup_data['team_a'],
@@ -4009,6 +4011,8 @@ def main():
             'recent_form': recent_form,
             'rf_lean': rf_lean,
             'game_time': matchup_data['game_time'],
+            'local_time': local_time,
+            'taiwan_time': taiwan_time,
             'is_day_game': matchup_data['is_day_game']
         })
         

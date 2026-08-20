@@ -144,7 +144,7 @@ covers 每場另給 8 條 Recent Form（`<section id="form_trends">` 內的 `sin
 單位字 `games`/`starts` **不一定在開頭**（"interleague games"）；投手/主審用所有格但
 covers 省略撇號（"Gausmans" = Gausman，`starts` 代表投手、`behind home plate` 代表主審）；
 球隊簡稱輸出成 `@@Rays@@` 佔位符，由前端 `renderRecentFormText()` 依語言設定翻譯，
-才不會和既有的中英切換打架。
+由前端 `renderRecentFormText()` 統一替換成中文隊名。
 
 ### Top 5 精選清單的組成規則
 
@@ -194,7 +194,8 @@ ROI Trends 原文以前是全站唯一沒中譯的區塊。**這裡刻意不用 
   會被 `Game Total Over` 的規則吃掉。沒收錄的盤口一律回傳 `None`。
 - 比對不到就回 `None`，前端 `renderTrendText()` 退回顯示英文原文——**寧可沒翻，不要翻錯**。
 - 隊名輸出 `@@隊名@@` 佔位符，與 Recent Form **共用** `renderRecentFormText()` 替換，
-  才不會和中英切換打架。英文模式直接顯示 `text`（covers 原文），中文模式用 `text_zh`。
+  由前端 `renderRecentFormText()` 統一替換。有 `text_zh` 就用它，翻不出來才退回
+  `text`（covers 原文）。
 - 樣本寫法有兩種：`in N of their last M`（一般）與 `in their last M`（全數命中，
   沒有 N）；另有 `not ... in any of their last M`（掛零）。三種都要處理。
 
@@ -311,7 +312,20 @@ ROI Trends 原文以前是全站唯一沒中譯的區塊。**這裡刻意不用 
   驗證方法：把頁面塞進 390px 寬的 iframe，檢查 `scrollWidth - clientWidth` 是否為 0
   （直接縮視窗沒用，Chrome 視窗有最小寬度限制）。
 - 只輸出 `index.html`（GitHub Pages 直接用）；`mlb_trends.html` 已於 2026-07-10 移除。
-- 語言預設固定繁中（不記 localStorage）；曾因記憶 'en' 導致「預設變英文」的困擾。
+- **隊名中英切換鈕已於 2026-08-21 移除**（使用者從來沒用過）。全站固定繁中，
+  `currentLanguage` / `toggleLanguage()` 一併刪掉。
+  ⚠️ 但 `translateText()` 與隊名字典**必須留著**——畫面上的隊名、推薦文案、
+  Recent Form 的 `@@佔位符@@`、詳細趨勢的隊名全都靠它翻，不是只服務那顆按鈕。
+  （更早以前還踩過「記憶 'en' 導致預設變英文」，所以本來就不記 localStorage。）
+- **開賽時間顯示「主場當地時間 ｜ 台灣時間」，不再顯示 ET**（2026-08-21 改）。
+  由 `game_time_variants()` 在 Python 算好存進 JSON 的 `local_time` / `taiwan_time`，
+  前端 `formatGameTime()` 只負責顯示——**時區換算集中在 Python 一處，不要散到 JS**。
+  - 主場當地時間用 `HOME_TZ_OFFSET`（相對 ET 的時差，亞利桑那不實施夏令時間已含在表內），
+    和 `is_day_game` 的判定基準一致；以前畫面只寫 ET，和「下午場」的說明對不起來。
+  - 台灣時間用 24 小時制**且一定帶日期**：美東晚場對應台灣隔天凌晨，
+    不寫日期會被誤讀成當天；半夜的 `00:40` 也比 `12:40 AM` 好判讀。
+  - 舊的 index.html 沒有這兩個欄位，`formatGameTime()` 會退回顯示 `game_time`（ET），
+    所以拿舊檔案跑 `--replay` 不會壞。
 - 零外部依賴（純標準庫）是刻意的設計，新增功能請維持。
 
 ## 驗證方式
