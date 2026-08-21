@@ -288,6 +288,29 @@ Top 5 給的是 `market_type`（`"受讓 1.5"`、`"Over (大 7.5)"`），單場�
   ⚠️ 副作用：趨勢連續多輪都空白時，輸出位元組完全相同 → 不 commit → Pages 不重新部署，
   **網站看起來像「整天沒更新」**。要判斷是否真的沒跑，看 Actions 執行紀錄而不是 commit 紀錄。
 
+### ⚠️ 新增輸出檔時，`Commit and Push Changes` 的 `git add` 一定要跟著加（2026-08-21）
+
+`scrape.py` 每輪改寫 **兩個** 檔案：`index.html` 與 `history.json`。
+`history.json` 是 2026-08-21 加的，但當時只把它 commit 進版控，
+**忘了改 workflow 的 `git add index.html`**。後果不是少存資料而已：
+
+    git add index.html          # history.json 留在工作區沒被暫存
+    git commit -m ...           # 成功
+    git pull --rebase origin main
+    → error: cannot pull with rebase: You have unstaged changes.
+    → exit 128，整輪 job 失敗
+
+當天 UTC 11:44／13:13 兩輪全掛（runs 258/259），commit 只留在 runner 上沒 push，
+**網站整天停在 8/20 的資料**。第二個後果比較隱形：`history.json` 永遠不會被 commit，
+每輪都讀到 checkout 出來的舊檔，**戰績與賽果回填等於白算**。
+
+現在是 `git add index.html history.json`，並在兩處 `git pull --rebase` 都加 `--autostash`——
+以後若再新增輸出檔而忘了 add，至少 rebase 不會整輪失敗（但資料仍不會進版控，
+**該加的還是要加**）。這也讓 `Verify Deployment` 那個 pull 不會被同樣的髒工作區擋住。
+
+⚠️ 症狀容易誤判成 Pages 或 covers 出問題：Actions 是紅的、但爬蟲日誌一路正常跑到
+「抓取與分析完成！」，錯誤在最後兩行。看 Actions 失敗要往日誌**最下面**看。
+
 ### ⚠️ Pages 部署會失敗，而且會和「內容沒變不 commit」疊成長期卡住（2026-08-06）
 
 那天四次 Pages 部署掛了三次，兩種失敗模式：`fac6d82`／`7388057` 是 build 全過、
