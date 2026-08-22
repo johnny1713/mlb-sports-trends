@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "2.5"
+APP_VERSION = "2.6"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -896,9 +896,28 @@ def parse_matchup_details(matchup):
                 team_b = vs_match.group(2).strip()
 
     # 2. 提取 High 與 Low 趨勢
-    trend_pattern = re.compile(r'<h4\s+class="(High|Low)">(.*?)</h4>', re.DOTALL | re.IGNORECASE)
+    # ⚠️ class 必須容許「多個 class 名」。2026-08-22 covers 把
+    #    <h4 class="High"> 改成 <h4 class="trend-article-heading High">，
+    #    舊寫法 `class="(High|Low)"` 要求完全相等，當天 15 場全部解析出 0 條，
+    #    症狀與「covers 尚未發佈趨勢」一模一樣且不會報錯（見下方 sanity check）。
+    #    現在比對「High/Low 是否為完整的 class token」，新舊兩種標記都吃得到。
+    trend_pattern = re.compile(
+        r'<h4[^>]*\bclass="(?:[^"]*\s)?(High|Low)(?:\s[^"]*)?"[^>]*>(.*?)</h4>',
+        re.DOTALL | re.IGNORECASE)
     trend_matches = trend_pattern.findall(html_content)
-    
+
+    # 解析失效的預警：趨勢區明明有內容（含 "Units" 字樣）卻一條都沒抓到，
+    # 代表 covers 又改了標記，而不是還沒發佈。這兩者以前長得一樣，
+    # 害 2026-08-22 整天被誤判成「covers 沒發」。寧可吵，也不要再靜默失敗。
+    if not trend_matches:
+        _sec = re.search(r'<section[^>]*id="trends".*?</section>', html_content, re.DOTALL)
+        _sec_html = _sec.group(0) if _sec else ''
+        if 'Units' in _sec_html and 'Check back shortly' not in html_content:
+            print('  [!] 警告：趨勢區有內容（%d 字元）卻解析出 0 條，covers 可能又改了標記！'
+                  % len(_sec_html))
+            for _tag in re.findall(r'<h4[^>]*>', _sec_html)[:3]:
+                print('      實際 h4 標籤: %s' % _tag)
+
     raw_trends = []
     for klass, text in trend_matches:
         cleaned_text = html.unescape(text.strip())
