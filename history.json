@@ -10680,5 +10680,217 @@
     "home": 6
    }
   }
+ },
+ "2026-08-22": {
+  "games": {
+   "368046": {
+    "away": "New York Mets",
+    "day": false,
+    "home": "Chicago White Sox"
+   },
+   "368217": {
+    "away": "Cincinnati Reds",
+    "day": false,
+    "home": "Arizona Diamondbacks"
+   },
+   "368282": {
+    "away": "St. Louis Cardinals",
+    "day": false,
+    "home": "Philadelphia Phillies"
+   },
+   "368314": {
+    "away": "Minnesota Twins",
+    "day": false,
+    "home": "San Diego Padres"
+   },
+   "368392": {
+    "away": "Pittsburgh Pirates",
+    "day": true,
+    "home": "Los Angeles Dodgers"
+   },
+   "368697": {
+    "away": "Los Angeles Angels",
+    "day": false,
+    "home": "Texas Rangers"
+   },
+   "368991": {
+    "away": "Tampa Bay Rays",
+    "day": false,
+    "home": "Baltimore Orioles"
+   },
+   "369067": {
+    "away": "Washington Nationals",
+    "day": true,
+    "home": "Miami Marlins"
+   },
+   "369092": {
+    "away": "Toronto Blue Jays",
+    "day": true,
+    "home": "New York Yankees"
+   },
+   "369310": {
+    "away": "Detroit Tigers",
+    "day": false,
+    "home": "Kansas City Royals"
+   },
+   "369604": {
+    "away": "Athletics Athletics",
+    "day": false,
+    "home": "Houston Astros"
+   },
+   "369746": {
+    "away": "Chicago Cubs",
+    "day": true,
+    "home": "Seattle Mariners"
+   },
+   "369875": {
+    "away": "Atlanta Braves",
+    "day": true,
+    "home": "Milwaukee Brewers"
+   },
+   "369917": {
+    "away": "Cleveland Guardians",
+    "day": false,
+    "home": "Colorado Rockies"
+   },
+   "370002": {
+    "away": "San Francisco Giants",
+    "day": false,
+    "home": "Boston Red Sox"
+   }
+  },
+  "picks": [
+   {
+    "bet_on": "Milwaukee Brewers",
+    "gid": "369875",
+    "market": "獨贏",
+    "rf": true,
+    "score": 58.1,
+    "top5": true
+   },
+   {
+    "bet_on": "Miami Marlins",
+    "gid": "369067",
+    "market": "獨贏",
+    "rf": null,
+    "score": 64.0,
+    "top5": true
+   },
+   {
+    "bet_on": null,
+    "gid": "369067",
+    "line": "7.5",
+    "market": "Under",
+    "score": 52.1,
+    "top5": false
+   },
+   {
+    "bet_on": "Tampa Bay Rays",
+    "gid": "368991",
+    "market": "獨贏",
+    "rf": false,
+    "score": 57.7,
+    "top5": true
+   },
+   {
+    "bet_on": "Texas Rangers",
+    "gid": "368697",
+    "market": "獨贏",
+    "score": 56.9,
+    "top5": false
+   },
+   {
+    "bet_on": "Los Angeles Angels",
+    "gid": "368697",
+    "market": "受讓 1.5",
+    "score": 55.3,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "368697",
+    "line": "8.0",
+    "market": "Under",
+    "rf": true,
+    "score": 71.6,
+    "top5": true
+   },
+   {
+    "bet_on": "Chicago White Sox",
+    "gid": "368046",
+    "market": "受讓 1.5",
+    "score": 49.8,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "368046",
+    "line": "8.0",
+    "market": "Over",
+    "score": 55.3,
+    "top5": false
+   },
+   {
+    "bet_on": "Houston Astros",
+    "gid": "369604",
+    "market": "讓 1.5",
+    "score": 48.4,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "369604",
+    "line": "7.5",
+    "market": "Over",
+    "score": 44.8,
+    "top5": false
+   },
+   {
+    "bet_on": "Pittsburgh Pirates",
+    "gid": "368392",
+    "market": "受讓 1.5",
+    "score": 53.6,
+    "top5": false
+   },
+   {
+    "bet_on": "Chicago Cubs",
+    "gid": "369746",
+    "market": "讓 1.5",
+    "score": 54.3,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "369746",
+    "line": "7.5",
+    "market": "Over",
+    "score": 49.9,
+    "top5": false
+   },
+   {
+    "bet_on": "Boston Red Sox",
+    "gid": "370002",
+    "market": "獨贏",
+    "rf": null,
+    "score": 61.3,
+    "top5": true
+   },
+   {
+    "bet_on": "Boston Red Sox",
+    "gid": "370002",
+    "market": "讓 1.5",
+    "score": 48.4,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "368217",
+    "line": "8.0",
+    "market": "Under",
+    "score": 45.5,
+    "top5": false
+   }
+  ],
+  "results": {}
  }
 }
