@@ -10724,9 +10724,9 @@
     "home": "Miami Marlins"
    },
    "369092": {
-    "away": "Toronto Blue Jays",
+    "away": "Blue Jays",
     "day": true,
-    "home": "New York Yankees"
+    "home": "Yankees"
    },
    "369310": {
     "away": "Detroit Tigers",
@@ -10885,7 +10885,7 @@
    {
     "bet_on": null,
     "gid": "368217",
-    "line": "7.5",
+    "line": "8.0",
     "market": "Under",
     "score": 45.5,
     "top5": false
