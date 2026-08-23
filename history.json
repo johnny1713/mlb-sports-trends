@@ -10977,14 +10977,14 @@
     "home": "Arizona Diamondbacks"
    },
    "368514": {
-    "away": "Toronto Blue Jays",
+    "away": "Blue Jays",
     "day": true,
-    "home": "New York Yankees"
+    "home": "Yankees"
    },
    "369301": {
-    "away": "St. Louis Cardinals",
+    "away": "Cardinals",
     "day": true,
-    "home": "Philadelphia Phillies"
+    "home": "Phillies"
    },
    "369433": {
     "away": "New York Mets",
@@ -11034,7 +11034,7 @@
   },
   "picks": [
    {
-    "bet_on": "Philadelphia Phillies",
+    "bet_on": "Phillies",
     "gid": "369301",
     "market": "讓 1.5",
     "score": 48.1,
