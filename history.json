@@ -11701,6 +11701,316 @@
     "top5": false
    }
   ],
+  "results": {
+   "368219": {
+    "away": 4,
+    "home": 5
+   },
+   "368415": {
+    "away": 9,
+    "home": 7
+   },
+   "368502": {
+    "away": 1,
+    "home": 3
+   },
+   "368521": {
+    "away": 3,
+    "home": 1
+   },
+   "368732": {
+    "away": 8,
+    "home": 6
+   },
+   "368754": {
+    "away": 3,
+    "home": 4
+   },
+   "368759": {
+    "away": 13,
+    "home": 1
+   },
+   "368964": {
+    "away": 1,
+    "home": 0
+   },
+   "369034": {
+    "away": 7,
+    "home": 11
+   },
+   "369307": {
+    "away": 2,
+    "home": 4
+   },
+   "369617": {
+    "away": 7,
+    "home": 3
+   },
+   "369935": {
+    "away": 1,
+    "home": 4
+   },
+   "370008": {
+    "away": 5,
+    "home": 3
+   },
+   "370057": {
+    "away": 1,
+    "home": 4
+   },
+   "370101": {
+    "away": 2,
+    "home": 3
+   }
+  }
+ },
+ "2026-08-26": {
+  "games": {
+   "367911": {
+    "away": "Philadelphia Phillies",
+    "day": true,
+    "home": "Seattle Mariners"
+   },
+   "368249": {
+    "away": "Kansas City Royals",
+    "day": false,
+    "home": "Toronto Blue Jays"
+   },
+   "368434": {
+    "away": "Baltimore Orioles",
+    "day": false,
+    "home": "St. Louis Cardinals"
+   },
+   "368612": {
+    "away": "Minnesota Twins",
+    "day": false,
+    "home": "Athletics Athletics"
+   },
+   "368671": {
+    "away": "Milwaukee Brewers",
+    "day": false,
+    "home": "New York Mets"
+   },
+   "368769": {
+    "away": "Tampa Bay Rays",
+    "day": true,
+    "home": "Detroit Tigers"
+   },
+   "369182": {
+    "away": "Cincinnati Reds",
+    "day": true,
+    "home": "San Francisco Giants"
+   },
+   "369227": {
+    "away": "Texas Rangers",
+    "day": false,
+    "home": "Chicago White Sox"
+   },
+   "369447": {
+    "away": "Chicago Cubs",
+    "day": true,
+    "home": "Arizona Diamondbacks"
+   },
+   "369662": {
+    "away": "Houston Astros",
+    "day": false,
+    "home": "New York Yankees"
+   },
+   "369840": {
+    "away": "Los Angeles Dodgers",
+    "day": false,
+    "home": "Atlanta Braves"
+   },
+   "369970": {
+    "away": "Pittsburgh Pirates",
+    "day": true,
+    "home": "San Diego Padres"
+   },
+   "369974": {
+    "away": "Cleveland Guardians",
+    "day": true,
+    "home": "Los Angeles Angels"
+   },
+   "370083": {
+    "away": "Boston Red Sox",
+    "day": false,
+    "home": "Miami Marlins"
+   },
+   "370103": {
+    "away": "Colorado Rockies",
+    "day": false,
+    "home": "Washington Nationals"
+   }
+  },
+  "picks": [
+   {
+    "bet_on": "Tampa Bay Rays",
+    "gid": "368769",
+    "market": "獨贏",
+    "score": 50.8,
+    "top5": false
+   },
+   {
+    "bet_on": "Tampa Bay Rays",
+    "gid": "368769",
+    "market": "受讓 1.5",
+    "score": 52.3,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "368769",
+    "line": "7.5",
+    "market": "Under",
+    "score": 50.0,
+    "top5": false
+   },
+   {
+    "bet_on": "Chicago Cubs",
+    "gid": "369447",
+    "market": "讓 1.5",
+    "score": 43.9,
+    "top5": false
+   },
+   {
+    "bet_on": "Cincinnati Reds",
+    "gid": "369182",
+    "market": "獨贏",
+    "score": 45.2,
+    "top5": false
+   },
+   {
+    "bet_on": "San Francisco Giants",
+    "gid": "369182",
+    "market": "受讓 1.5",
+    "score": 48.6,
+    "top5": false
+   },
+   {
+    "bet_on": "Cleveland Guardians",
+    "gid": "369974",
+    "market": "獨贏",
+    "score": 50.5,
+    "top5": false
+   },
+   {
+    "bet_on": "Cleveland Guardians",
+    "gid": "369974",
+    "market": "讓 1.5",
+    "score": 46.9,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "369974",
+    "line": "8.5",
+    "market": "Under",
+    "rf": null,
+    "score": 58.8,
+    "top5": true
+   },
+   {
+    "bet_on": "Philadelphia Phillies",
+    "gid": "367911",
+    "market": "讓 1.5",
+    "score": 51.0,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "367911",
+    "line": "6.5",
+    "market": "Over",
+    "rf": true,
+    "score": 59.4,
+    "top5": true
+   },
+   {
+    "bet_on": null,
+    "gid": "369970",
+    "line": "8.0",
+    "market": "Under",
+    "score": 50.9,
+    "top5": false
+   },
+   {
+    "bet_on": "Colorado Rockies",
+    "gid": "370103",
+    "market": "受讓 1.5",
+    "score": 48.5,
+    "top5": false
+   },
+   {
+    "bet_on": "Houston Astros",
+    "gid": "369662",
+    "market": "獨贏",
+    "score": 49.2,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "368249",
+    "line": "8.5",
+    "market": "Under",
+    "score": 50.3,
+    "top5": false
+   },
+   {
+    "bet_on": "New York Mets",
+    "gid": "368671",
+    "market": "獨贏",
+    "score": 51.1,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "368671",
+    "line": "8.0",
+    "market": "Under",
+    "rf": true,
+    "score": 57.9,
+    "top5": true
+   },
+   {
+    "bet_on": "Atlanta Braves",
+    "gid": "369840",
+    "market": "受讓 1.5",
+    "rf": null,
+    "score": 58.1,
+    "top5": true
+   },
+   {
+    "bet_on": "Baltimore Orioles",
+    "gid": "368434",
+    "market": "獨贏",
+    "score": 48.3,
+    "top5": false
+   },
+   {
+    "bet_on": "Baltimore Orioles",
+    "gid": "368434",
+    "market": "讓 1.5",
+    "rf": null,
+    "score": 55.5,
+    "top5": true
+   },
+   {
+    "bet_on": null,
+    "gid": "368434",
+    "line": "8.0",
+    "market": "Under",
+    "score": 51.4,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "368612",
+    "line": "10.0",
+    "market": "Over",
+    "score": 48.1,
+    "top5": false
+   }
+  ],
   "results": {}
  }
 }
