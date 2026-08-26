@@ -207,7 +207,7 @@ def _market_segments(html_str, label, max_window=20000):
     for mark in re.finditer(re.escape(label), html_str):
         seg = html_str[mark.end():mark.end() + max_window]
         end = len(seg)
-        for lab in re.finditer(r'<div class="other-odds-label">\s*(.*?)\s*</div>', seg, re.S):
+        for lab in re.finditer(r'<div[^>]*\bclass="(?:[^"]*\s)?other-odds-label(?:\s[^"]*)?"[^>]*>\s*(.*?)\s*</div>', seg, re.S):
             if lab.group(1).strip() != label:
                 end = lab.start()
                 break
@@ -220,10 +220,12 @@ def _odds_cells(segment):
     cells = []
     for cell in re.finditer(
             r'class="other-(over|under)-odds"[^>]*>(.*?)'
-            r'(?=class="other-(?:over|under)-odds"|<div class="other-odds-label">|$)',
+            r'(?=class="other-(?:over|under)-odds"'
+            r'|<div[^>]*\bclass="(?:[^"]*\s)?other-odds-label(?:\s[^"]*)?"[^>]*>|$)',
             segment, re.S):
         column, body = cell.group(1), cell.group(2)
-        value = re.search(r'<div class="odds upper-block">\s*<span>\s*(.*?)\s*</span>', body, re.S)
+        value = re.search(r'<div[^>]*\bclass="(?=[^"]*\bodds\b)(?=[^"]*\bupper-block\b)[^"]*"[^>]*>'
+                          r'\s*<span>\s*(.*?)\s*</span>', body, re.S)
         if not value:
             continue
         text = html.unescape(value.group(1)).replace('&#x2B;', '+').strip()
@@ -253,10 +255,12 @@ def _parse_total_line(html_str):
     取到的數字一律過 _valid_game_total()，不合理就繼續找下一個候選。
     """
     summary = re.search(
-        r'<div class="other-odds-label">\s*Total\s*</div>(.*?)(?=<div class="other-odds-label">)',
+        r'<div[^>]*\bclass="(?:[^"]*\s)?other-odds-label(?:\s[^"]*)?"[^>]*>\s*Total\s*</div>'
+        r'(.*?)(?=<div[^>]*\bclass="(?:[^"]*\s)?other-odds-label(?:\s[^"]*)?"[^>]*>)',
         html_str, re.S)
     if summary:
-        for raw in re.findall(r'<div class="odds upper-block">\s*<span>\s*(.*?)\s*</span>',
+        for raw in re.findall(r'<div[^>]*\bclass="(?=[^"]*\bodds\b)(?=[^"]*\bupper-block\b)[^"]*"[^>]*>'
+                              r'\s*<span>\s*(.*?)\s*</span>',
                               summary.group(1), re.S):
             text = html.unescape(raw).strip()
             if re.fullmatch(r'\d+(?:\.\d+)?', text) and _valid_game_total(text):
@@ -650,7 +654,8 @@ _SB_ARTICLE_RE = re.compile(r'(<article\s+[^>]*class="[^"]*gamebox[^"]*"[^>]*>.*
 _SB_GID_RE = re.compile(r'data-url=["\']?/sports/game/(\d+)', re.I)
 _SB_FINAL_RE = re.compile(r'post-game-status[^>]*>\s*Final', re.I)
 _SB_SCORE_RE = re.compile(
-    r'<strong class="team-score position-relative d-none d-xl-inline-block[^"]*">\s*(\d+)\s*</strong>', re.I)
+    r'<strong[^>]*\bclass="(?=[^"]*\bteam-score\b)(?=[^"]*\bd-xl-inline-block\b)[^"]*"[^>]*>'
+    r'\s*(\d+)\s*</strong>', re.I)
 
 
 def fetch_final_scores(date_str):
@@ -664,13 +669,32 @@ def fetch_final_scores(date_str):
     if not html_text:
         return None
     finals = {}
+    n_final = 0
     for art in _SB_ARTICLE_RE.findall(html_text):
         gid_hit = _SB_GID_RE.search(art)
         if not gid_hit or not _SB_FINAL_RE.search(art):
             continue
+        n_final += 1
         nums = _SB_SCORE_RE.findall(art)
+        if len(nums) > 2:
+            # 一場只該有客、主兩個比分。抓到更多代表 covers 改了版面（例如新增
+            # 手機／桌機重複區塊），此時 nums[0]/nums[1] 可能是同一隊的兩個值，
+            # 會靜默給出錯的比分——寧可跳過不記，也不要記錯的。
+            print('  [!] 警告：%s 這場抓到 %d 個比分（應為 2），跳過以免記錯'
+                  % (gid_hit.group(1), len(nums)))
+            continue
         if len(nums) >= 2:
             finals[gid_hit.group(1)] = {'away': int(nums[0]), 'home': int(nums[1])}
+
+    # ⚠️ 解析失效的預警。這條路徑壞掉的後果比別處嚴重：抓不到比分不會報錯，
+    # 只會讓 backfill_results 靜默記不到結果、戰績停止累積；而回填只回看
+    # RESULT_LOOKBACK_DAYS(7) 天，超過就再也補不回來。所以「有完賽場次卻一個比分都沒抓到」
+    # 一定要喊出來（比照 parse_matchup_details 的趨勢預警）。
+    if n_final and not finals:
+        print('  [!] 警告：計分板有 %d 場顯示 Final 卻抓不到任何比分，'
+              'covers 可能又改了標記！' % n_final)
+        for tag in re.findall(r'<strong[^>]*class="[^"]*score[^"]*"[^>]*>', html_text)[:3]:
+            print('      實際比分標籤: %s' % tag)
     return finals
 
 
@@ -931,7 +955,7 @@ def parse_matchup_details(matchup):
     #     這些是 covers 從大量條件切片中挑出的連勝紀錄，樣本僅 4~9 場且多為全勝，
     #     屬於選擇偏誤下的產物，只作參考顯示，絕不列入評分排序。
     recent_form = []
-    for raw in re.findall(r'class="single-form-trend"[^>]*>(.*?)</p>', html_content, re.DOTALL):
+    for raw in re.findall(r'class="(?:[^"]*\s)?single-form-trend(?:\s[^"]*)?"[^>]*>(.*?)</p>', html_content, re.DOTALL):
         cleaned = re.sub(r'<[^>]*>', '', html.unescape(raw)).strip()
         if cleaned:
             recent_form.append(cleaned)
@@ -1209,6 +1233,12 @@ RF_PATTERNS = [
      lambda m: '主審 %s 時' % m.group(1)),
     (re.compile(r'following a (loss|win)\b'),
      lambda m: '%s之後' % ('落敗' if m.group(1) == 'loss' else '獲勝')),
+    # 熱門/冷門：covers 有時會省略 "as"（實測 "in Scherzers last 5 starts a home underdog"
+    # 31 次、跨 18 天）。RF_PHRASES 只收了帶 as 的版本，少了規則就會被表尾的
+    # home/road 單字規則啃成「（a 主場 underdog）」這種翻一半的結果。改用 regex 讓 as 可選。
+    (re.compile(r'\b(?:as\s+)?an?\s+(?:(home|road)\s+)?(favorite|underdog)s?\b'),
+     lambda m: '%s%s時' % (_HOME_ROAD[m.group(1)] if m.group(1) else '',
+                           '熱門' if m.group(2) == 'favorite' else '冷門')),
 ]
 
 # covers 句尾會用城市名指場地（in X）或對手（vs. X）。只收錄 MLB 城市，避免把人名誤譯。
