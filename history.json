@@ -11853,7 +11853,7 @@
    {
     "bet_on": "Tampa Bay Rays",
     "gid": "368769",
-    "market": "讓 1.5",
+    "market": "受讓 1.5",
     "score": 52.3,
     "top5": false
    },
@@ -11928,7 +11928,7 @@
    {
     "bet_on": null,
     "gid": "369970",
-    "line": "8.5",
+    "line": "8.0",
     "market": "Under",
     "score": 50.9,
     "top5": false
@@ -11997,7 +11997,7 @@
    {
     "bet_on": null,
     "gid": "368434",
-    "line": "8.5",
+    "line": "8.0",
     "market": "Under",
     "score": 51.4,
     "top5": false
