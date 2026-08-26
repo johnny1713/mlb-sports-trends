@@ -11844,31 +11844,9 @@
   },
   "picks": [
    {
-    "bet_on": "Rays",
-    "gid": "368769",
-    "market": "獨贏",
-    "score": 50.8,
-    "top5": false
-   },
-   {
-    "bet_on": "Rays",
-    "gid": "368769",
-    "market": "受讓 1.5",
-    "score": 52.3,
-    "top5": false
-   },
-   {
-    "bet_on": null,
-    "gid": "368769",
-    "line": "7.5",
-    "market": "Under",
-    "score": 50.0,
-    "top5": false
-   },
-   {
     "bet_on": "Chicago Cubs",
     "gid": "369447",
-    "market": "受讓 1.5",
+    "market": "讓 1.5",
     "score": 43.9,
     "top5": false
    },
@@ -11919,7 +11897,7 @@
    {
     "bet_on": null,
     "gid": "367911",
-    "line": "6.5",
+    "line": "7.5",
     "market": "Over",
     "rf": true,
     "score": 59.4,
@@ -11928,7 +11906,7 @@
    {
     "bet_on": null,
     "gid": "369970",
-    "line": "8.0",
+    "line": "8.5",
     "market": "Under",
     "score": 50.9,
     "top5": false
@@ -11965,7 +11943,7 @@
    {
     "bet_on": null,
     "gid": "368671",
-    "line": "8.0",
+    "line": "5.5",
     "market": "Under",
     "rf": true,
     "score": 57.9,
@@ -11997,7 +11975,7 @@
    {
     "bet_on": null,
     "gid": "368434",
-    "line": "8.0",
+    "line": "8.5",
     "market": "Under",
     "score": 51.4,
     "top5": false
@@ -12005,9 +11983,31 @@
    {
     "bet_on": null,
     "gid": "368612",
-    "line": "10.0",
+    "line": "10.5",
     "market": "Over",
     "score": 48.1,
+    "top5": false
+   },
+   {
+    "bet_on": "Rays",
+    "gid": "368769",
+    "market": "獨贏",
+    "score": 50.8,
+    "top5": false
+   },
+   {
+    "bet_on": "Rays",
+    "gid": "368769",
+    "market": "受讓 1.5",
+    "score": 52.3,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "368769",
+    "line": "7.5",
+    "market": "Under",
+    "score": 50.0,
     "top5": false
    }
   ],
