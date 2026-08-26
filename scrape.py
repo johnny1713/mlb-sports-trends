@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "2.6"
+APP_VERSION = "2.7"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -1006,7 +1006,18 @@ def classify_and_process_trends(matchup):
     roi_pattern = re.compile(r'([+-]?\d+(?:\.\d+)?)%\s+ROI', re.IGNORECASE)
     # 樣本數格式一: "in 32 of their last 45 games" -> 32 勝 / 樣本 45 場
     of_last_pattern = re.compile(r'\b(\d+)\s+of\s+(?:their|the)\s+last\s+(\d+)', re.IGNORECASE)
-    # 樣本數格式二: 戰績 "7-2" -> 7 勝 / 樣本 9 場
+    # 樣本數格式二: 全數命中 "in their last 6 games" -> 6 勝 / 樣本 6 場。
+    #   ⚠️ 沒有分子不代表「無法解析」，而是**全勝**。舊版漏了這種寫法，wins 會是 None，
+    #   而 None 會通過下面 MIN_TREND_SAMPLE 那道關卡（那是給真正解析不出來的句子留的），
+    #   再被 success_lb/fail_lb 的先驗 wilson_lower_bound(2.5, 5)=25.2% 壓低。
+    #   後果兩個方向都錯：樣本 <8 的該排除卻留著假分數（實測 9/13 句），
+    #   樣本 >=8 的該正常計分卻被壓成 25.2%（實測 4/13 句）。
+    #   實測歷史 1016 句不重複趨勢有 13 句（1.3%）走這兩種寫法。
+    in_last_pattern = re.compile(r'\bin\s+(?:their|the)\s+last\s+(\d+)', re.IGNORECASE)
+    # 樣本數格式三: 掛零 "not ... in any of their last 8 games" -> 0 勝 / 樣本 8 場
+    not_any_pattern = re.compile(
+        r'\bnot\b.*?\bin\s+any\s+of\s+(?:their|the)\s+last\s+(\d+)', re.IGNORECASE)
+    # 樣本數格式四: 戰績 "7-2" -> 7 勝 / 樣本 9 場
     record_pattern = re.compile(r'\b(\d+)-(\d+)\b')
 
     for trend in matchup['trends']:
@@ -1054,13 +1065,25 @@ def classify_and_process_trends(matchup):
         units = float(units_match.group(1)) if units_match else 0.0
         roi = round(float(roi_match.group(1)), 1) if roi_match else 0
 
+        # 比對順序有意義：明確寫出分子/分母的格式優先，最後才輪到寬鬆的 "7-2"
+        # （`\d+-\d+` 會誤中年份之類的字串）。掛零要排在全勝之前——雖然
+        # "in any of their last N" 與 "in their last N" 實際上互斥，但先比對語意較窄的那個
+        # 比較不容易在日後被改壞。
         of_last_match = of_last_pattern.search(text)
+        not_any_match = not_any_pattern.search(text)
+        in_last_match = in_last_pattern.search(text)
         record_match = record_pattern.search(text)
         if of_last_match:
             wins = int(of_last_match.group(1))
             sample = int(of_last_match.group(2))
             if wins > sample:
                 wins, sample = None, None
+        elif not_any_match:                      # 掛零：0 勝 / N 場
+            sample = int(not_any_match.group(1))
+            wins = 0
+        elif in_last_match:                      # 全勝：N 勝 / N 場
+            sample = int(in_last_match.group(1))
+            wins = sample
         elif record_match:
             wins = int(record_match.group(1))
             sample = wins + int(record_match.group(2))
