@@ -12082,9 +12082,9 @@
     "home": "New York Mets"
    },
    "368455": {
-    "away": "Colorado Rockies",
+    "away": "Rockies",
     "day": true,
-    "home": "Washington Nationals"
+    "home": "Nationals"
    },
    "368496": {
     "away": "Kansas City Royals",
@@ -12107,42 +12107,12 @@
     "home": "Atlanta Braves"
    },
    "370052": {
-    "away": "Baltimore Orioles",
+    "away": "Orioles",
     "day": true,
-    "home": "St. Louis Cardinals"
+    "home": "Cardinals"
    }
   },
   "picks": [
-   {
-    "bet_on": "Colorado Rockies",
-    "gid": "368455",
-    "market": "獨贏",
-    "rf": null,
-    "score": 53.7,
-    "top5": true
-   },
-   {
-    "bet_on": "Colorado Rockies",
-    "gid": "368455",
-    "market": "受讓 1.5",
-    "score": 49.4,
-    "top5": false
-   },
-   {
-    "bet_on": "Baltimore Orioles",
-    "gid": "370052",
-    "market": "獨贏",
-    "score": 50.0,
-    "top5": false
-   },
-   {
-    "bet_on": "Baltimore Orioles",
-    "gid": "370052",
-    "market": "讓 1.5",
-    "rf": null,
-    "score": 52.3,
-    "top5": true
-   },
    {
     "bet_on": "Houston Astros",
     "gid": "369852",
@@ -12169,7 +12139,7 @@
    {
     "bet_on": null,
     "gid": "368362",
-    "line": "7.0",
+    "line": "6.5",
     "market": "Under",
     "rf": null,
     "score": 56.1,
@@ -12186,16 +12156,15 @@
     "bet_on": "Atlanta Braves",
     "gid": "369990",
     "market": "讓 1.5",
-    "score": 58.9,
+    "score": 57.7,
     "top5": false
    },
    {
     "bet_on": "Arizona Diamondbacks",
     "gid": "368748",
     "market": "獨贏",
-    "rf": true,
-    "score": 51.7,
-    "top5": true
+    "score": 49.1,
+    "top5": false
    },
    {
     "bet_on": null,
@@ -12204,6 +12173,36 @@
     "market": "Under",
     "score": 49.4,
     "top5": false
+   },
+   {
+    "bet_on": "Rockies",
+    "gid": "368455",
+    "market": "獨贏",
+    "rf": null,
+    "score": 53.7,
+    "top5": true
+   },
+   {
+    "bet_on": "Rockies",
+    "gid": "368455",
+    "market": "受讓 1.5",
+    "score": 49.4,
+    "top5": false
+   },
+   {
+    "bet_on": "Orioles",
+    "gid": "370052",
+    "market": "獨贏",
+    "score": 50.0,
+    "top5": false
+   },
+   {
+    "bet_on": "Orioles",
+    "gid": "370052",
+    "market": "讓 1.5",
+    "rf": null,
+    "score": 52.3,
+    "top5": true
    }
   ],
   "results": {}
