@@ -274,6 +274,45 @@ def _parse_total_line(html_str):
     return None
 
 
+# 實測 91 天 / 472 筆推薦，全場總分的分佈是 6.5~14.5（主群 7.5/8.5），
+# 沒有一筆低於 6.5。低於這個值的多半是首五局 (F5) 的數字混進了全場欄位
+# ——F5 總分典型是 4.5~5.5。MIN_GAME_TOTAL 設 5.5 只擋得掉 4.5 那種，
+# 5.5 本身會原樣通過（2026-08-26 釀酒人 vs 大都會就是這樣印出「小 5.5」）。
+SUSPICIOUS_GAME_TOTAL = 6.5
+
+
+def diagnose_total_line(html_str, chosen, tag=""):
+    """
+    全場總分低到不像真的時，把候選數字與來源印出來。
+
+    ⚠️ 這裡刻意不直接把 MIN_GAME_TOTAL 調高——那是治症狀。先看清楚 covers 頁面
+    到底給了什麼，再決定是解析取錯欄位還是門檻該收緊。
+    """
+    try:
+        if chosen is None or float(chosen) >= SUSPICIOUS_GAME_TOTAL:
+            return
+    except (TypeError, ValueError):
+        return
+    print('  [!] 警告：全場總分 %s 低於 %s，可能是首五局的數字混進來了%s'
+          % (chosen, SUSPICIOUS_GAME_TOTAL, tag))
+    labels = re.findall(r'<div[^>]*\bclass="(?:[^"]*\s)?other-odds-label(?:\s[^"]*)?"[^>]*>\s*(.*?)\s*</div>',
+                        html_str, re.S)
+    print('      摘要表標籤順序: %s' % [re.sub(r'<[^>]+>', '', x).strip()[:24] for x in labels[:8]])
+    summary = re.search(
+        r'<div[^>]*\bclass="(?:[^"]*\s)?other-odds-label(?:\s[^"]*)?"[^>]*>\s*Total\s*</div>'
+        r'(.*?)(?=<div[^>]*\bclass="(?:[^"]*\s)?other-odds-label(?:\s[^"]*)?"[^>]*>)',
+        html_str, re.S)
+    if summary:
+        cands = [html.unescape(x).strip() for x in re.findall(
+            r'<div[^>]*\bclass="(?=[^"]*\bodds\b)(?=[^"]*\bupper-block\b)[^"]*"[^>]*>'
+            r'\s*<span>\s*(.*?)\s*</span>', summary.group(1), re.S)]
+        print('      Total 區段長度 %d 字元，候選值: %s' % (len(summary.group(1)), cands[:10]))
+    else:
+        print('      找不到摘要表的 Total 區段（走了 %s 的退回路徑）' % GAME_TOTAL_LABEL)
+    for seg in _market_segments(html_str, GAME_TOTAL_LABEL)[:1]:
+        print('      %s 區段的報價: %s' % (GAME_TOTAL_LABEL, _odds_cells(seg)[:8]))
+
+
 def parse_run_lines(html_str):
     """
     解析全場讓分 (Run Line) 與大小分盤口。
@@ -301,10 +340,13 @@ def parse_run_lines(html_str):
             else:
                 spread_a, spread_b = '-1.5', '+1.5'
 
+        total_line = _parse_total_line(html_str)
+        diagnose_total_line(html_str, total_line)
+
         return {
             'spread_a': spread_a,
             'spread_b': spread_b,
-            'total_line': _parse_total_line(html_str),
+            'total_line': total_line,
         }
     except Exception as e:
         print(f"  [警告] 提取盤口讓分值與大小值時發生錯誤: {e}")
