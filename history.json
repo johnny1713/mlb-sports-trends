@@ -12077,9 +12077,9 @@
  "2026-08-27": {
   "games": {
    "368362": {
-    "away": "Milwaukee Brewers",
+    "away": "Brewers",
     "day": false,
-    "home": "New York Mets"
+    "home": "Mets"
    },
    "368455": {
     "away": "Rockies",
@@ -12087,9 +12087,9 @@
     "home": "Nationals"
    },
    "368496": {
-    "away": "Kansas City Royals",
+    "away": "Royals",
     "day": false,
-    "home": "Toronto Blue Jays"
+    "home": "Blue Jays"
    },
    "368748": {
     "away": "Arizona Diamondbacks",
@@ -12097,14 +12097,14 @@
     "home": "San Francisco Giants"
    },
    "369852": {
-    "away": "Houston Astros",
+    "away": "Astros",
     "day": false,
-    "home": "New York Yankees"
+    "home": "Yankees"
    },
    "369990": {
-    "away": "Los Angeles Dodgers",
+    "away": "Dodgers",
     "day": false,
-    "home": "Atlanta Braves"
+    "home": "Braves"
    },
    "370052": {
     "away": "Orioles",
@@ -12114,7 +12114,7 @@
   },
   "picks": [
    {
-    "bet_on": "Houston Astros",
+    "bet_on": "Astros",
     "gid": "369852",
     "market": "獨贏",
     "score": 47.4,
@@ -12130,7 +12130,7 @@
     "top5": true
    },
    {
-    "bet_on": "New York Mets",
+    "bet_on": "Mets",
     "gid": "368362",
     "market": "獨贏",
     "score": 48.2,
@@ -12146,14 +12146,14 @@
     "top5": true
    },
    {
-    "bet_on": "Los Angeles Dodgers",
+    "bet_on": "Dodgers",
     "gid": "369990",
     "market": "獨贏",
     "score": 46.6,
     "top5": false
    },
    {
-    "bet_on": "Atlanta Braves",
+    "bet_on": "Braves",
     "gid": "369990",
     "market": "讓 1.5",
     "score": 57.7,
@@ -12169,7 +12169,7 @@
    {
     "bet_on": null,
     "gid": "368748",
-    "line": "7.5",
+    "line": "6.5",
     "market": "Under",
     "score": 49.4,
     "top5": false
