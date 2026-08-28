@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "2.8"
+APP_VERSION = "2.9"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -2245,6 +2245,64 @@ DASHBOARD_CSS = """
             margin-left: 2px;
         }
 
+        /* 先發投手：只顯示不計分。窄螢幕會換行，.mp-list 需 min-width: 0，
+           否則不換行的成績字串會把整個 header 撐爆（見 CLAUDE.md 技術地雷）。 */
+        .match-pitchers {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 12px;
+            margin-left: 2px;
+            min-width: 0;
+        }
+
+        .mp-label {
+            color: var(--text-secondary);
+            font-weight: 600;
+            white-space: nowrap;
+            padding-top: 1px;
+        }
+
+        .mp-list {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            min-width: 0;
+        }
+
+        .mp-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 5px;
+            min-width: 0;
+        }
+
+        .mp-logo {
+            width: 14px;
+            height: 14px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .mp-team {
+            color: var(--text-secondary);
+        }
+
+        .mp-name {
+            font-weight: 600;
+        }
+
+        .mp-none {
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .mp-stat {
+            color: var(--text-secondary);
+            font-variant-numeric: tabular-nums;
+        }
+
         .teams-versus {
             display: flex;
             align-items: center;
@@ -4137,6 +4195,36 @@ DASHBOARD_JS = """        // ==========================================
                 if (!teamATrendsHtml) teamATrendsHtml = '<li class="trend-item" style="color: var(--text-muted);">無趨勢數據</li>';
                 if (!teamBTrendsHtml) teamBTrendsHtml = '<li class="trend-item" style="color: var(--text-muted);">無趨勢數據</li>';
 
+                // 先發投手：statsapi 資料，**只顯示、不進評分或排序**。
+                // 先發是盤口早就定價過的資訊，拿它調分數不會帶來優勢，只會污染排序；
+                // 用途是讓使用者看到推薦時有背景資訊決定要不要跳過這筆。
+                // 舊的 index.html 沒有 pitcher_a/b 欄位，此時整區不顯示（--replay 不會壞）。
+                let pitchersHtml = '';
+                if (m.pitcher_a || m.pitcher_b) {
+                    const mpRow = (team, logo, p) => {
+                        const stat = p ? [
+                            p.record ? p.record : '',
+                            p.era ? 'ERA ' + p.era : '',
+                            p.whip ? 'WHIP ' + p.whip : ''
+                        ].filter(Boolean).join(' · ') : '';
+                        return `<div class="mp-row">
+                            <img src="${logo}" class="mp-logo" onerror="this.style.display='none'" />
+                            <span class="mp-team">${translateText(team)}</span>
+                            <span class="mp-name${p ? '' : ' mp-none'}">${p ? p.name : '未公布'}</span>
+                            ${stat ? `<span class="mp-stat">${stat}</span>` : ''}
+                        </div>`;
+                    };
+                    pitchersHtml = `
+                        <div class="match-pitchers">
+                            <span class="mp-label">⚾ 先發</span>
+                            <div class="mp-list">
+                                ${mpRow(m.team_a, m.team_a_logo, m.pitcher_a)}
+                                ${mpRow(m.team_b, m.team_b_logo, m.pitcher_b)}
+                            </div>
+                        </div>
+                    `;
+                }
+
                 // Recent Form 參考區：樣本 4~9 場且幾乎全勝，是 covers 篩選過的結果，只顯示不計分
                 let recentFormHtml = '';
                 const rf = m.recent_form || [];
@@ -4189,6 +4277,7 @@ DASHBOARD_JS = """        // ==========================================
                                 </span>
                             </div>
                                 <div class="match-time-sub">\U0001f552 ${formatGameTime(m)}</div>
+                                ${pitchersHtml}
                             </div>
                             <div class="match-tags">
                                 ${dayGameTag}
@@ -4699,9 +4788,19 @@ def _pitcher_season_stats(person_ids, season):
     """
     if not person_ids:
         return {}
-    url = ('%s/people?personIds=%s&hydrate=stats(group=[pitching],type=[season],season=%s)'
-           % (STATSAPI_BASE, ','.join(str(i) for i in person_ids), season))
-    data = _statsapi_json(url)
+    ids = ','.join(str(i) for i in person_ids)
+    # 兩種 hydrate 寫法都試：statsapi 對不認得的 hydrate 是**靜默忽略**而非報錯
+    # （schedule 端點就是這樣吞掉 probablePitcher(stats(...))），所以第一種拿不到
+    # 成績時要能自己退到第二種，而不是安靜地少一半欄位。
+    variants = [
+        'stats(group=[pitching],type=[season],season=%s)' % season,
+        'stats(group=[pitching],type=[season])',
+    ]
+    data = None
+    for hydrate in variants:
+        data = _statsapi_json('%s/people?personIds=%s&hydrate=%s' % (STATSAPI_BASE, ids, hydrate))
+        if data and any((p.get('stats') or []) for p in data.get('people', [])):
+            break
     if not data:
         return {}
 
@@ -4770,10 +4869,21 @@ def fetch_probable_pitchers(date_str):
         for k in keys:
             pitchers.setdefault(k, info)
 
-    with_stats = sum(1 for k, v in pitchers.items() if v.get('era'))
-    print('[+] 先發投手：%d 位（%s 有當季成績）'
-          % (len(entries), '含成績' if with_stats else '無成績'))
+    with_stats = sum(1 for info in entries_seen(entries) if info.get('era'))
+    print('[+] 先發投手：%d 位，其中 %d 位帶當季成績' % (len(entries), with_stats))
+    if entries and not with_stats:
+        print('  [!] 警告：先發投手抓到了但一位都沒有成績，statsapi 的 hydrate 可能又改了')
     return pitchers
+
+
+def entries_seen(entries):
+    """同一位投手會被多個 key 指到，統計時只算一次。"""
+    seen = set()
+    for _keys, info in entries:
+        if info['id'] in seen:
+            continue
+        seen.add(info['id'])
+        yield info
 
 
 def lookup_pitcher(pitchers, team_name):
@@ -4893,6 +5003,9 @@ def main():
             'opposing_trends': opposing,
             'recent_form': recent_form,
             'rf_lean': rf_lean,
+            # 先發投手：只顯示，不進 success_lb / fail_lb / Wilson 分數 / Top 5 排序
+            'pitcher_a': format_pitcher(lookup_pitcher(pitchers, matchup_data['team_a'])),
+            'pitcher_b': format_pitcher(lookup_pitcher(pitchers, matchup_data['team_b'])),
             'game_time': matchup_data['game_time'],
             'local_time': local_time,
             'taiwan_time': taiwan_time,
