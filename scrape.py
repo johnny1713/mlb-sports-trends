@@ -940,7 +940,9 @@ def parse_matchup_details(matchup):
     html_content = fetch_url(url)
     if not html_content:
         return None
-        
+
+    probe_covers_pitchers(html_content, url)   # ⏱ 一次性診斷，確認後移除
+
     # 1. 提取隊伍名稱 (從 Schema 中提取)
     team_a = "主隊"
     team_b = "客隊"
@@ -4655,6 +4657,74 @@ def replay_from_html(path="index.html"):
 # ==========================================
 # 主流程控制
 # ==========================================
+
+# ==========================================
+# ⏱ 一次性診斷：先發投手資料的來源（確認後即移除）
+# ==========================================
+# 目的是一次執行同時回答兩個問題，不必來回猜：
+#   1. covers 的 picks 頁面本身有沒有先發投手（若有，零額外請求就能顯示）
+#   2. Actions runner 連不連得到 statsapi.mlb.com，回傳欄位長什麼樣
+# 兩者都只 print 到 Actions 日誌，不影響任何輸出檔。
+_PROBE_STATE = {'covers': False}
+
+
+def probe_covers_pitchers(html_content, tag=""):
+    """只對第一場執行，看 covers 頁面裡有沒有先發投手區塊。"""
+    if _PROBE_STATE['covers']:
+        return
+    _PROBE_STATE['covers'] = True
+    print('\n[probe] === covers 頁面是否已含先發投手？(%s) ===' % tag)
+    low = html_content.lower()
+    for kw in ('probable', 'starting pitcher', 'pitcher', 'whip', 'era'):
+        print('[probe]   %-16r 出現 %d 次' % (kw, low.count(kw)))
+
+    classes = sorted({c for c in re.findall(r'class="([^"]*)"', html_content)
+                      if 'pitcher' in c.lower()})
+    print('[probe]   含 pitcher 的 class（%d 種，最多列 15）: %s' % (len(classes), classes[:15]))
+
+    for i, m in enumerate(list(re.finditer(r'[Pp]robable', html_content))[:3]):
+        seg = html_content[max(0, m.start() - 200):m.start() + 400]
+        seg = re.sub(r'\s+', ' ', seg)
+        print('[probe]   probable#%d 附近: %s' % (i + 1, seg[:500]))
+
+    m = re.search(r'<[^>]*class="[^"]*pitcher[^"]*"[^>]*>(.{0,800})',
+                  html_content, re.S | re.I)
+    if m:
+        txt = re.sub(r'\s+', ' ', re.sub(r'<[^>]*>', ' ', m.group(1)))
+        print('[probe]   pitcher 區塊純文字: %s' % txt[:400])
+
+
+def probe_statsapi(date_str):
+    """確認 runner 連得到 statsapi.mlb.com，並印出實際 JSON 結構。"""
+    url = ('https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=%s'
+           '&hydrate=team,probablePitcher(stats(group=[pitching],type=[season]))' % date_str)
+    print('\n[probe] === statsapi 連通性 ===')
+    print('[probe] GET %s' % url)
+    t0 = time.time()
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'mlb-trends-probe/1.0'})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            raw = r.read()
+        print('[probe] HTTP %s，%d bytes，耗時 %.1fs' % (getattr(r, 'status', '?'), len(raw), time.time() - t0))
+        data = json.loads(raw.decode('utf-8', 'ignore'))
+    except Exception as e:
+        print('[probe] statsapi 失敗（連不到或被擋）: %r' % (e,))
+        return
+
+    dates = data.get('dates') or []
+    games = dates[0].get('games', []) if dates else []
+    print('[probe] 場次數: %d' % len(games))
+    named = 0
+    for g in games:
+        for side in ('away', 'home'):
+            if (g.get('teams', {}).get(side, {}).get('probablePitcher') or {}).get('fullName'):
+                named += 1
+    print('[probe] 有先發投手名字的隊伍數: %d / %d' % (named, len(games) * 2))
+    if games:
+        print('[probe] 第一場原始 JSON（截斷 3000 字元）:')
+        print(json.dumps(games[0], ensure_ascii=False)[:3000])
+
+
 def main():
     print("====================================================")
     print("      MLB 賽事趨勢爬蟲與智能黃金推薦篩選系統")
@@ -4678,6 +4748,8 @@ def main():
     # 未指定日期時，明確採用「美東今天」，避免 covers.com 預設頁回傳前一日已完賽賽事
     if not date_str:
         date_str = get_eastern_today()
+
+    probe_statsapi(date_str)   # ⏱ 一次性診斷，確認後移除
 
     # 比賽開打後就抓不到開賽時間了，先把上一輪已知的讀回來備用
     known_game_times = load_known_game_times(date_str)
