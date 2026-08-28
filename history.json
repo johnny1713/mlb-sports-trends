@@ -13053,7 +13053,6 @@
     "bet_on": "Los Angeles Dodgers",
     "gid": "367896",
     "market": "獨贏",
-    "rf": false,
     "score": 47.2,
     "top5": false
    },
@@ -13061,7 +13060,6 @@
     "bet_on": "Washington Nationals",
     "gid": "369403",
     "market": "受讓 1.5",
-    "rf": null,
     "score": 48.4,
     "top5": false
    },
@@ -13070,7 +13068,6 @@
     "gid": "369403",
     "line": "8.5",
     "market": "Under",
-    "rf": true,
     "score": 52.7,
     "top5": false,
     "top_totals": true
@@ -13080,7 +13077,6 @@
     "gid": "368214",
     "line": "7.5",
     "market": "Under",
-    "rf": null,
     "score": 51.7,
     "top5": false
    },
@@ -13088,7 +13084,6 @@
     "bet_on": "Houston Astros",
     "gid": "368006",
     "market": "讓 1.5",
-    "rf": false,
     "score": 50.9,
     "top5": false
    },
@@ -13096,7 +13091,6 @@
     "bet_on": "Toronto Blue Jays",
     "gid": "369282",
     "market": "讓 1.5",
-    "rf": null,
     "score": 52.4,
     "top5": false,
     "top_sides": true
@@ -13105,7 +13099,6 @@
     "bet_on": "Boston Red Sox",
     "gid": "369440",
     "market": "獨贏",
-    "rf": true,
     "score": 53.6,
     "top5": false,
     "top_sides": true
@@ -13114,7 +13107,6 @@
     "bet_on": "Milwaukee Brewers",
     "gid": "368957",
     "market": "讓 1.5",
-    "rf": true,
     "score": 48.0,
     "top5": false
    },
@@ -13123,7 +13115,6 @@
     "gid": "368957",
     "line": "7.5",
     "market": "Under",
-    "rf": null,
     "score": 53.4,
     "top5": false,
     "top_totals": true
@@ -13132,7 +13123,6 @@
     "bet_on": "Chicago White Sox",
     "gid": "368816",
     "market": "獨贏",
-    "rf": null,
     "score": 48.8,
     "top5": false
    },
@@ -13149,7 +13139,6 @@
     "bet_on": "Pittsburgh Pirates",
     "gid": "369082",
     "market": "獨贏",
-    "rf": true,
     "score": 44.2,
     "top5": false
    },
@@ -13166,14 +13155,13 @@
     "bet_on": "Philadelphia Phillies",
     "gid": "369531",
     "market": "讓 1.5",
-    "rf": null,
     "score": 45.6,
     "top5": false
    },
    {
     "bet_on": null,
     "gid": "369531",
-    "line": "6.5",
+    "line": "8.0",
     "market": "Under",
     "rf": false,
     "score": 59.7,
@@ -13194,7 +13182,6 @@
     "bet_on": "Arizona Diamondbacks",
     "gid": "368775",
     "market": "獨贏",
-    "rf": null,
     "score": 49.0,
     "top5": false
    },
@@ -13203,7 +13190,6 @@
     "gid": "368775",
     "line": "7.5",
     "market": "Under",
-    "rf": null,
     "score": 52.1,
     "top5": false,
     "top_totals": true
