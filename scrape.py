@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "3.2"
+APP_VERSION = "3.3"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -928,7 +928,10 @@ def compute_track_record(history, today_str, recent_days=TRACK_RECENT_DAYS):
 
     tally = {'recent': collections_counter(), 'all': collections_counter()}
     # 分組比較：下午場與近期走勢。兩者都只是切片，不改變主表的統計。
-    splits = {'all': collections_counter(), 'recent': collections_counter()}
+    # 時段與走勢改為「有上榜 / 都沒上榜」對照（只看全期間）：這兩個切片再乘上
+    # 近 N 天會薄到沒有意義（下午場全期間才 67 筆），而「上榜的有沒有比落榜的準」
+    # 才是這張表真正要回答的。⚠️「有上榜」= 三份精選清單任一，與榜單表最後一列對應。
+    splits = {'top': collections_counter(), 'other': collections_counter()}
     # 三份精選清單各自的戰績。⚠️ 它們**會重疊**（同一筆常同時在 AI Top 5 與勝負 Top 5），
     # 所以這組不能加總，只能並列比較；「都沒上榜」則與三者互斥。
     lists = {'all': collections_counter(), 'recent': collections_counter()}
@@ -948,8 +951,8 @@ def compute_track_record(history, today_str, recent_days=TRACK_RECENT_DAYS):
         # 分組表與主表一樣要有「近 N 天」欄，所以每一組都同時計進 all 與 recent。
         scopes = ('all',) + (('recent',) if day_str >= cutoff else ())
 
-        def bump(group, label, verdict):
-            for scope in scopes:
+        def bump(group, label, verdict, keys=None):
+            for scope in (keys if keys is not None else scopes):
                 bucket = group[scope][label]
                 bucket[1] += 1
                 bucket[0] += verdict
@@ -967,23 +970,26 @@ def compute_track_record(history, today_str, recent_days=TRACK_RECENT_DAYS):
                                 ('大小分 Top 5', 'top_totals')):
                 if pick.get(flag):
                     bump(lists, label, verdict)
-            if not any(pick.get(f) for f in ('top5', 'top_sides', 'top_totals')):
+            on_board = any(pick.get(f) for f in ('top5', 'top_sides', 'top_totals'))
+            if not on_board:
                 bump(lists, '都沒上榜', verdict)
 
-            if not pick.get('top5'):
-                continue
-            days_with_data.add(day_str)
-            marks.append(verdict)
-
+            # 時段與走勢對所有推薦都算，依有沒有上榜分兩欄
+            board_scope = ['top' if on_board else 'other']
             is_day_game_pick = bool((games.get(pick.get('gid')) or {}).get('day'))
-            bump(splits, '下午場' if is_day_game_pick else '非下午場', verdict)
+            bump(splits, '下午場' if is_day_game_pick else '非下午場', verdict, board_scope)
             if 'rf' in pick:
                 rf_days.add(day_str)
                 # 三態一定要分開列。把「反向」和「無方向」併成「未同向」會得到相反的結論：
                 # 實測反向 38.5%、無方向 65.2%，合併後 59.3% 看起來像「不同向反而比較準」，
                 # 但真正的順序是 反向 < 同向 < 無方向。
                 rf_label = {True: '走勢同向', False: '走勢反向'}.get(pick['rf'], '走勢無方向')
-                bump(splits, rf_label, verdict)
+                bump(splits, rf_label, verdict, board_scope)
+
+            if not pick.get('top5'):
+                continue
+            days_with_data.add(day_str)
+            marks.append(verdict)
             for scope in scopes:
                 bucket = tally[scope]
                 bucket['總計'][1] += 1
@@ -1012,8 +1018,8 @@ def compute_track_record(history, today_str, recent_days=TRACK_RECENT_DAYS):
         'recent_days': recent_days,
         'recent': pack(tally['recent']),
         'all': pack(tally['all']),
-        'splits': pack(splits['all']),
-        'splits_recent': pack(splits['recent']),
+        'splits': pack(splits['top']),
+        'splits_other': pack(splits['other']),
         'lists': pack(lists['all']),
         'lists_recent': pack(lists['recent']),
         'rf_from': min(rf_days) if rf_days else None,
@@ -4466,7 +4472,7 @@ def render_track_record(track):
         label = track['market_zh'].get(key, key)
         rows.append(f'<tr><th>{label}</th>' + cell(recent) + cell(whole) + '</tr>')
 
-    def split_table(title, names, source='splits', exclusive=True, note=''):
+    def split_table(title, names, columns, exclusive=True, note=''):
         """
         分組小表。**一定要有「命中率」欄位標題與合計列**——沒有標題時，三組並列的
         百分比很容易被讀成「佔比」而困惑於「為什麼加起來不是 100%」。
@@ -4475,47 +4481,48 @@ def render_track_record(track):
         ⚠️ `exclusive=False` 的分組（榜單）**不能加合計**：同一筆推薦常同時出現在
         AI Top 5 與勝負 Top 5，加起來會重複計算。那種表改用 note 說明不可相加。
         """
-        whole = track.get(source, {})
-        recent_src = track.get(source + '_recent', {})
+        sources = [(label, track.get(key, {})) for label, key in columns]
         rows = []
-        sums = {'recent': [0, 0], 'all': [0, 0]}
+        sums = [[0, 0] for _ in sources]
         for name in names:
-            stat = whole.get(name)
-            recent = recent_src.get(name)
-            if not stat and not recent:
+            stats = [src.get(name) for _label, src in sources]
+            if not any(stats):
                 continue
-            for scope, s in (('recent', recent), ('all', stat)):
+            for i, s in enumerate(stats):
                 if s:
-                    sums[scope][0] += s['hit']
-                    sums[scope][1] += s['total']
-            rows.append(f'<tr><th>{name}</th>' + cell(recent) + cell(stat) + '</tr>')
+                    sums[i][0] += s['hit']
+                    sums[i][1] += s['total']
+            rows.append(f'<tr><th>{name}</th>' + ''.join(cell(s) for s in stats) + '</tr>')
         if not rows:
             return ''
         if exclusive:
-            def total_cell(scope):
-                hit, total = sums[scope]
+            def total_cell(hit, total):
                 if not total:
                     return '<td class="tr-empty">—</td>'
                 return (f'<td><span class="tr-rate">{round(100 * hit / total, 1)}%</span>'
                         f'<span class="tr-n">{hit}/{total}</span></td>')
             rows.append('<tr class="tr-total"><th>合計</th>'
-                        + total_cell('recent') + total_cell('all') + '</tr>')
+                        + ''.join(total_cell(h, t) for h, t in sums) + '</tr>')
+        heads = ''.join(f'<th>{label}</th>' for label, _src in sources)
         note_html = f'<p class="tr-note">{note}</p>' if note else ''
         return (f'<div class="tr-split"><h4>{title}</h4>'
                 '<table class="tr-table">'
-                f'<thead><tr><th></th><th>近 {track["recent_days"]} 天</th>'
-                '<th>全期間</th></tr></thead>'
+                f'<thead><tr><th></th>{heads}</tr></thead>'
                 f'<tbody>{"".join(rows)}</tbody></table>{note_html}</div>')
 
     since = track.get('rf_from') or ''
-    rf_title = '依近期走勢' + (f'（{since} 起才有資料）' if since else '')
+    rf_title = '依近期走勢（全期間' + (f'，{since} 起才有資料' if since else '') + '）'
+    board_cols = [('有上榜', 'splits'), ('都沒上榜', 'splits_other')]
     parts = [
         split_table('依榜單',
                     ['AI Top 5', '勝負 Top 5', '大小分 Top 5', '都沒上榜'],
-                    source='lists', exclusive=False,
+                    columns=[(f'近 {track["recent_days"]} 天', 'lists_recent'),
+                             ('全期間', 'lists')],
+                    exclusive=False,
                     note='同一筆常同時上兩個榜，各列不可相加。上表只統計 AI Top 5。'),
-        split_table('依時段', ['非下午場', '下午場']),
-        split_table(rf_title, ['走勢同向', '走勢反向', '走勢無方向']),
+        split_table('依時段（全期間）', ['非下午場', '下午場'], columns=board_cols,
+                    note='「有上榜」= 上面三份清單任一，與該表最後一列互補。'),
+        split_table(rf_title, ['走勢同向', '走勢反向', '走勢無方向'], columns=board_cols),
     ]
     parts = [x for x in parts if x]
     splits_block = ('<div class="tr-splits">' + ''.join(parts) + '</div>') if parts else ''
