@@ -313,6 +313,34 @@ def diagnose_total_line(html_str, chosen, tag=""):
         print('      %s 區段的報價: %s' % (GAME_TOTAL_LABEL, _odds_cells(seg)[:8]))
 
 
+def diagnose_run_line(html_str, votes, tag=""):
+    """
+    讓分盤判不出來時，把頁面實際給了什麼印出來。
+
+    ⚠️ 這條路徑的靜默失敗特別傷：`determine_side_term(None)` 會**預設回「讓分」**，
+    於是畫面上照樣寫「買 X 讓分」——但讓分與受讓是相反的兩邊，猜錯等於叫使用者
+    下反邊。症狀只有一個：推薦文案少了數字（「讓分」而不是「讓 1.5」）。
+    三種可能要靠這裡分辨：標籤不見了／只剩 alternate line／多數決打平。
+    """
+    label_count = len(re.findall(re.escape(RUN_LINE_LABEL), html_str))
+    segments = _market_segments(html_str, RUN_LINE_LABEL)
+    print('  [!] 警告：讓分盤判不出讓分方，畫面會退回不帶數字的「讓分」%s' % tag)
+    print('      "%s" 出現 %d 次，取到 %d 個區段；票數 home=%d away=%d'
+          % (RUN_LINE_LABEL, label_count, len(segments), votes['home'], votes['away']))
+    if not label_count:
+        labels = re.findall(
+            r'<div[^>]*\bclass="(?:[^"]*\s)?other-odds-label(?:\s[^"]*)?"[^>]*>\s*(.*?)\s*</div>',
+            html_str, re.S)
+        uniq = []
+        for x in labels:
+            x = re.sub(r'<[^>]+>', '', x).strip()[:32]
+            if x and x not in uniq:
+                uniq.append(x)
+        print('      找不到標籤，頁面實際有的盤口標籤: %s' % uniq[:12])
+    for i, seg in enumerate(segments[:2]):
+        print('      區段 %d 的報價: %s' % (i + 1, _odds_cells(seg)[:12]))
+
+
 def parse_run_lines(html_str):
     """
     解析全場讓分 (Run Line) 與大小分盤口。
@@ -339,6 +367,9 @@ def parse_run_lines(html_str):
                 spread_a, spread_b = '+1.5', '-1.5'
             else:
                 spread_a, spread_b = '-1.5', '+1.5'
+
+        if spread_a is None:
+            diagnose_run_line(html_str, votes)
 
         total_line = _parse_total_line(html_str)
         diagnose_total_line(html_str, total_line)
