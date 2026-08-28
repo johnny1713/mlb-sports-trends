@@ -401,6 +401,60 @@ Top 5 給的是 `market_type`（`"受讓 1.5"`、`"Over (大 7.5)"`），單場�
   CSS 那個 2000px 只是無 JS 時的保底——和摺疊卡片踩過的坑相同，別改回固定值。
 - 表格用 `.tr-table-wrap` 的 `overflow-x: auto` 自己捲，不要讓它撐爆頁面。
 
+## 先發投手（statsapi.mlb.com，2026-08-28 加入）
+
+單場卡片的開賽時間下方顯示兩隊先發投手與當季成績。**只顯示，不進評分或排序。**
+
+    ⚾ 先發  辛辛那提紅人 Rhett Lowder  5-8 · ERA 5.13 · WHIP 1.47
+             芝加哥小熊 David Peterson  7-7 · ERA 5.17 · WHIP 1.50
+
+**為什麼不計分**（和 Recent Form、戰績同一個立場，但理由不同）：先發投手是盤口
+**開盤前就掛牌、早已定價**的資訊。covers 的趨勢之所以還有一點價值，是因為它是切片統計；
+先發投手則是市場人人都看得到的公開資訊，拿它去調分數不會帶來優勢，只會讓排序被一個
+沒驗證過的權重污染。它的用途是讓使用者看到推薦時有背景資訊自己決定「這筆要不要跳過」。
+
+### covers 沒有先發投手，只能另外抓
+
+2026-08-28 實測 picks 頁面：`probable` 出現 **0 次**、`starting pitcher` **0 次**、
+含 `pitcher` 的 class **0 種**（`pitcher` 那 40 次都在 Recent Form 的句子裡）。
+所以「零額外請求」這條路走不通，必須用 statsapi。
+
+statsapi 免金鑰、回 JSON、標準庫就打得到，維持專案零外部依賴的設計。
+從 Actions runner 實測 HTTP 200、45 KB、**0.3 秒**。
+⚠️ **雲端 session 的 egress proxy 擋掉 statsapi.mlb.com**（CONNECT 403），
+和 covers 一樣，任何驗證都只能透過 Actions 跑。
+
+### ⚠️ statsapi 對不認得的 hydrate 是「靜默忽略」
+
+`schedule?hydrate=probablePitcher(stats(group=[pitching],type=[season]))` **不會**帶回成績，
+只回 `{id, fullName, link}`——不報錯、不警告，就是安靜地少一半欄位。
+這與 covers 改標記是**同一族的失敗**：拿不到資料而畫面照常。
+
+因此成績改用 `people?personIds=...&hydrate=stats(...)` 端點另抓一次（整輪只多一個請求），
+且**兩種 hydrate 寫法都試**（帶 `season=` 與不帶），兩種都拿不到成績時印警告。
+新增任何 hydrate 參數時記得：**要自己檢查回傳有沒有那個欄位，不能假設沒報錯就是成功。**
+
+### 降級行為（三層，缺一不可）
+
+| 情況 | 行為 |
+|---|---|
+| statsapi 整個抓不到 | `pitchers` 為空 → 每場 `pitcher_a/b` 皆 None → **整區不輸出** |
+| 單邊沒公布先發 | 該列顯示「未公布」，另一隊照常 |
+| 有名字沒成績 | 只顯示名字，**絕不把 None 印到畫面上**（`format_pitcher` 逐欄位判斷）|
+
+網站在使用者看盤時段必須照常出推薦，先發投手掛掉不能拖垮當日產出。
+
+### 隊名比對與它的驗證方法
+
+covers 給全名（`"Chicago Cubs"`），偶爾還會把隊名寫兩次（實測 **`"Athletics Athletics"`**）。
+`fetch_probable_pitchers` 對每隊建三個 key：`name`／`clubName`／`locationName + clubName`，
+`lookup_pitcher` 先試完全比對，再退回包含關係。
+
+⚠️ **驗證比對是否錯位，看「有沒有重複的投手名字」**，不是看比對成功幾筆。
+比對錯位的症狀是某位投手同時掛在兩隊名下，而總筆數完全正常。
+2026-08-28 實測：statsapi 給 28/30 隊有先發（2 隊未公布），畫面顯示 28 位、
+**30 隊皆不重複、投手名零重複** → 比對率 28/28。
+
 ## GitHub Actions 排程（.github/workflows/scrape.yml）
 
 - 每天 6 輪：UTC 11:17/12:17/13:17/15:17（台灣 19:17~23:17）＋ 補救輪 16:17/17:17（台灣 00:17/01:17）。
