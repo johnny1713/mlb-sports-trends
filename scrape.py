@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "3.0"
+APP_VERSION = "3.1"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -675,24 +675,38 @@ def _market_key(text):
     return None
 
 
-def _pick_rows(matchups_data, top_5_ai):
+def _top_key(row):
+    """精選清單那三份 JSON 的比對鍵。三份格式相同，用同一個函式才不會又對不上。"""
+    market = row.get('market_type') or ''
+    key = _market_key(market)
+    if not key:
+        return None
+    if key in ('Over', 'Under'):
+        hit = re.search(r'([0-9]+(?:\.[0-9]+)?)', market)
+        return (row.get('matchup_id'), key, None, hit.group(1) if hit else None)
+    return (row.get('matchup_id'), key, row.get('bet_on'), None)
+
+
+def _pick_rows(matchups_data, top_5_ai, top_5_sides=(), top_5_totals=()):
     """把當天所有推薦壓成可長期保存的最小結構。"""
     def line_of(text):
         hit = re.search(r'([0-9]+(?:\.[0-9]+)?)', text or '')
         return hit.group(1) if hit else None
+
+    # 左右兩欄的精選清單也各記一個旗標。以前只記 AI Top 5，於是那兩欄
+    # 沒有獨立戰績——它們的成員若沒同時進 AI Top 5，在統計裡會被歸成「沒上榜」。
+    sides_keys = {k for k in (_top_key(r) for r in top_5_sides or ()) if k}
+    totals_keys = {k for k in (_top_key(r) for r in top_5_totals or ()) if k}
 
     # rf_agree（近期走勢是否同向）只存在於 top-ai-data，單場推薦陣列裡沒有，
     # 所以在這裡順手帶進來。三態 True/False/None 要原樣保留：None 代表「沒有明顯方向」，
     # 和「這天根本還沒有 Recent Form 資料」是兩回事，後者不會有 rf 這個 key。
     top_meta = {}
     for r in top_5_ai:
-        market = r.get('market_type') or ''
-        key = _market_key(market)
+        key = _top_key(r)
         if not key:
             continue
-        line = line_of(market) if key in ('Over', 'Under') else None
-        top_meta[(r.get('matchup_id'), key, r.get('bet_on'), line)] = (
-            r.get('rf_agree') if 'rf_agree' in r else '__absent__')
+        top_meta[key] = r.get('rf_agree') if 'rf_agree' in r else '__absent__'
 
     rows = []
     games = {}
@@ -709,6 +723,10 @@ def _pick_rows(matchups_data, top_5_ai):
             row = {'gid': gid, 'market': key, 'bet_on': r.get('bet_on'),
                    'score': r.get('score'),
                    'top5': meta_key in top_meta}
+            if meta_key in sides_keys:
+                row['top_sides'] = True
+            if meta_key in totals_keys:
+                row['top_totals'] = True
             if row['top5'] and top_meta[meta_key] != '__absent__':
                 row['rf'] = top_meta[meta_key]
             # 2026-08-21 之前顯示過 alternate run line（受讓 2.0 之類，見 CLAUDE.md）。
@@ -729,18 +747,23 @@ def _pick_rows(matchups_data, top_5_ai):
             row = {'gid': gid, 'market': key, 'bet_on': None,
                    'line': line, 'score': r.get('score'),
                    'top5': meta_key in top_meta}
+            if meta_key in sides_keys:
+                row['top_sides'] = True
+            if meta_key in totals_keys:
+                row['top_totals'] = True
             if row['top5'] and top_meta[meta_key] != '__absent__':
                 row['rf'] = top_meta[meta_key]
             rows.append(row)
     return rows, games
 
 
-def record_daily_picks(history, date_str, matchups_data, top_5_ai):
+def record_daily_picks(history, date_str, matchups_data, top_5_ai,
+                       top_5_sides=(), top_5_totals=()):
     """
     記下當天的推薦。同一天會被後面幾輪覆蓋——這是刻意的：
     使用者晚上看到的是最後一輪的版本，統計就該以那一份為準。
     """
-    rows, games = _pick_rows(matchups_data, top_5_ai)
+    rows, games = _pick_rows(matchups_data, top_5_ai, top_5_sides, top_5_totals)
     if not rows:
         return history
     day = history.setdefault(date_str, {})
@@ -906,6 +929,9 @@ def compute_track_record(history, today_str, recent_days=TRACK_RECENT_DAYS):
     tally = {'recent': collections_counter(), 'all': collections_counter()}
     # 分組比較：下午場與近期走勢。兩者都只是切片，不改變主表的統計。
     splits = collections_counter()
+    # 三份精選清單各自的戰績。⚠️ 它們**會重疊**（同一筆常同時在 AI Top 5 與勝負 Top 5），
+    # 所以這組不能加總，只能並列比較；「都沒上榜」則與三者互斥。
+    lists = collections_counter()
     rf_days = set()
     yesterday = None
     days_with_data = set()
@@ -920,10 +946,26 @@ def compute_track_record(history, today_str, recent_days=TRACK_RECENT_DAYS):
             continue
         marks = []
         for pick in day.get('picks') or []:
-            if not pick.get('top5'):
-                continue
             verdict = _judge_pick(pick, games, results)
             if verdict is None:
+                continue
+
+            # 榜單分組先算：這裡要涵蓋沒進 AI Top 5 的推薦，所以在下面的
+            # `if not pick.get('top5')` 之前。舊資料沒有 top_sides/top_totals 兩個 key，
+            # 那幾天就只有「AI Top 5」與「都沒上榜」兩組有數字，不會憑空補。
+            for label, flag in (('AI Top 5', 'top5'),
+                                ('勝負 Top 5', 'top_sides'),
+                                ('大小分 Top 5', 'top_totals')):
+                if pick.get(flag):
+                    bucket = lists[label]
+                    bucket[1] += 1
+                    bucket[0] += verdict
+            if not any(pick.get(f) for f in ('top5', 'top_sides', 'top_totals')):
+                bucket = lists['都沒上榜']
+                bucket[1] += 1
+                bucket[0] += verdict
+
+            if not pick.get('top5'):
                 continue
             days_with_data.add(day_str)
             marks.append(verdict)
@@ -970,6 +1012,7 @@ def compute_track_record(history, today_str, recent_days=TRACK_RECENT_DAYS):
         'recent': pack(tally['recent']),
         'all': pack(tally['all']),
         'splits': pack(splits),
+        'lists': pack(lists),
         'rf_from': min(rf_days) if rf_days else None,
         'yesterday': yesterday,
         'days': len(days_with_data),
@@ -4420,16 +4463,19 @@ def render_track_record(track):
         label = track['market_zh'].get(key, key)
         rows.append(f'<tr><th>{label}</th>' + cell(recent) + cell(whole) + '</tr>')
 
-    def split_table(title, names):
+    def split_table(title, names, source='splits', exclusive=True, note=''):
         """
         分組小表。**一定要有「命中率」欄位標題與合計列**——沒有標題時，三組並列的
         百分比很容易被讀成「佔比」而困惑於「為什麼加起來不是 100%」。
         會相加的是筆數（各組互斥、合計即該切片的全部推薦），不是百分比。
+
+        ⚠️ `exclusive=False` 的分組（榜單）**不能加合計**：同一筆推薦常同時出現在
+        AI Top 5 與勝負 Top 5，加起來會重複計算。那種表改用 note 說明不可相加。
         """
         rows = []
         hit_sum = total_sum = 0
         for name in names:
-            stat = track['splits'].get(name)
+            stat = track.get(source, {}).get(name)
             if not stat:
                 continue
             hit_sum += stat['hit']
@@ -4440,19 +4486,25 @@ def render_track_record(track):
                 f'<span class="tr-n">{stat["hit"]}/{stat["total"]}</span></td></tr>')
         if not rows:
             return ''
-        rate = round(100 * hit_sum / total_sum, 1) if total_sum else 0
-        rows.append(
-            f'<tr class="tr-total"><th>合計</th>'
-            f'<td><span class="tr-rate">{rate}%</span>'
-            f'<span class="tr-n">{hit_sum}/{total_sum}</span></td></tr>')
+        if exclusive:
+            rate = round(100 * hit_sum / total_sum, 1) if total_sum else 0
+            rows.append(
+                f'<tr class="tr-total"><th>合計</th>'
+                f'<td><span class="tr-rate">{rate}%</span>'
+                f'<span class="tr-n">{hit_sum}/{total_sum}</span></td></tr>')
+        note_html = f'<p class="tr-note">{note}</p>' if note else ''
         return (f'<div class="tr-split"><h4>{title}</h4>'
                 '<table class="tr-table">'
                 '<thead><tr><th></th><th>命中率</th></tr></thead>'
-                f'<tbody>{"".join(rows)}</tbody></table></div>')
+                f'<tbody>{"".join(rows)}</tbody></table>{note_html}</div>')
 
     since = track.get('rf_from') or ''
     rf_title = '依近期走勢' + (f'（{since} 起才有資料）' if since else '')
     parts = [
+        split_table('依榜單（全期間）',
+                    ['AI Top 5', '勝負 Top 5', '大小分 Top 5', '都沒上榜'],
+                    source='lists', exclusive=False,
+                    note='同一筆常同時上兩個榜，各列不可相加。上表只統計 AI Top 5。'),
         split_table('依時段（全期間）', ['非下午場', '下午場']),
         split_table(rf_title, ['走勢同向', '走勢反向', '走勢無方向']),
     ]
@@ -5214,7 +5266,8 @@ def main():
 
     # 6. 累積戰績：記下今天的推薦，並補抓前幾天的比賽結果
     history = load_history()
-    record_daily_picks(history, date_str, all_matchups_data, top_5_ai)
+    record_daily_picks(history, date_str, all_matchups_data, top_5_ai,
+                       top_5_sides, top_5_totals)
     backfill_results(history, date_str)
     save_history(history)
     track_record = compute_track_record(history, date_str)
