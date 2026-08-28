@@ -12964,9 +12964,9 @@
  "2026-08-28": {
   "games": {
    "367896": {
-    "away": "Los Angeles Dodgers",
+    "away": "Dodgers",
     "day": false,
-    "home": "Detroit Tigers"
+    "home": "Tigers"
    },
    "368006": {
     "away": "Houston Astros",
@@ -13019,9 +13019,9 @@
     "home": "Toronto Blue Jays"
    },
    "369403": {
-    "away": "Miami Marlins",
+    "away": "Marlins",
     "day": false,
-    "home": "Washington Nationals"
+    "home": "Nationals"
    },
    "369440": {
     "away": "Boston Red Sox",
@@ -13041,14 +13041,14 @@
   },
   "picks": [
    {
-    "bet_on": "Los Angeles Dodgers",
+    "bet_on": "Dodgers",
     "gid": "367896",
     "market": "獨贏",
     "score": 47.2,
     "top5": false
    },
    {
-    "bet_on": "Washington Nationals",
+    "bet_on": "Nationals",
     "gid": "369403",
     "market": "受讓 1.5",
     "score": 48.4,
@@ -13179,7 +13179,7 @@
    {
     "bet_on": null,
     "gid": "368775",
-    "line": "7.5",
+    "line": "8.0",
     "market": "Under",
     "score": 52.1,
     "top5": false,
