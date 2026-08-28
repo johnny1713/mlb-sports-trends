@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "2.9"
+APP_VERSION = "3.0"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -313,7 +313,16 @@ def diagnose_total_line(html_str, chosen, tag=""):
         print('      %s 區段的報價: %s' % (GAME_TOTAL_LABEL, _odds_cells(seg)[:8]))
 
 
-def diagnose_run_line(html_str, votes, tag=""):
+def _majority_side(votes):
+    """多數決決定讓分方；沒有票或打平回 None（寧可不判，不要猜）。"""
+    if votes['home'] > votes['away']:
+        return 'home'
+    if votes['away'] > votes['home']:
+        return 'away'
+    return None
+
+
+def diagnose_run_line(html_str, votes, alt_votes=None, tag=""):
     """
     讓分盤判不出來時，把頁面實際給了什麼印出來。
 
@@ -324,9 +333,12 @@ def diagnose_run_line(html_str, votes, tag=""):
     """
     label_count = len(re.findall(re.escape(RUN_LINE_LABEL), html_str))
     segments = _market_segments(html_str, RUN_LINE_LABEL)
-    print('  [!] 警告：讓分盤判不出讓分方，畫面會退回不帶數字的「讓分」%s' % tag)
-    print('      "%s" 出現 %d 次，取到 %d 個區段；票數 home=%d away=%d'
-          % (RUN_LINE_LABEL, label_count, len(segments), votes['home'], votes['away']))
+    alt_votes = alt_votes if alt_votes is not None else Counter()
+    print('  [!] 警告：讓分盤判不出讓分方，該場的讓分推薦會整筆略過%s' % tag)
+    print('      "%s" 出現 %d 次，取到 %d 個區段；'
+          '標準 1.5 票數 home=%d away=%d；alternate 票數 home=%d away=%d'
+          % (RUN_LINE_LABEL, label_count, len(segments),
+             votes['home'], votes['away'], alt_votes['home'], alt_votes['away']))
     if not label_count:
         labels = re.findall(
             r'<div[^>]*\bclass="(?:[^"]*\s)?other-odds-label(?:\s[^"]*)?"[^>]*>\s*(.*?)\s*</div>',
@@ -352,24 +364,39 @@ def parse_run_lines(html_str):
     「讓分／受讓」，寧可不顯示也不要顯示錯的。
     """
     try:
-        votes = Counter()
+        votes = Counter()       # 標準 ±1.5 的票
+        alt_votes = Counter()   # alternate line（±2.0/±2.5/±3.0…）的票
         for segment in _market_segments(html_str, RUN_LINE_LABEL):
             for column, text in _odds_cells(segment):
-                if text.lstrip('+-') != STANDARD_RUN_LINE:
+                if not text or text[0] not in '+-':
+                    continue
+                number = text[1:].strip()
+                if not re.fullmatch(r'\d+(?:\.\d+)?', number):
                     continue
                 # over 欄是客隊：客隊 +1.5 代表主隊為讓分方；under 欄則相反
                 home_is_favorite = (text[0] == '+') if column == 'over' else (text[0] == '-')
-                votes['home' if home_is_favorite else 'away'] += 1
+                side = 'home' if home_is_favorite else 'away'
+                if number == STANDARD_RUN_LINE:
+                    votes[side] += 1
+                else:
+                    alt_votes[side] += 1
+
+        # 第一層只認標準盤；判不出來時才用 alternate line **決定方向**。
+        # 讓分方在 alternate line 與標準盤是同一隊（±2.5 的熱門方就是 ±1.5 的熱門方），
+        # 所以「不承認 2.5 這個數字」不等於「連是誰讓分都不知道」——
+        # 2026-08-28 白襪 vs 雙城就是整段只有 ±2.5，舊寫法連方向都丟掉，
+        # 再被 determine_side_term(None) 預設成「讓分」而寫反邊。
+        # ⚠️ 數字一律以標準 1.5 呈現：covers 的 Run Line 趨勢統計以 ±1.5 為準，
+        # 使用者實際下的也是 1.5，把 2.5 印出去等於叫他下一個不同的盤口。
+        favorite = _majority_side(votes) or _majority_side(alt_votes)
 
         spread_a = spread_b = None
-        if votes['home'] != votes['away']:
-            if votes['home'] > votes['away']:
-                spread_a, spread_b = '+1.5', '-1.5'
-            else:
-                spread_a, spread_b = '-1.5', '+1.5'
-
-        if spread_a is None:
-            diagnose_run_line(html_str, votes)
+        if favorite == 'home':
+            spread_a, spread_b = '+1.5', '-1.5'
+        elif favorite == 'away':
+            spread_a, spread_b = '-1.5', '+1.5'
+        else:
+            diagnose_run_line(html_str, votes, alt_votes)
 
         total_line = _parse_total_line(html_str)
         diagnose_total_line(html_str, total_line)
@@ -1044,8 +1071,10 @@ def parse_matchup_details(matchup):
     total_line = parsed_spreads['total_line'] if parsed_spreads else None
     
     def determine_side_term(spread):
+        # ⚠️ 抓不到就回 None，**絕不預設**。讓分與受讓是相反的兩邊，猜錯等於
+        # 叫使用者去下反邊；舊版預設「讓分」，2026-08-28 白襪那場就寫反了。
         if not spread:
-            return "讓分"  # 預設為讓分
+            return None
         spread = spread.strip()
         if spread.startswith('-'):
             return "讓分"
@@ -1639,8 +1668,8 @@ def analyze_betting_recommendations(matchup, processed_trends):
         'Moneyline': '獨贏'
     }
     
-    team_a_side = matchup.get('team_a_side', '讓分')
-    team_b_side = matchup.get('team_b_side', '受讓')
+    team_a_side = matchup.get('team_a_side')
+    team_b_side = matchup.get('team_b_side')
     team_a_spread = matchup.get('team_a_spread')
     team_b_spread = matchup.get('team_b_spread')
     
@@ -1652,6 +1681,9 @@ def analyze_betting_recommendations(matchup, processed_trends):
         return f"{side_clean} {abs_val}"
     
     for m in h2h_markets:
+        # 讓分方判不出來時整個 Run Line 市場跳過。獨贏不受影響——它不需要盤口方向。
+        if m == 'Run Line' and not (team_a_side and team_b_side):
+            continue
         a_trends = [t for t in usable_trends if t['team'] == team_a and t['market'] == m]
         b_trends = [t for t in usable_trends if t['team'] == team_b and t['market'] == m]
 
