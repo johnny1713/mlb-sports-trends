@@ -13041,15 +13041,6 @@
   },
   "picks": [
    {
-    "bet_on": "Cubs",
-    "gid": "369738",
-    "market": "讓 1.5",
-    "rf": null,
-    "score": 54.0,
-    "top5": true,
-    "top_sides": true
-   },
-   {
     "bet_on": "Los Angeles Dodgers",
     "gid": "367896",
     "market": "獨贏",
@@ -13161,7 +13152,7 @@
    {
     "bet_on": null,
     "gid": "369531",
-    "line": "8.0",
+    "line": "7.5",
     "market": "Under",
     "rf": false,
     "score": 59.7,
@@ -13193,6 +13184,15 @@
     "score": 52.1,
     "top5": false,
     "top_totals": true
+   },
+   {
+    "bet_on": "Cubs",
+    "gid": "369738",
+    "market": "讓 1.5",
+    "rf": null,
+    "score": 54.0,
+    "top5": true,
+    "top_sides": true
    }
   ],
   "results": {}
