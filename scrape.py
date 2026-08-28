@@ -941,8 +941,6 @@ def parse_matchup_details(matchup):
     if not html_content:
         return None
 
-    probe_covers_pitchers(html_content, url)   # ⏱ 一次性診斷，確認後移除
-
     # 1. 提取隊伍名稱 (從 Schema 中提取)
     team_a = "主隊"
     team_b = "客隊"
@@ -4659,70 +4657,151 @@ def replay_from_html(path="index.html"):
 # ==========================================
 
 # ==========================================
-# ⏱ 一次性診斷：先發投手資料的來源（確認後即移除）
+# 先發投手（statsapi.mlb.com）——只顯示，不計分
 # ==========================================
-# 目的是一次執行同時回答兩個問題，不必來回猜：
-#   1. covers 的 picks 頁面本身有沒有先發投手（若有，零額外請求就能顯示）
-#   2. Actions runner 連不連得到 statsapi.mlb.com，回傳欄位長什麼樣
-# 兩者都只 print 到 Actions 日誌，不影響任何輸出檔。
-_PROBE_STATE = {'covers': False}
+# covers 的 picks 頁面**沒有**先發投手（2026-08-28 實測：整頁 "probable" 0 次、
+# 含 pitcher 的 class 0 種），所以只能另外抓。MLB 官方的 statsapi 免金鑰、回 JSON、
+# 用標準庫就打得到，維持本專案零外部依賴的設計。
+#
+# ⚠️ 這份資料**只顯示，絕不進評分或排序**，理由和 Recent Form、戰績完全相同：
+# 先發投手是盤口**早就定價過**的資訊（開盤前就掛牌），拿它去調分數不會帶來優勢，
+# 只會讓排序被一個沒有驗證過的權重污染。它的用途是讓使用者在看到推薦時，
+# 有足夠的背景資訊決定「這筆我要不要跳過」。
+#
+# ⚠️ 抓不到就整段留白，絕不能影響當日產出：statsapi 掛掉、改版、超時，
+# 網站都必須照常出推薦。所有失敗都吞掉並印警告（Actions 日誌用）。
+STATSAPI_BASE = 'https://statsapi.mlb.com/api/v1'
 
 
-def probe_covers_pitchers(html_content, tag=""):
-    """只對第一場執行，看 covers 頁面裡有沒有先發投手區塊。"""
-    if _PROBE_STATE['covers']:
-        return
-    _PROBE_STATE['covers'] = True
-    print('\n[probe] === covers 頁面是否已含先發投手？(%s) ===' % tag)
-    low = html_content.lower()
-    for kw in ('probable', 'starting pitcher', 'pitcher', 'whip', 'era'):
-        print('[probe]   %-16r 出現 %d 次' % (kw, low.count(kw)))
-
-    classes = sorted({c for c in re.findall(r'class="([^"]*)"', html_content)
-                      if 'pitcher' in c.lower()})
-    print('[probe]   含 pitcher 的 class（%d 種，最多列 15）: %s' % (len(classes), classes[:15]))
-
-    for i, m in enumerate(list(re.finditer(r'[Pp]robable', html_content))[:3]):
-        seg = html_content[max(0, m.start() - 200):m.start() + 400]
-        seg = re.sub(r'\s+', ' ', seg)
-        print('[probe]   probable#%d 附近: %s' % (i + 1, seg[:500]))
-
-    m = re.search(r'<[^>]*class="[^"]*pitcher[^"]*"[^>]*>(.{0,800})',
-                  html_content, re.S | re.I)
-    if m:
-        txt = re.sub(r'\s+', ' ', re.sub(r'<[^>]*>', ' ', m.group(1)))
-        print('[probe]   pitcher 區塊純文字: %s' % txt[:400])
+def _team_key(name):
+    """隊名正規化成比對用 key：只留小寫字母數字。"""
+    return re.sub(r'[^a-z0-9]', '', (name or '').lower())
 
 
-def probe_statsapi(date_str):
-    """確認 runner 連得到 statsapi.mlb.com，並印出實際 JSON 結構。"""
-    url = ('https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=%s'
-           '&hydrate=team,probablePitcher(stats(group=[pitching],type=[season]))' % date_str)
-    print('\n[probe] === statsapi 連通性 ===')
-    print('[probe] GET %s' % url)
-    t0 = time.time()
+def _statsapi_json(url, timeout=15):
+    """statsapi 專用的輕量 GET。失敗回 None（呼叫端一律要能接受沒有資料）。"""
     try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'mlb-trends-probe/1.0'})
-        with urllib.request.urlopen(req, timeout=20) as r:
-            raw = r.read()
-        print('[probe] HTTP %s，%d bytes，耗時 %.1fs' % (getattr(r, 'status', '?'), len(raw), time.time() - t0))
-        data = json.loads(raw.decode('utf-8', 'ignore'))
+        req = urllib.request.Request(
+            url, headers={'User-Agent': 'mlb-sports-trends/%s' % APP_VERSION})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode('utf-8', errors='ignore'))
     except Exception as e:
-        print('[probe] statsapi 失敗（連不到或被擋）: %r' % (e,))
-        return
+        print('  [!] statsapi 抓取失敗（先發投手改為留白）: %r' % (e,))
+        return None
 
-    dates = data.get('dates') or []
-    games = dates[0].get('games', []) if dates else []
-    print('[probe] 場次數: %d' % len(games))
-    named = 0
-    for g in games:
-        for side in ('away', 'home'):
-            if (g.get('teams', {}).get(side, {}).get('probablePitcher') or {}).get('fullName'):
-                named += 1
-    print('[probe] 有先發投手名字的隊伍數: %d / %d' % (named, len(games) * 2))
-    if games:
-        print('[probe] 第一場原始 JSON（截斷 3000 字元）:')
-        print(json.dumps(games[0], ensure_ascii=False)[:3000])
+
+def _pitcher_season_stats(person_ids, season):
+    """一次請求取得所有先發投手的當季成績。
+
+    ⚠️ schedule 端點的 hydrate=probablePitcher(stats(...)) **不會**帶回成績
+    （2026-08-28 實測：只回 id / fullName / link，多餘的 hydrate 被靜默忽略），
+    所以改用 people 端點另抓一次。整輪只多這一個請求。
+    """
+    if not person_ids:
+        return {}
+    url = ('%s/people?personIds=%s&hydrate=stats(group=[pitching],type=[season],season=%s)'
+           % (STATSAPI_BASE, ','.join(str(i) for i in person_ids), season))
+    data = _statsapi_json(url)
+    if not data:
+        return {}
+
+    stats_by_id = {}
+    for person in data.get('people', []):
+        stat = {}
+        for group in person.get('stats', []) or []:
+            for split in group.get('splits', []) or []:
+                stat = split.get('stat') or {}
+                if stat:
+                    break
+            if stat:
+                break
+        if not stat:
+            continue
+        stats_by_id[person.get('id')] = {
+            'era': stat.get('era'),
+            'whip': stat.get('whip'),
+            'ip': stat.get('inningsPitched'),
+            'wins': stat.get('wins'),
+            'losses': stat.get('losses'),
+            'so': stat.get('strikeOuts'),
+            'starts': stat.get('gamesStarted'),
+        }
+    return stats_by_id
+
+
+def fetch_probable_pitchers(date_str):
+    """抓當日各隊的先發投手與當季成績，回傳 {隊名 key: {...}}。
+
+    key 用正規化隊名（statsapi 的 name / clubName / locationName+clubName 都各建一個），
+    因為 covers 給的是全名（"Chicago Cubs"），偶爾還會重複隊名（實測 "Athletics Athletics"）。
+    """
+    url = ('%s/schedule?sportId=1&date=%s&hydrate=team,probablePitcher'
+           % (STATSAPI_BASE, date_str))
+    data = _statsapi_json(url)
+    if not data:
+        return {}
+
+    season = date_str[:4]
+    entries = []          # (keys, info)
+    ids = []
+    for day in data.get('dates', []) or []:
+        for game in day.get('games', []) or []:
+            for side in ('away', 'home'):
+                node = (game.get('teams') or {}).get(side) or {}
+                team = node.get('team') or {}
+                pitcher = node.get('probablePitcher') or {}
+                if not pitcher.get('fullName'):
+                    continue
+                club = team.get('clubName') or team.get('teamName') or ''
+                loc = team.get('locationName') or ''
+                keys = {_team_key(team.get('name')), _team_key(club), _team_key(loc + club)}
+                keys.discard('')
+                if not keys:
+                    continue
+                pid = pitcher.get('id')
+                ids.append(pid)
+                entries.append((keys, {'id': pid, 'name': pitcher.get('fullName')}))
+
+    stats_by_id = _pitcher_season_stats(ids, season)
+
+    pitchers = {}
+    for keys, info in entries:
+        info.update(stats_by_id.get(info['id']) or {})
+        for k in keys:
+            pitchers.setdefault(k, info)
+
+    with_stats = sum(1 for k, v in pitchers.items() if v.get('era'))
+    print('[+] 先發投手：%d 位（%s 有當季成績）'
+          % (len(entries), '含成績' if with_stats else '無成績'))
+    return pitchers
+
+
+def lookup_pitcher(pitchers, team_name):
+    """以 covers 的隊名找先發投手。找不到回 None（畫面顯示「未公布」）。"""
+    if not pitchers or not team_name:
+        return None
+    key = _team_key(team_name)
+    if key in pitchers:
+        return pitchers[key]
+    # covers 偶爾把隊名寫兩次（"Athletics Athletics"），也可能與 statsapi 的
+    # 全名長度不同，退回用包含關係比對。
+    for k, v in pitchers.items():
+        if len(k) >= 4 and (k in key or key in k):
+            return v
+    return None
+
+
+def format_pitcher(info):
+    """整理成畫面用的字串，缺哪個欄位就少顯示哪個，絕不顯示 None。"""
+    if not info or not info.get('name'):
+        return None
+    line = {'name': info['name']}
+    if info.get('wins') is not None and info.get('losses') is not None:
+        line['record'] = '%s-%s' % (info['wins'], info['losses'])
+    for key in ('era', 'whip', 'ip'):
+        if info.get(key):
+            line[key] = str(info[key])
+    return line
 
 
 def main():
@@ -4749,7 +4828,8 @@ def main():
     if not date_str:
         date_str = get_eastern_today()
 
-    probe_statsapi(date_str)   # ⏱ 一次性診斷，確認後移除
+    # 先發投手（只顯示不計分）。抓不到就留白，不影響當日產出。
+    pitchers = fetch_probable_pitchers(date_str)
 
     # 比賽開打後就抓不到開賽時間了，先把上一輪已知的讀回來備用
     known_game_times = load_known_game_times(date_str)
