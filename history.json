@@ -13266,9 +13266,9 @@
     "home": "San Francisco Giants"
    },
    "368113": {
-    "away": "Chicago White Sox",
+    "away": "White Sox",
     "day": true,
-    "home": "Minnesota Twins"
+    "home": "Twins"
    },
    "368515": {
     "away": "Colorado Rockies",
@@ -13306,9 +13306,9 @@
     "home": "San Francisco Giants"
    },
    "369458": {
-    "away": "Boston Red Sox",
+    "away": "Red Sox",
     "day": true,
-    "home": "New York Yankees"
+    "home": "Yankees"
    },
    "369744": {
     "away": "Kansas City Royals",
@@ -13326,9 +13326,9 @@
     "home": "New York Yankees"
    },
    "369983": {
-    "away": "Pittsburgh Pirates",
+    "away": "Pirates",
     "day": true,
-    "home": "St. Louis Cardinals"
+    "home": "Cardinals"
    },
    "370142": {
     "away": "Houston Astros",
@@ -13336,9 +13336,9 @@
     "home": "New York Mets"
    },
    "370184": {
-    "away": "Cincinnati Reds",
+    "away": "Reds",
     "day": true,
-    "home": "Chicago Cubs"
+    "home": "Cubs"
    },
    "370243": {
     "away": "Miami Marlins",
@@ -13347,6 +13347,15 @@
    }
   },
   "picks": [
+   {
+    "bet_on": null,
+    "gid": "369458",
+    "line": "7.5",
+    "market": "Under",
+    "score": 52.0,
+    "top5": false,
+    "top_totals": true
+   },
    {
     "bet_on": "Dodgers",
     "gid": "368621",
@@ -13363,23 +13372,14 @@
     "top_sides": true
    },
    {
-    "bet_on": null,
-    "gid": "369458",
-    "line": "7.5",
-    "market": "Under",
-    "score": 52.0,
-    "top5": false,
-    "top_totals": true
-   },
-   {
-    "bet_on": "Chicago White Sox",
+    "bet_on": "White Sox",
     "gid": "368113",
     "market": "獨贏",
     "score": 50.8,
     "top5": false
    },
    {
-    "bet_on": "Chicago White Sox",
+    "bet_on": "White Sox",
     "gid": "368113",
     "market": "讓 1.5",
     "rf": true,
@@ -13388,7 +13388,7 @@
     "top_sides": true
    },
    {
-    "bet_on": "Pittsburgh Pirates",
+    "bet_on": "Pirates",
     "gid": "369983",
     "market": "受讓 1.5",
     "score": 36.2,
@@ -13405,14 +13405,14 @@
     "top_totals": true
    },
    {
-    "bet_on": "Cincinnati Reds",
+    "bet_on": "Reds",
     "gid": "370184",
     "market": "獨贏",
     "score": 40.4,
     "top5": false
    },
    {
-    "bet_on": "Chicago Cubs",
+    "bet_on": "Cubs",
     "gid": "370184",
     "market": "讓 1.5",
     "score": 51.3,
@@ -13421,7 +13421,7 @@
    {
     "bet_on": null,
     "gid": "370184",
-    "line": "9.0",
+    "line": "9.5",
     "market": "Over",
     "score": 47.3,
     "top5": false
@@ -13429,7 +13429,7 @@
    {
     "bet_on": "Toronto Blue Jays",
     "gid": "368673",
-    "market": "受讓 1.5",
+    "market": "讓 1.5",
     "rf": null,
     "score": 54.4,
     "top5": true,
@@ -13446,7 +13446,7 @@
    {
     "bet_on": null,
     "gid": "369280",
-    "line": "7.5",
+    "line": "8.0",
     "market": "Under",
     "score": 49.9,
     "top5": false
