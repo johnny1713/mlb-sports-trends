@@ -13276,9 +13276,9 @@
     "home": "Atlanta Braves"
    },
    "368621": {
-    "away": "Los Angeles Dodgers",
+    "away": "Dodgers",
     "day": true,
-    "home": "Detroit Tigers"
+    "home": "Tigers"
    },
    "368673": {
     "away": "Seattle Mariners",
@@ -13348,6 +13348,21 @@
   },
   "picks": [
    {
+    "bet_on": "Dodgers",
+    "gid": "368621",
+    "market": "獨贏",
+    "score": 49.4,
+    "top5": false
+   },
+   {
+    "bet_on": "Tigers",
+    "gid": "368621",
+    "market": "受讓 1.5",
+    "score": 53.6,
+    "top5": false,
+    "top_sides": true
+   },
+   {
     "bet_on": null,
     "gid": "369458",
     "line": "7.5",
@@ -13355,21 +13370,6 @@
     "score": 52.0,
     "top5": false,
     "top_totals": true
-   },
-   {
-    "bet_on": "Los Angeles Dodgers",
-    "gid": "368621",
-    "market": "獨贏",
-    "score": 49.4,
-    "top5": false
-   },
-   {
-    "bet_on": "Detroit Tigers",
-    "gid": "368621",
-    "market": "受讓 1.5",
-    "score": 53.6,
-    "top5": false,
-    "top_sides": true
    },
    {
     "bet_on": "Chicago White Sox",
@@ -13381,7 +13381,7 @@
    {
     "bet_on": "Chicago White Sox",
     "gid": "368113",
-    "market": "受讓 1.5",
+    "market": "讓 1.5",
     "rf": true,
     "score": 54.4,
     "top5": true,
@@ -13429,7 +13429,7 @@
    {
     "bet_on": "Toronto Blue Jays",
     "gid": "368673",
-    "market": "讓 1.5",
+    "market": "受讓 1.5",
     "rf": null,
     "score": 54.4,
     "top5": true,
