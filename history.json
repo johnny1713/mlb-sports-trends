@@ -12989,9 +12989,9 @@
     "home": "San Francisco Giants"
    },
    "368816": {
-    "away": "Chicago White Sox",
+    "away": "White Sox",
     "day": false,
-    "home": "Minnesota Twins"
+    "home": "Twins"
    },
    "368888": {
     "away": "Padres",
@@ -13009,9 +13009,9 @@
     "home": "Brewers"
    },
    "369082": {
-    "away": "Pittsburgh Pirates",
+    "away": "Pirates",
     "day": false,
-    "home": "St. Louis Cardinals"
+    "home": "Cardinals"
    },
    "369282": {
     "away": "Mariners",
@@ -13057,7 +13057,7 @@
    {
     "bet_on": null,
     "gid": "369403",
-    "line": "8.0",
+    "line": "8.5",
     "market": "Under",
     "score": 52.7,
     "top5": false,
@@ -13111,14 +13111,14 @@
     "top_totals": true
    },
    {
-    "bet_on": "Chicago White Sox",
+    "bet_on": "White Sox",
     "gid": "368816",
     "market": "獨贏",
     "score": 48.8,
     "top5": false
    },
    {
-    "bet_on": "Chicago White Sox",
+    "bet_on": "White Sox",
     "gid": "368816",
     "market": "受讓 1.5",
     "rf": null,
@@ -13127,7 +13127,7 @@
     "top_sides": true
    },
    {
-    "bet_on": "Pittsburgh Pirates",
+    "bet_on": "Pirates",
     "gid": "369082",
     "market": "獨贏",
     "score": 44.2,
@@ -13179,7 +13179,7 @@
    {
     "bet_on": null,
     "gid": "368775",
-    "line": "8.0",
+    "line": "7.5",
     "market": "Under",
     "score": 52.1,
     "top5": false,
