@@ -13281,9 +13281,9 @@
     "home": "Tigers"
    },
    "368673": {
-    "away": "Seattle Mariners",
+    "away": "Mariners",
     "day": true,
-    "home": "Toronto Blue Jays"
+    "home": "Blue Jays"
    },
    "368719": {
     "away": "Baltimore Orioles",
@@ -13427,9 +13427,9 @@
     "top5": false
    },
    {
-    "bet_on": "Toronto Blue Jays",
+    "bet_on": "Blue Jays",
     "gid": "368673",
-    "market": "讓 1.5",
+    "market": "受讓 1.5",
     "rf": null,
     "score": 54.4,
     "top5": true,
@@ -13446,7 +13446,7 @@
    {
     "bet_on": null,
     "gid": "369280",
-    "line": "8.0",
+    "line": "7.5",
     "market": "Under",
     "score": 49.9,
     "top5": false
