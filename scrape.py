@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "3.3"
+APP_VERSION = "3.4"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -2507,42 +2507,6 @@ DASHBOARD_CSS = """
             border-radius: 6px;
         }
 
-        /* 下午場警示橫幅 */
-        .day-game-banner {
-            background: linear-gradient(90deg, rgba(251, 191, 36, 0.08) 0%, rgba(251, 191, 36, 0.02) 100%);
-            border: 1px solid rgba(251, 191, 36, 0.2);
-            border-radius: 12px;
-            padding: 14px 18px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .day-game-icon {
-            font-size: 18px;
-            color: #fbbf24;
-            margin-top: 1px;
-            display: inline-block;
-            animation: warning-pulse 2s infinite alternate;
-        }
-
-        @keyframes warning-pulse {
-            0% { transform: scale(1); filter: drop-shadow(0 0 1px rgba(251, 191, 36, 0.4)); }
-            100% { transform: scale(1.1); filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.8)); }
-        }
-
-        .day-game-text {
-            font-size: 13px;
-            color: #e5e7eb;
-            line-height: 1.6;
-        }
-
-        .day-game-text strong {
-            color: #fbbf24;
-        }
-
         /* 核心推薦區域 */
         .match-body {
             padding: 28px;
@@ -4214,19 +4178,11 @@ DASHBOARD_JS = """        // ==========================================
                     ? `<span class="match-tag day-game-tag">\u26a0\ufe0f \u4e0b\u5348\u5834</span>` 
                     : '';
                 
-                let dayGameBanner = '';
-                if (m.is_day_game) {
-                    const bannerText = '<strong>此賽事為下午場 (Day Game)</strong>：主場當地時間 17:00 前開打（多數落在 13:00~14:00）。下午場由於球員生理時鐘、陣容輪替(主力休息、備用捕手先發)與牛棚調度等變數極多，盤口<strong>極易開出反邊</strong>，建議<strong>避開</strong>或考慮<strong>反下</strong>。';
-                    dayGameBanner = `
-                        <div class="day-game-banner">
-                            <span class="day-game-icon">⚠️</span>
-                            <div class="day-game-text">
-                                ${bannerText}
-                            </div>
-                        </div>
-                    `;
-                }
-                
+                // 下午場警示橫幅已於 2026-08-29 移除（使用者要求）。
+                // 原文寫「盤口極易開出反邊，建議避開或考慮反下」，但本專案自己的戰績
+                // 恰好相反：下午場 126 筆 54.0%、非下午場 270 筆 51.1%，下午場還略高。
+                // 那段文案沒有任何資料支持，留著等於叫使用者跳過表現正常的場次。
+                // `.day-game-tag` 徽章保留——它只是陳述事實（這是下午場），沒有給建議。
                 let recsHtml = '';
                 
                 if (m.double_positive.length > 0 && (currentTab === 'all' || currentTab === 'double')) {
@@ -4402,7 +4358,6 @@ DASHBOARD_JS = """        // ==========================================
                         </div>
                         
                         <div class="match-body">
-                            ${dayGameBanner}
                             ${recsHtml}
                             
                             <button class="details-trigger" onclick="toggleExpand(this.closest('.match-card'))">
