@@ -12969,19 +12969,19 @@
     "home": "Tigers"
    },
    "368006": {
-    "away": "Houston Astros",
+    "away": "Astros",
     "day": false,
-    "home": "New York Mets"
+    "home": "Mets"
    },
    "368214": {
-    "away": "Kansas City Royals",
+    "away": "Royals",
     "day": false,
-    "home": "Cleveland Guardians"
+    "home": "Guardians"
    },
    "368384": {
-    "away": "Colorado Rockies",
+    "away": "Rockies",
     "day": false,
-    "home": "Atlanta Braves"
+    "home": "Braves"
    },
    "368775": {
     "away": "Arizona Diamondbacks",
@@ -12994,9 +12994,9 @@
     "home": "Minnesota Twins"
    },
    "368888": {
-    "away": "San Diego Padres",
+    "away": "Padres",
     "day": false,
-    "home": "Tampa Bay Rays"
+    "home": "Rays"
    },
    "368941": {
     "away": "Baltimore Orioles",
@@ -13004,9 +13004,9 @@
     "home": "Athletics Athletics"
    },
    "368957": {
-    "away": "Texas Rangers",
+    "away": "Rangers",
     "day": false,
-    "home": "Milwaukee Brewers"
+    "home": "Brewers"
    },
    "369082": {
     "away": "Pittsburgh Pirates",
@@ -13014,9 +13014,9 @@
     "home": "St. Louis Cardinals"
    },
    "369282": {
-    "away": "Seattle Mariners",
+    "away": "Mariners",
     "day": false,
-    "home": "Toronto Blue Jays"
+    "home": "Blue Jays"
    },
    "369403": {
     "away": "Marlins",
@@ -13024,9 +13024,9 @@
     "home": "Nationals"
    },
    "369440": {
-    "away": "Boston Red Sox",
+    "away": "Red Sox",
     "day": false,
-    "home": "New York Yankees"
+    "home": "Yankees"
    },
    "369531": {
     "away": "Philadelphia Phillies",
@@ -13064,13 +13064,6 @@
     "top_totals": true
    },
    {
-    "bet_on": "Houston Astros",
-    "gid": "368006",
-    "market": "讓 1.5",
-    "score": 50.9,
-    "top5": false
-   },
-   {
     "bet_on": null,
     "gid": "368214",
     "line": "7.5",
@@ -13079,7 +13072,14 @@
     "top5": false
    },
    {
-    "bet_on": "Boston Red Sox",
+    "bet_on": "Astros",
+    "gid": "368006",
+    "market": "讓 1.5",
+    "score": 50.9,
+    "top5": false
+   },
+   {
+    "bet_on": "Red Sox",
     "gid": "369440",
     "market": "獨贏",
     "score": 53.6,
@@ -13087,7 +13087,7 @@
     "top_sides": true
    },
    {
-    "bet_on": "Toronto Blue Jays",
+    "bet_on": "Blue Jays",
     "gid": "369282",
     "market": "讓 1.5",
     "score": 52.4,
@@ -13095,7 +13095,7 @@
     "top_sides": true
    },
    {
-    "bet_on": "Milwaukee Brewers",
+    "bet_on": "Brewers",
     "gid": "368957",
     "market": "讓 1.5",
     "score": 48.0,
