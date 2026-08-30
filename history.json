@@ -13623,9 +13623,9 @@
  "2026-08-30": {
   "games": {
    "367946": {
-    "away": "Houston Astros",
+    "away": "Astros",
     "day": true,
-    "home": "New York Mets"
+    "home": "Mets"
    },
    "368073": {
     "away": "Marlins",
@@ -13695,21 +13695,6 @@
   },
   "picks": [
    {
-    "bet_on": "Marlins",
-    "gid": "368073",
-    "market": "獨贏",
-    "score": 46.4,
-    "top5": false
-   },
-   {
-    "bet_on": null,
-    "gid": "368073",
-    "line": "9.0",
-    "market": "Under",
-    "score": 49.1,
-    "top5": false
-   },
-   {
     "bet_on": "Red Sox",
     "gid": "370024",
     "market": "獨贏",
@@ -13741,6 +13726,21 @@
     "score": 56.1,
     "top5": true,
     "top_sides": true
+   },
+   {
+    "bet_on": "Dodgers",
+    "gid": "368180",
+    "market": "獨贏",
+    "score": 45.7,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "368180",
+    "line": "7.5",
+    "market": "Under",
+    "score": 48.8,
+    "top5": false
    },
    {
     "bet_on": null,
@@ -13789,22 +13789,7 @@
     "top5": false
    },
    {
-    "bet_on": "Dodgers",
-    "gid": "368180",
-    "market": "獨贏",
-    "score": 45.7,
-    "top5": false
-   },
-   {
-    "bet_on": null,
-    "gid": "368180",
-    "line": "7.5",
-    "market": "Under",
-    "score": 48.8,
-    "top5": false
-   },
-   {
-    "bet_on": "Houston Astros",
+    "bet_on": "Astros",
     "gid": "367946",
     "market": "受讓 1.5",
     "rf": false,
@@ -13859,6 +13844,21 @@
     "line": "9.0",
     "market": "Over",
     "score": 49.8,
+    "top5": false
+   },
+   {
+    "bet_on": "Marlins",
+    "gid": "368073",
+    "market": "獨贏",
+    "score": 46.4,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "368073",
+    "line": "9.0",
+    "market": "Under",
+    "score": 49.1,
     "top5": false
    }
   ],
