@@ -13628,9 +13628,9 @@
     "home": "New York Mets"
    },
    "368073": {
-    "away": "Miami Marlins",
+    "away": "Marlins",
     "day": true,
-    "home": "Washington Nationals"
+    "home": "Nationals"
    },
    "368138": {
     "away": "Seattle Mariners",
@@ -13695,7 +13695,7 @@
   },
   "picks": [
    {
-    "bet_on": "Miami Marlins",
+    "bet_on": "Marlins",
     "gid": "368073",
     "market": "獨贏",
     "score": 46.4,
@@ -13760,7 +13760,7 @@
    {
     "bet_on": null,
     "gid": "369014",
-    "line": "7.5",
+    "line": "7.0",
     "market": "Under",
     "score": 46.4,
     "top5": false
@@ -13856,7 +13856,7 @@
    {
     "bet_on": null,
     "gid": "369217",
-    "line": "8.5",
+    "line": "9.0",
     "market": "Over",
     "score": 49.8,
     "top5": false
