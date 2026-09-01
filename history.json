@@ -14254,6 +14254,13 @@
   },
   "picks": [
    {
+    "bet_on": "Tampa Bay Rays",
+    "gid": "370126",
+    "market": "讓 1.5",
+    "score": 44.4,
+    "top5": false
+   },
+   {
     "bet_on": null,
     "gid": "369000",
     "line": "7.5",
@@ -14269,13 +14276,6 @@
     "top5": false
    },
    {
-    "bet_on": "Tampa Bay Rays",
-    "gid": "370126",
-    "market": "讓 1.5",
-    "score": 44.4,
-    "top5": false
-   },
-   {
     "bet_on": "San Diego Padres",
     "gid": "367989",
     "market": "讓 1.5",
@@ -14286,7 +14286,7 @@
    {
     "bet_on": null,
     "gid": "367989",
-    "line": "9.0",
+    "line": "8.5",
     "market": "Under",
     "score": 46.6,
     "top5": false
@@ -14335,7 +14335,7 @@
    {
     "bet_on": null,
     "gid": "369553",
-    "line": "8.0",
+    "line": "8.5",
     "market": "Under",
     "rf": null,
     "score": 58.8,
@@ -14354,7 +14354,7 @@
    {
     "bet_on": "Kansas City Royals",
     "gid": "368707",
-    "market": "讓 1.5",
+    "market": "受讓 1.5",
     "score": 52.7,
     "top5": false
    },
@@ -14386,7 +14386,7 @@
    {
     "bet_on": null,
     "gid": "369181",
-    "line": "7.5",
+    "line": "5.5",
     "market": "Under",
     "score": 48.0,
     "top5": false
