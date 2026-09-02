@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "3.5"
+APP_VERSION = "3.6"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -940,6 +940,22 @@ def _judge_pick(pick, games, results):
     return None
 
 
+# 「近期波動」看幾天。用途是把眼前這一段放回機率分佈裡，讓使用者知道
+# 「連續幾天很慘」或「連續幾天很準」有多常見——**不是**訊號、更不是進出場提示。
+# ⚠️ 這一區絕對不能演變成「最近很準，小心該反下」那種提示：2026-09-02 實測
+# 前一天 ≥50% 之後隔天 56.8%、<50% 之後 49.5%，方向與「反下」相反；
+# 而且讓程式去找最誇張的分割點會找到 8/23，但純隨機序列有 67% 的機率也能
+# 找到同樣誇張的分割點（見 CLAUDE.md）。描述現況可以，推論下一步不行。
+STREAK_DAYS = 7
+
+
+def _binom_tail(hit, total, p, upper):
+    """二項分布的單尾機率：upper=True 算 P(X >= hit)，否則 P(X <= hit)。"""
+    from math import comb
+    rng = range(hit, total + 1) if upper else range(0, hit + 1)
+    return sum(comb(total, i) * p ** i * (1 - p) ** (total - i) for i in rng)
+
+
 TRACK_MARKETS = ['獨贏', '受讓 1.5', '讓 1.5', 'Over', 'Under']
 TRACK_MARKET_ZH = {'獨贏': '獨贏', '受讓 1.5': '受讓 1.5', '讓 1.5': '讓 1.5',
                    'Over': '全場大分', 'Under': '全場小分'}
@@ -970,6 +986,7 @@ def compute_track_record(history, today_str, recent_days=TRACK_RECENT_DAYS):
     lists = {'all': collections_counter(), 'recent': collections_counter()}
     rf_days = set()
     yesterday = None
+    daily = []          # [(日期, 命中, 可判定筆數)]，給「近期波動」用
     days_with_data = set()
 
     for day_str in sorted(history):
@@ -1032,6 +1049,7 @@ def compute_track_record(history, today_str, recent_days=TRACK_RECENT_DAYS):
                 bucket[key][0] += verdict
         if marks:
             yesterday = {'date': day_str, 'marks': marks}
+            daily.append((day_str, sum(marks), len(marks)))
 
     if not tally['all']['總計'][1]:
         return None
@@ -1047,8 +1065,29 @@ def compute_track_record(history, today_str, recent_days=TRACK_RECENT_DAYS):
                             'lb': round(100 * wilson_lower_bound(hit, total), 1)}
         return out
 
+    # 近期波動：把最近 STREAK_DAYS 天放回二項分布裡，看這一段有多常見。
+    # 基準刻意用「該窗以外」的期間，否則等於拿自己去比自己。
+    streak = None
+    if len(daily) >= STREAK_DAYS + 3:
+        window, rest = daily[-STREAK_DAYS:], daily[:-STREAK_DAYS]
+        hit = sum(x[1] for x in window)
+        total = sum(x[2] for x in window)
+        rest_hit = sum(x[1] for x in rest)
+        rest_total = sum(x[2] for x in rest)
+        if total and rest_total:
+            base = rest_hit / rest_total
+            colder = (hit / total) < base
+            streak = {
+                'days': STREAK_DAYS, 'hit': hit, 'total': total,
+                'rate': round(100 * hit / total, 1),
+                'base': round(100 * base, 1),
+                'prob': round(100 * _binom_tail(hit, total, base, upper=not colder), 1),
+                'colder': colder,
+            }
+
     return {
         'recent_days': recent_days,
+        'streak': streak,
         'recent': pack(tally['recent']),
         'all': pack(tally['all']),
         'splits': pack(splits['top']),
@@ -3318,6 +3357,39 @@ DASHBOARD_CSS = """
         .tr-mark { font-size: 15px; line-height: 1; }
         .tr-yesterday-score { font-weight: 700; }
 
+        /* 近期波動：純描述，不給任何進出場建議（見 STREAK_DAYS 的註解） */
+        .tr-streak {
+            padding: 4px 20px 14px;
+            font-size: 13px;
+            min-width: 0;
+        }
+
+        .tr-streak-head {
+            display: flex;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tr-streak-score { font-weight: 700; }
+
+        .tr-streak-verdict {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 6px;
+            background: rgba(148, 163, 184, 0.14);
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .tr-streak-detail {
+            margin: 4px 0 0;
+            font-size: 12px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
         /* 表格可能比窄螢幕寬，讓它自己捲，不要撐爆頁面 */
         .tr-table-wrap {
             overflow-x: auto;
@@ -4529,6 +4601,32 @@ def render_track_record(track):
             f'<span class="tr-yesterday-score">{hit}/{len(y["marks"])}</span>'
             '</div>')
 
+    # 近期波動：只描述「眼前這一段有多常見」，**不做任何推論**。
+    # ⚠️ 使用者問過「能不能提醒我最近很準、該反下了」——那正是不能做的事：
+    # 實測連勝之後隔天反而偏好，而且隨機序列有 67% 機率長出同樣誇張的轉折點。
+    # 這裡的文案要守住「描述現況」，不可以出現任何暗示下一步的字眼。
+    streak_block = ''
+    st = track.get('streak')
+    if st:
+        if st['prob'] >= 10:
+            verdict = '正常波動範圍內'
+        elif st['prob'] >= 2:
+            verdict = '比平常%s，但樣本很小' % ('冷' if st['colder'] else '熱')
+        else:
+            verdict = '明顯偏離長期水準'
+        streak_block = (
+            '<div class="tr-streak">'
+            '<div class="tr-streak-head">'
+            f'<span class="tr-yesterday-label">\U0001f4ca 近 {st["days"]} 天</span>'
+            f'<span class="tr-streak-score">{st["hit"]}/{st["total"]}（{st["rate"]}%）</span>'
+            f'<span class="tr-streak-verdict">{verdict}</span>'
+            '</div>'
+            f'<p class="tr-streak-detail">以其餘期間的 {st["base"]}% 計算，'
+            f'這種或更{"差" if st["colder"] else "好"}的 {st["days"]} 天，'
+            f'出現機率約 <strong>{st["prob"]}%</strong>。'
+            '這只描述眼前這一段有多常見，<strong>不代表接下來會延續或回歸</strong>。</p>'
+            '</div>')
+
     return f"""
         <section class="track-record" id="track-record">
             <button class="tr-toggle" onclick="toggleTrackRecord()" aria-expanded="false">
@@ -4538,6 +4636,7 @@ def render_track_record(track):
             </button>
             <div class="tr-body" id="tr-body">
                 {yesterday_block}
+                {streak_block}
                 <div class="tr-table-wrap">
                     <table class="tr-table">
                         <thead><tr><th></th><th>近 {track['recent_days']} 天</th><th>全期間</th></tr></thead>
