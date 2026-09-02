@@ -14475,14 +14475,14 @@
     "home": "Cleveland Guardians"
    },
    "368525": {
-    "away": "Athletics Athletics",
+    "away": "Athletics",
     "day": true,
-    "home": "Texas Rangers"
+    "home": "Rangers"
    },
    "368661": {
-    "away": "San Diego Padres",
+    "away": "Padres",
     "day": true,
-    "home": "Cincinnati Reds"
+    "home": "Reds"
    },
    "368815": {
     "away": "San Francisco Giants",
@@ -14510,14 +14510,14 @@
     "home": "Minnesota Twins"
    },
    "369197": {
-    "away": "Atlanta Braves",
+    "away": "Braves",
     "day": true,
-    "home": "Washington Nationals"
+    "home": "Nationals"
    },
    "369588": {
-    "away": "Baltimore Orioles",
+    "away": "Orioles",
     "day": true,
-    "home": "Colorado Rockies"
+    "home": "Rockies"
    },
    "369632": {
     "away": "Chicago White Sox",
@@ -14550,7 +14550,7 @@
     "top5": false
    },
    {
-    "bet_on": "Baltimore Orioles",
+    "bet_on": "Orioles",
     "gid": "369588",
     "market": "獨贏",
     "score": 51.1,
@@ -14594,7 +14594,7 @@
    {
     "bet_on": null,
     "gid": "368815",
-    "line": "8.0",
+    "line": "8.5",
     "market": "Over",
     "score": 49.6,
     "top5": false
@@ -14610,16 +14610,17 @@
     "bet_on": "Kansas City Royals",
     "gid": "370125",
     "market": "獨贏",
+    "rf": null,
     "score": 58.6,
-    "top5": false
+    "top5": true,
+    "top_sides": true
    },
    {
     "bet_on": "Kansas City Royals",
     "gid": "370125",
-    "market": "受讓 1.5",
+    "market": "讓 1.5",
     "score": 51.4,
-    "top5": false,
-    "top_sides": true
+    "top5": false
    },
    {
     "bet_on": null,
@@ -14632,11 +14633,10 @@
    {
     "bet_on": null,
     "gid": "369188",
-    "line": "7.5",
+    "line": "8.5",
     "market": "Under",
-    "rf": false,
     "score": 54.5,
-    "top5": true,
+    "top5": false,
     "top_totals": true
    },
    {
