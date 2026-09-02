@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "3.4"
+APP_VERSION = "3.5"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -248,29 +248,62 @@ def _valid_game_total(text):
         return False
 
 
+_ODDS_LABEL_RE = r'<div[^>]*\bclass="(?:[^"]*\s)?other-odds-label(?:\s[^"]*)?"[^>]*>'
+_ODDS_VALUE_RE = (r'<div[^>]*\bclass="(?=[^"]*\bodds\b)(?=[^"]*\bupper-block\b)[^"]*"[^>]*>'
+                  r'\s*<span>\s*(.*?)\s*</span>')
+# 摘要表 Total 列的搜尋窗，與 _market_segments 的 max_window 一致。
+# 2026-09-01 實測沒有上限時，那一列被切出 **3,352,943 字元**（整頁後半都吞進去），
+# 於是撈到了不屬於全場市場的數字。正常一列只有幾百字元。
+TOTAL_SUMMARY_WINDOW = 20000
+
+
+def _agreed_total(values):
+    """
+    從同一列的候選值挑出可信的全場總分。
+
+    ⚠️ **大分與小分不可能是不同數字**。2026-09-01 洋基 vs 天使那輪抓到
+    over=5.5 / under=7.5，代表這兩格根本來自不同市場（5.5 是首五局的線），
+    程式卻取了第一個「看起來合理」的 5.5 印上畫面。
+    只要兩個數字不一致就整筆不採信——寧可少一筆推薦，不要給一個錯的盤口。
+    """
+    vals = [v for v in values if _valid_game_total(v)][:2]
+    if not vals:
+        return None
+    if len(vals) == 2 and vals[0] != vals[1]:
+        return None
+    return vals[0]
+
+
 def _parse_total_line(html_str):
     """
     全場大小分盤口。優先取頁面頂端摘要表的 Total 列——實測它與各家報價的第一列
     完全一致，但在沒有 Game Line - Total - FT 區段的頁面上仍然存在。
-    取到的數字一律過 _valid_game_total()，不合理就繼續找下一個候選。
+    取到的數字一律過 _valid_game_total()，且同列的兩格數字必須一致（見 _agreed_total）。
     """
-    summary = re.search(
-        r'<div[^>]*\bclass="(?:[^"]*\s)?other-odds-label(?:\s[^"]*)?"[^>]*>\s*Total\s*</div>'
-        r'(.*?)(?=<div[^>]*\bclass="(?:[^"]*\s)?other-odds-label(?:\s[^"]*)?"[^>]*>)',
-        html_str, re.S)
-    if summary:
-        for raw in re.findall(r'<div[^>]*\bclass="(?=[^"]*\bodds\b)(?=[^"]*\bupper-block\b)[^"]*"[^>]*>'
-                              r'\s*<span>\s*(.*?)\s*</span>',
-                              summary.group(1), re.S):
+    head = re.search(_ODDS_LABEL_RE + r'\s*Total\s*</div>', html_str)
+    if head:
+        segment = html_str[head.end():head.end() + TOTAL_SUMMARY_WINDOW]
+        nxt = re.search(_ODDS_LABEL_RE, segment)
+        if nxt:
+            segment = segment[:nxt.start()]
+        values = []
+        for raw in re.findall(_ODDS_VALUE_RE, segment, re.S):
             text = html.unescape(raw).strip()
-            if re.fullmatch(r'\d+(?:\.\d+)?', text) and _valid_game_total(text):
-                return text
+            if re.fullmatch(r'\d+(?:\.\d+)?', text):
+                values.append(text)
+        chosen = _agreed_total(values)
+        if chosen:
+            return chosen
 
     for segment in _market_segments(html_str, GAME_TOTAL_LABEL):
+        values = []
         for _column, text in _odds_cells(segment):
             hit = re.fullmatch(r'[ou](\d+(?:\.\d+)?)', text, re.IGNORECASE)
-            if hit and _valid_game_total(hit.group(1)):
-                return hit.group(1)
+            if hit:
+                values.append(hit.group(1))
+        chosen = _agreed_total(values)
+        if chosen:
+            return chosen
     return None
 
 
