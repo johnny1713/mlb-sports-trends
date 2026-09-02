@@ -4063,15 +4063,19 @@ DASHBOARD_JS = """        // ==========================================
                         recommendation: rec.recommendation,
                         score: rec.score,
                         gap: Math.round((cutoff - rec.score) * 10) / 10,
+                        // 同隊去重時要留最容易中的那筆，與 Python 的 _margin_lower_bound 同義
+                        ease: rec.market === 'Moneyline' ? 1 : (rec.spread_side === '讓分' ? 2 : -1),
                         weak: ev.weak
                     });
                 };
                 (m.opposing_trends || []).forEach(r => consider(r, 'opposing', cutSides, r.market_zh));
                 (m.double_positive || []).forEach(r => consider(r, 'double', cutTotals, r.market_type));
             });
-            // 與 Top 5 相同的去重原則：同場同隊只留分數最高的一筆
+            // 與 Top 5 相同的去重原則：同場同隊只留一筆，且留**最容易中**的那個盤口
             // （否則「買 X 受讓 1.5」與「買 X 獨贏」會在這裡並列，等於換個地方重複）
-            out.sort((a, b) => b.score - a.score);
+            // ⚠️ 不能比分數：受讓 1.5 ⊇ 獨贏 ⊇ 讓 1.5 是包含關係，而分數跨市場不可比，
+            // 比分數會留下較難中的那筆（2026-09-02 修，Python 端見 dedupe_same_team_picks）。
+            out.sort((a, b) => (a.ease - b.ease) || (b.score - a.score));
             const kept = [];
             const seenTeam = new Set();
             out.forEach(it => {
@@ -4082,6 +4086,8 @@ DASHBOARD_JS = """        // ==========================================
                 }
                 kept.push(it);
             });
+            // 去重用容易度，顯示仍照分數由高到低
+            kept.sort((a, b) => b.score - a.score);
             return kept.slice(0, 5);
         }
 
