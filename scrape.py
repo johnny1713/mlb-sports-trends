@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "3.6"
+APP_VERSION = "3.7"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -1736,6 +1736,12 @@ def analyze_betting_recommendations(matchup, processed_trends):
     ]
 
     # --- 1. 大小分總分趨勢媒合 (全場大小分) ---
+    # ⚠️ 盤口數字抓不到時**整個大小分市場跳過**，不要出一筆沒有數字的推薦。
+    # 舊寫法會退回「買 全場小分 (Game Under)」——使用者看到這行根本不知道要下幾分，
+    # 只能自己猜一個，而猜錯的代價和讓分猜錯邊一樣。掃 98 天有 10 天出現過，
+    # 其中 12 筆還上了 AI Top 5（最近一次 2026-09-02）。
+    # 這與 determine_side_term 回 None 時跳過 Run Line 是同一個原則：
+    # **少一筆推薦，好過給一筆下不了的。**
     total_line = matchup.get('total_line')
 
     # A. 全場大小分 (Full Game Totals)
@@ -1746,11 +1752,11 @@ def analyze_betting_recommendations(matchup, processed_trends):
     b_under_full = [t for t in high_under_full if t['team'] == team_b]
     
     under_full_rec = None
-    if a_under_full and b_under_full:
+    if total_line and a_under_full and b_under_full:
         under_full_rec = {
             'direction': 'Under',  # 供前端與 Recent Form 方向比對（同向/反向標記用）
-            'market_type': f"Under (小 {total_line})" if total_line else 'Under (全場小分)',
-            'recommendation': f"買 全場小分 (小 {total_line})" if total_line else '買 全場小分 (Game Under)',
+            'market_type': f"Under (小 {total_line})",
+            'recommendation': f"買 全場小分 (小 {total_line})",
             'confidence': f"雙正面強勢指標：{team_a} 擁有 {len(a_under_full)} 項全場 Under 趨勢，{team_b} 擁有 {len(b_under_full)} 項全場 Under 趨勢。",
             'team_a_trends': [t['text'] for t in a_under_full],
             'team_b_trends': [t['text'] for t in b_under_full],
@@ -1762,11 +1768,11 @@ def analyze_betting_recommendations(matchup, processed_trends):
     b_over_full = [t for t in high_over_full if t['team'] == team_b]
     
     over_full_rec = None
-    if a_over_full and b_over_full:
+    if total_line and a_over_full and b_over_full:
         over_full_rec = {
             'direction': 'Over',  # 供前端與 Recent Form 方向比對（同向/反向標記用）
-            'market_type': f"Over (大 {total_line})" if total_line else 'Over (全場大分)',
-            'recommendation': f"買 全場大分 (大 {total_line})" if total_line else '買 全場大分 (Game Over)',
+            'market_type': f"Over (大 {total_line})",
+            'recommendation': f"買 全場大分 (大 {total_line})",
             'confidence': f"雙正面強勢指標：{team_a} 擁有 {len(a_over_full)} 項全場 Over 趨勢，{team_b} 擁有 {len(b_over_full)} 項全場 Over 趨勢。",
             'team_a_trends': [t['text'] for t in a_over_full],
             'team_b_trends': [t['text'] for t in b_over_full],
