@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "3.9"
+APP_VERSION = "4.0"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -1225,7 +1225,7 @@ def parse_matchup_details(matchup):
                 else:
                     return "受讓"
             except ValueError:
-                return "讓分"
+                return None   # 同樣不猜方向
                 
     team_a_side = determine_side_term(team_a_spread)
     team_b_side = determine_side_term(team_b_spread)
@@ -1663,19 +1663,38 @@ def recent_form_agreement(matchup, rec):
 
 def dedupe_same_team_picks(recs):
     """
-    同一場、同一隊的勝負盤推薦只保留分數最高的一筆，供 Top 5 清單使用。
+    同一場、同一隊的勝負盤推薦只保留一筆，供 Top 5 清單使用。
 
     「買 X 獨贏」與「買 X 讓 1.5」本質是同一個看法的兩種風險版本，兩筆都擠進 Top 5
     會白白吃掉名額，也讓人誤以為有 5 個獨立標的。實測 17 天：AI Top 5 有 10 天出現
     同場重複、勝負 Top 5 有 8 天出現同隊重複（最常見的就是獨贏＋讓分成對出現）。
     單場卡片仍會完整顯示所有推薦，這裡只影響精選清單。
+
+    ⚠️ **留哪一筆不能比分數**（2026-09-02 修）。押同一隊的三種盤口，中獎條件是
+    完全的包含關係——`_margin_lower_bound` 就是這條線：
+
+        受讓 1.5 (輸 1 分內) ⊇ 獨贏 (贏) ⊇ 讓 1.5 (贏 2 分以上)
+
+    凡是獨贏會中的場面，受讓一定也中；讓分則反過來，是獨贏的真子集。既然使用者
+    只看命中率不看賠率，同一隊的這幾筆之間**沒有取捨**，永遠該留最容易中的那個。
+
+    分數在這裡完全幫不上忙，因為它跨市場不可比：獨贏的分數來自獨贏趨勢，讓分的
+    來自語意混合的 Run Line 趨勢（把 -1.5 與 +1.5 混在一起算，見 CLAUDE.md），
+    兩個數字放在一起比大小本來就沒有意義。舊版比分數的後果是**會替使用者選錯邊**：
+    掃 history.json 的 103 組同場同隊成對推薦，有 25 組選到較難中的那筆，
+    命中率 59.2% → 67.0%（受讓被獨贏擠掉 12 次、讓分擠掉獨贏 13 次）。
+
+    這不是拿資料調參數——包含關係是邏輯上的，那 7.8 個百分點是結果不是理由。
+    分數仍然決定「這一筆能不能上榜、排第幾」，只有同隊互斥時改用容易度取捨。
     """
     best = {}
     for r in recs:
         key = (r['matchup_id'], r.get('bet_on'))
-        if key not in best or r['score'] > best[key]['score']:
-            best[key] = r
-    return list(best.values())
+        # 容易度優先（下界越小越容易中），完全相同時才比分數
+        rank = (_margin_lower_bound(r), -(r.get('score') or 0))
+        if key not in best or rank < best[key][0]:
+            best[key] = (rank, r)
+    return [r for _rank, r in best.values()]
 
 
 # 同分決勝時的近期走勢優先序：同向 > 無意見 > 反向。
