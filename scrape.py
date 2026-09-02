@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "3.7"
+APP_VERSION = "3.8"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -257,28 +257,49 @@ _ODDS_VALUE_RE = (r'<div[^>]*\bclass="(?=[^"]*\bodds\b)(?=[^"]*\bupper-block\b)[
 TOTAL_SUMMARY_WINDOW = 20000
 
 
-def _agreed_total(values):
+def _column_pair(segment):
     """
-    從同一列的候選值挑出可信的全場總分。
+    取這個區段裡「客隊欄」與「主隊欄」各自的第一個總分數字。
+    回傳 (over 值, under 值)，沒有該欄就是 None。數字容許 o/u 前綴。
+    """
+    first = {}
+    for column, text in _odds_cells(segment):
+        hit = re.fullmatch(r'[ou]?(\d+(?:\.\d+)?)', text, re.IGNORECASE)
+        if hit and column not in first:
+            first[column] = hit.group(1)
+    return first.get('over'), first.get('under')
 
-    ⚠️ **大分與小分不可能是不同數字**。2026-09-01 洋基 vs 天使那輪抓到
-    over=5.5 / under=7.5，代表這兩格根本來自不同市場（5.5 是首五局的線），
-    程式卻取了第一個「看起來合理」的 5.5 印上畫面。
-    只要兩個數字不一致就整筆不採信——寧可少一筆推薦，不要給一個錯的盤口。
+
+def _paired_total(segment, tag=''):
     """
-    vals = [v for v in values if _valid_game_total(v)][:2]
-    if not vals:
-        return None
-    if len(vals) == 2 and vals[0] != vals[1]:
-        return None
-    return vals[0]
+    以 over / under 兩欄比對出可信的總分。
+
+    ⚠️ 只有**分得出欄位**時才做一致性檢查。2026-09-02 第一版寫成「取區段裡前兩個
+    數字，不一致就放棄」，結果誤殺了兩場盤口正常的推薦（巨人 vs 海盜、馬林魚 vs 皇家：
+    趨勢一模一樣，總分卻從 8.5 變成 None）——那兩個數字根本不是同一列的大小分，
+    只是剛好落在窗內。**分不出欄位就不要假裝知道它們是一對。**
+
+    回傳 (值, 是否確定)：確定 False 代表兩欄矛盾，呼叫端應該整個放棄這個來源。
+    """
+    over, under = _column_pair(segment)
+    over = over if over and _valid_game_total(over) else None
+    under = under if under and _valid_game_total(under) else None
+    if over and under:
+        if over != under:
+            # 同一個盤口的大分小分不可能是不同數字（2026-09-01 實測 o5.5 / u7.5，
+            # 5.5 是首五局的線）。不猜哪個對，整個來源都不採信。
+            print('  [!] 警告：大小分兩欄不一致（大 %s / 小 %s），不採信這個來源%s'
+                  % (over, under, tag))
+            return None, False
+        return over, True
+    return (over or under), True
 
 
 def _parse_total_line(html_str):
     """
     全場大小分盤口。優先取頁面頂端摘要表的 Total 列——實測它與各家報價的第一列
     完全一致，但在沒有 Game Line - Total - FT 區段的頁面上仍然存在。
-    取到的數字一律過 _valid_game_total()，且同列的兩格數字必須一致（見 _agreed_total）。
+    取到的數字一律過 _valid_game_total()；能分辨 over/under 欄位時，兩欄必須一致。
     """
     head = re.search(_ODDS_LABEL_RE + r'\s*Total\s*</div>', html_str)
     if head:
@@ -286,24 +307,21 @@ def _parse_total_line(html_str):
         nxt = re.search(_ODDS_LABEL_RE, segment)
         if nxt:
             segment = segment[:nxt.start()]
-        values = []
-        for raw in re.findall(_ODDS_VALUE_RE, segment, re.S):
-            text = html.unescape(raw).strip()
-            if re.fullmatch(r'\d+(?:\.\d+)?', text):
-                values.append(text)
-        chosen = _agreed_total(values)
-        if chosen:
-            return chosen
+        value, trusted = _paired_total(segment, tag='（摘要表 Total 列）')
+        if value:
+            return value
+        if trusted:
+            # 分不出 over/under 欄位（摘要表可能沒有那組 class），退回舊行為：
+            # 取窗內第一個合理的數字。窗已經限長，不會再吞掉整頁。
+            for raw in re.findall(_ODDS_VALUE_RE, segment, re.S):
+                text = html.unescape(raw).strip()
+                if re.fullmatch(r'\d+(?:\.\d+)?', text) and _valid_game_total(text):
+                    return text
 
     for segment in _market_segments(html_str, GAME_TOTAL_LABEL):
-        values = []
-        for _column, text in _odds_cells(segment):
-            hit = re.fullmatch(r'[ou](\d+(?:\.\d+)?)', text, re.IGNORECASE)
-            if hit:
-                values.append(hit.group(1))
-        chosen = _agreed_total(values)
-        if chosen:
-            return chosen
+        value, _trusted = _paired_total(segment, tag='（%s 區段）' % GAME_TOTAL_LABEL)
+        if value:
+            return value
     return None
 
 
