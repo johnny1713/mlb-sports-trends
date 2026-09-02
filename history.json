@@ -14610,17 +14610,16 @@
     "bet_on": "Kansas City Royals",
     "gid": "370125",
     "market": "獨贏",
-    "rf": null,
     "score": 58.6,
-    "top5": true,
-    "top_sides": true
+    "top5": false
    },
    {
     "bet_on": "Kansas City Royals",
     "gid": "370125",
     "market": "受讓 1.5",
     "score": 51.4,
-    "top5": false
+    "top5": false,
+    "top_sides": true
    },
    {
     "bet_on": null,
@@ -14635,8 +14634,9 @@
     "gid": "369188",
     "line": "8.0",
     "market": "Under",
+    "rf": false,
     "score": 54.5,
-    "top5": false,
+    "top5": true,
     "top_totals": true
    },
    {
