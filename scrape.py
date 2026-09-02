@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "3.8"
+APP_VERSION = "3.9"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -234,10 +234,16 @@ def _odds_cells(segment):
     return cells
 
 
-# 全場大小分盤口的合理範圍。MLB 全場總分實測落在 6.0~14.5（14.5 是落磯隊主場
-# Coors Field 的高海拔球場，屬真實盤口），首五局總分則是 4.5 上下。
-# 2026-07-27 出現過「買 全場小分 (小 4.5)」——那是首五局的數字混進全場市場。
-MIN_GAME_TOTAL, MAX_GAME_TOTAL = 5.5, 15.0
+# 全場大小分盤口的合理範圍。MLB 全場總分實測落在 6.5~14.5（14.5 是落磯隊主場
+# Coors Field 的高海拔球場，屬真實盤口），首五局總分則是 4.5~5.5。
+#
+# 下限 2026-09-02 由 5.5 調到 6.5。⚠️ 這與 8/27 「還沒查到根因就不要調門檻」的
+# 決定相反，是因為根因已經查到了：摘要表的 Total 區段會混進**別的來源**的數字
+# （2026-09-01 洋基 vs 天使實測 o5.5 / u7.5，5.5 是首五局的線），而程式取的是
+# 第一個「合理」的候選。分辨那個數字對不對，唯一可靠的特徵就是數值範圍——
+# 98 天 / 472 筆全場總分的實際下限就是 6.5，5.5 與 4.5 都是 F5 的典型數字。
+# 這不再是「治症狀」，是用實際分佈把 F5 的數字擋在外面。
+MIN_GAME_TOTAL, MAX_GAME_TOTAL = 6.5, 15.0
 
 
 def _valid_game_total(text):
@@ -270,29 +276,22 @@ def _column_pair(segment):
     return first.get('over'), first.get('under')
 
 
-def _paired_total(segment, tag=''):
+def _note_column_gap(segment, tag=''):
     """
-    以 over / under 兩欄比對出可信的總分。
+    兩欄數字不同時**只記錄，不擋**。
 
-    ⚠️ 只有**分得出欄位**時才做一致性檢查。2026-09-02 第一版寫成「取區段裡前兩個
-    數字，不一致就放棄」，結果誤殺了兩場盤口正常的推薦（巨人 vs 海盜、馬林魚 vs 皇家：
-    趨勢一模一樣，總分卻從 8.5 變成 None）——那兩個數字根本不是同一列的大小分，
-    只是剛好落在窗內。**分不出欄位就不要假裝知道它們是一對。**
+    ⚠️ 2026-09-02 曾經拿這個當否決條件，結果誤殺了正常的推薦。當天三場觸發：
+    大 7.5/小 8.5、大 8.5/小 9.0、大 7.5/小 8.0——差距都是半分到一分，
+    那不是「同一列的大分小分矛盾」，而是 **CLAUDE.md 早就寫過的「各家報價差距
+    可達一整分」**。兩欄根本不保證來自同一個莊家，拿它們互相驗證是錯的前提。
 
-    回傳 (值, 是否確定)：確定 False 代表兩欄矛盾，呼叫端應該整個放棄這個來源。
+    9/1 那個壞掉的 5.5 真正的特徵不是「不一致」，是**數值本身不可能**——
+    那由 MIN_GAME_TOTAL 擋，不是由這裡擋。這裡留著只為了日後查證。
     """
     over, under = _column_pair(segment)
-    over = over if over and _valid_game_total(over) else None
-    under = under if under and _valid_game_total(under) else None
-    if over and under:
-        if over != under:
-            # 同一個盤口的大分小分不可能是不同數字（2026-09-01 實測 o5.5 / u7.5，
-            # 5.5 是首五局的線）。不猜哪個對，整個來源都不採信。
-            print('  [!] 警告：大小分兩欄不一致（大 %s / 小 %s），不採信這個來源%s'
-                  % (over, under, tag))
-            return None, False
-        return over, True
-    return (over or under), True
+    if over and under and over != under:
+        print('  [i] note：大小分兩欄數字不同（大 %s / 小 %s），可能是不同莊家的報價%s'
+              % (over, under, tag))
 
 
 def _parse_total_line(html_str):
@@ -307,28 +306,24 @@ def _parse_total_line(html_str):
         nxt = re.search(_ODDS_LABEL_RE, segment)
         if nxt:
             segment = segment[:nxt.start()]
-        value, trusted = _paired_total(segment, tag='（摘要表 Total 列）')
-        if value:
-            return value
-        if trusted:
-            # 分不出 over/under 欄位（摘要表可能沒有那組 class），退回舊行為：
-            # 取窗內第一個合理的數字。窗已經限長，不會再吞掉整頁。
-            for raw in re.findall(_ODDS_VALUE_RE, segment, re.S):
-                text = html.unescape(raw).strip()
-                if re.fullmatch(r'\d+(?:\.\d+)?', text) and _valid_game_total(text):
-                    return text
+        _note_column_gap(segment, tag='（摘要表 Total 列）')
+        for raw in re.findall(_ODDS_VALUE_RE, segment, re.S):
+            text = html.unescape(raw).strip()
+            if re.fullmatch(r'\d+(?:\.\d+)?', text) and _valid_game_total(text):
+                return text
 
     for segment in _market_segments(html_str, GAME_TOTAL_LABEL):
-        value, _trusted = _paired_total(segment, tag='（%s 區段）' % GAME_TOTAL_LABEL)
-        if value:
-            return value
+        for _column, text in _odds_cells(segment):
+            hit = re.fullmatch(r'[ou](\d+(?:\.\d+)?)', text, re.IGNORECASE)
+            if hit and _valid_game_total(hit.group(1)):
+                return hit.group(1)
     return None
 
 
-# 實測 91 天 / 472 筆推薦，全場總分的分佈是 6.5~14.5（主群 7.5/8.5），
-# 沒有一筆低於 6.5。低於這個值的多半是首五局 (F5) 的數字混進了全場欄位
-# ——F5 總分典型是 4.5~5.5。MIN_GAME_TOTAL 設 5.5 只擋得掉 4.5 那種，
-# 5.5 本身會原樣通過（2026-08-26 釀酒人 vs 大都會就是這樣印出「小 5.5」）。
+# 實測 98 天 / 472 筆推薦，全場總分的分佈是 6.5~14.5（主群 7.5/8.5）。
+# MIN_GAME_TOTAL 已於 2026-09-02 調到 6.5，所以 5.5 那類數字現在會被擋在
+# _valid_game_total() 那一關、根本走不到這裡。這個預警等於下限的貼身警戒線：
+# 剛好等於 6.5 的盤口是真的存在的，留著它才看得出「有沒有貼著下限在冒出來」。
 SUSPICIOUS_GAME_TOTAL = 6.5
 
 
