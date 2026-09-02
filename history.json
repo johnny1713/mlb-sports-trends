@@ -14587,10 +14587,17 @@
     "bet_on": "Pittsburgh Pirates",
     "gid": "368815",
     "market": "獨贏",
-    "rf": null,
     "score": 51.3,
-    "top5": true,
+    "top5": false,
     "top_sides": true
+   },
+   {
+    "bet_on": null,
+    "gid": "368815",
+    "line": "8.5",
+    "market": "Over",
+    "score": 49.6,
+    "top5": false
    },
    {
     "bet_on": "Milwaukee Brewers",
@@ -14616,6 +14623,15 @@
     "top5": false
    },
    {
+    "bet_on": null,
+    "gid": "369188",
+    "line": "8.5",
+    "market": "Under",
+    "score": 54.5,
+    "top5": false,
+    "top_totals": true
+   },
+   {
     "bet_on": "New York Yankees",
     "gid": "368052",
     "market": "獨贏",
@@ -14630,6 +14646,16 @@
     "market": "讓 1.5",
     "score": 43.7,
     "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "368052",
+    "line": "6.5",
+    "market": "Under",
+    "rf": null,
+    "score": 57.6,
+    "top5": true,
+    "top_totals": true
    },
    {
     "bet_on": "Los Angeles Dodgers",
