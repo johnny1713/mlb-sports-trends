@@ -14495,9 +14495,9 @@
     "home": "Los Angeles Dodgers"
    },
    "369029": {
-    "away": "Philadelphia Phillies",
+    "away": "Phillies",
     "day": true,
-    "home": "Arizona Diamondbacks"
+    "home": "Diamondbacks"
    },
    "369036": {
     "away": "New York Mets",
@@ -14541,14 +14541,6 @@
    }
   },
   "picks": [
-   {
-    "bet_on": null,
-    "gid": "368661",
-    "line": "9.5",
-    "market": "Under",
-    "score": 48.9,
-    "top5": false
-   },
    {
     "bet_on": "Orioles",
     "gid": "369588",
@@ -14670,6 +14662,14 @@
     "gid": "369020",
     "market": "獨贏",
     "score": 46.4,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "368661",
+    "line": "9.5",
+    "market": "Under",
+    "score": 48.9,
     "top5": false
    }
   ],
