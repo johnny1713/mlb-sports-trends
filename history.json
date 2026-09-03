@@ -14786,21 +14786,6 @@
   },
   "picks": [
    {
-    "bet_on": "Pirates",
-    "gid": "368704",
-    "market": "獨贏",
-    "score": 48.7,
-    "top5": false
-   },
-   {
-    "bet_on": null,
-    "gid": "368704",
-    "line": "8.5",
-    "market": "Over",
-    "score": 48.0,
-    "top5": false
-   },
-   {
     "bet_on": "Milwaukee Brewers",
     "gid": "368932",
     "market": "獨贏",
@@ -14853,6 +14838,21 @@
     "gid": "367901",
     "market": "獨贏",
     "score": 43.2,
+    "top5": false
+   },
+   {
+    "bet_on": "Pirates",
+    "gid": "368704",
+    "market": "獨贏",
+    "score": 48.7,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "368704",
+    "line": "8.5",
+    "market": "Over",
+    "score": 48.0,
     "top5": false
    }
   ],
