@@ -14744,14 +14744,14 @@
     "home": "Los Angeles Dodgers"
    },
    "368306": {
-    "away": "Chicago White Sox",
+    "away": "White Sox",
     "day": true,
-    "home": "Houston Astros"
+    "home": "Astros"
    },
    "368704": {
-    "away": "San Francisco Giants",
+    "away": "Giants",
     "day": true,
-    "home": "Pittsburgh Pirates"
+    "home": "Pirates"
    },
    "368932": {
     "away": "Milwaukee Brewers",
@@ -14779,14 +14779,14 @@
     "home": "Kansas City Royals"
    },
    "370183": {
-    "away": "Toronto Blue Jays",
+    "away": "Blue Jays",
     "day": true,
-    "home": "Cleveland Guardians"
+    "home": "Guardians"
    }
   },
   "picks": [
    {
-    "bet_on": "Pittsburgh Pirates",
+    "bet_on": "Pirates",
     "gid": "368704",
     "market": "獨贏",
     "score": 48.7,
