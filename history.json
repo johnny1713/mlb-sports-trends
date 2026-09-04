@@ -15046,7 +15046,7 @@
    {
     "bet_on": null,
     "gid": "368421",
-    "line": "9.0",
+    "line": "8.5",
     "market": "Over",
     "score": 49.7,
     "top5": false
@@ -15080,7 +15080,7 @@
    {
     "bet_on": null,
     "gid": "369565",
-    "line": "8.0",
+    "line": "8.5",
     "market": "Under",
     "rf": null,
     "score": 52.5,
@@ -15090,7 +15090,7 @@
    {
     "bet_on": null,
     "gid": "369720",
-    "line": "7.5",
+    "line": "7.0",
     "market": "Over",
     "score": 47.9,
     "top5": false
