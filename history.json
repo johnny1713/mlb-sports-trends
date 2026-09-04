@@ -14968,9 +14968,9 @@
     "home": "Seattle Mariners"
    },
    "369741": {
-    "away": "Detroit Tigers",
+    "away": "Tigers",
     "day": true,
-    "home": "Cleveland Guardians"
+    "home": "Guardians"
    },
    "370249": {
     "away": "New York Yankees",
@@ -14980,14 +14980,14 @@
   },
   "picks": [
    {
-    "bet_on": "Cleveland Guardians",
+    "bet_on": "Guardians",
     "gid": "369741",
     "market": "獨贏",
     "score": 50.3,
     "top5": false
    },
    {
-    "bet_on": "Detroit Tigers",
+    "bet_on": "Tigers",
     "gid": "369741",
     "market": "受讓 1.5",
     "score": 52.3,
@@ -15061,7 +15061,7 @@
    {
     "bet_on": null,
     "gid": "369575",
-    "line": "8.5",
+    "line": "8.0",
     "market": "Under",
     "rf": null,
     "score": 52.9,
@@ -15090,7 +15090,7 @@
    {
     "bet_on": null,
     "gid": "369720",
-    "line": "7.5",
+    "line": "8.0",
     "market": "Over",
     "score": 47.9,
     "top5": false
