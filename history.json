@@ -14856,6 +14856,246 @@
     "top5": false
    }
   ],
+  "results": {
+   "367901": {
+    "away": 2,
+    "home": 3
+   },
+   "368306": {
+    "away": 2,
+    "home": 6
+   },
+   "368704": {
+    "away": 2,
+    "home": 5
+   },
+   "368932": {
+    "away": 1,
+    "home": 2
+   },
+   "369245": {
+    "away": 6,
+    "home": 5
+   },
+   "369249": {
+    "away": 7,
+    "home": 4
+   },
+   "369461": {
+    "away": 0,
+    "home": 6
+   },
+   "369691": {
+    "away": 3,
+    "home": 7
+   },
+   "370183": {
+    "away": 6,
+    "home": 3
+   }
+  }
+ },
+ "2026-09-04": {
+  "games": {
+   "368001": {
+    "away": "Tampa Bay Rays",
+    "day": false,
+    "home": "Texas Rangers"
+   },
+   "368092": {
+    "away": "Los Angeles Angels",
+    "day": false,
+    "home": "Pittsburgh Pirates"
+   },
+   "368166": {
+    "away": "Atlanta Braves",
+    "day": false,
+    "home": "Philadelphia Phillies"
+   },
+   "368313": {
+    "away": "Detroit Tigers",
+    "day": false,
+    "home": "Cleveland Guardians"
+   },
+   "368421": {
+    "away": "Minnesota Twins",
+    "day": false,
+    "home": "Chicago White Sox"
+   },
+   "368498": {
+    "away": "Chicago Cubs",
+    "day": false,
+    "home": "Miami Marlins"
+   },
+   "368608": {
+    "away": "Milwaukee Brewers",
+    "day": false,
+    "home": "Cincinnati Reds"
+   },
+   "368974": {
+    "away": "St. Louis Cardinals",
+    "day": false,
+    "home": "Colorado Rockies"
+   },
+   "369234": {
+    "away": "Boston Red Sox",
+    "day": false,
+    "home": "Baltimore Orioles"
+   },
+   "369290": {
+    "away": "San Francisco Giants",
+    "day": false,
+    "home": "New York Mets"
+   },
+   "369565": {
+    "away": "Washington Nationals",
+    "day": false,
+    "home": "Los Angeles Dodgers"
+   },
+   "369575": {
+    "away": "Arizona Diamondbacks",
+    "day": false,
+    "home": "Houston Astros"
+   },
+   "369715": {
+    "away": "Toronto Blue Jays",
+    "day": false,
+    "home": "Kansas City Royals"
+   },
+   "369720": {
+    "away": "Athletics Athletics",
+    "day": false,
+    "home": "Seattle Mariners"
+   },
+   "369741": {
+    "away": "Detroit Tigers",
+    "day": true,
+    "home": "Cleveland Guardians"
+   },
+   "370249": {
+    "away": "New York Yankees",
+    "day": false,
+    "home": "San Diego Padres"
+   }
+  },
+  "picks": [
+   {
+    "bet_on": "Cleveland Guardians",
+    "gid": "369741",
+    "market": "獨贏",
+    "score": 50.3,
+    "top5": false
+   },
+   {
+    "bet_on": "Detroit Tigers",
+    "gid": "369741",
+    "market": "受讓 1.5",
+    "score": 52.3,
+    "top5": false,
+    "top_sides": true
+   },
+   {
+    "bet_on": "Philadelphia Phillies",
+    "gid": "368166",
+    "market": "獨贏",
+    "rf": true,
+    "score": 62.2,
+    "top5": true,
+    "top_sides": true
+   },
+   {
+    "bet_on": "Boston Red Sox",
+    "gid": "369234",
+    "market": "獨贏",
+    "rf": null,
+    "score": 52.7,
+    "top5": true,
+    "top_sides": true
+   },
+   {
+    "bet_on": "New York Mets",
+    "gid": "369290",
+    "market": "獨贏",
+    "score": 51.7,
+    "top5": false
+   },
+   {
+    "bet_on": "Cleveland Guardians",
+    "gid": "368313",
+    "market": "獨贏",
+    "score": 50.3,
+    "top5": false
+   },
+   {
+    "bet_on": "Detroit Tigers",
+    "gid": "368313",
+    "market": "受讓 1.5",
+    "score": 52.3,
+    "top5": false,
+    "top_sides": true
+   },
+   {
+    "bet_on": "Chicago White Sox",
+    "gid": "368421",
+    "market": "獨贏",
+    "rf": true,
+    "score": 56.3,
+    "top5": true,
+    "top_sides": true
+   },
+   {
+    "bet_on": null,
+    "gid": "368421",
+    "line": "9.0",
+    "market": "Over",
+    "score": 49.7,
+    "top5": false
+   },
+   {
+    "bet_on": "Tampa Bay Rays",
+    "gid": "368001",
+    "market": "讓 1.5",
+    "score": 51.9,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "369575",
+    "line": "8.5",
+    "market": "Under",
+    "rf": null,
+    "score": 52.9,
+    "top5": true,
+    "top_totals": true
+   },
+   {
+    "bet_on": null,
+    "gid": "370249",
+    "line": "7.5",
+    "market": "Under",
+    "score": 50.5,
+    "top5": false,
+    "top_totals": true
+   },
+   {
+    "bet_on": null,
+    "gid": "369565",
+    "line": "8.0",
+    "market": "Under",
+    "rf": null,
+    "score": 52.5,
+    "top5": true,
+    "top_totals": true
+   },
+   {
+    "bet_on": null,
+    "gid": "369720",
+    "line": "7.5",
+    "market": "Over",
+    "score": 47.9,
+    "top5": false
+   }
+  ],
   "results": {}
  }
 }
