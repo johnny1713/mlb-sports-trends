@@ -368,6 +368,27 @@ def _majority_side(votes):
     return None
 
 
+def _report_run_line_votes(votes, alt_votes, favorite, tag=""):
+    """
+    把讓分方的多數決票數印進日誌（每場每輪都印）。
+
+    `votes` 是標準 ±1.5 的票、`alt_votes` 是 alternate line（±2.0/2.5/3.0）的票。
+    每一列莊家報價算一票，正負號指向誰是讓分方。判定用的是哪一組要看第一層有沒有票。
+    票數接近（差 1 票）時額外標記，方便事後回頭查「那天為什麼翻邊」。
+    """
+    used = votes if (votes['home'] or votes['away']) else alt_votes
+    layer = '標準 ±1.5' if used is votes else 'alternate line'
+    gap = abs(used['home'] - used['away'])
+    if favorite is None:
+        verdict = '判不出來'
+    else:
+        verdict = ('主隊' if favorite == 'home' else '客隊') + '讓分'
+    warn = '  <<< 票數接近，下一輪可能翻邊' if favorite is not None and gap <= 1 else ''
+    print('  [讓分票數]%s %s 主 %d : 客 %d → %s%s'
+          % ((' ' + tag) if tag else '', layer,
+             used['home'], used['away'], verdict, warn))
+
+
 def diagnose_run_line(html_str, votes, alt_votes=None, tag=""):
     """
     讓分盤判不出來時，把頁面實際給了什麼印出來。
@@ -399,7 +420,7 @@ def diagnose_run_line(html_str, votes, alt_votes=None, tag=""):
         print('      區段 %d 的報價: %s' % (i + 1, _odds_cells(seg)[:12]))
 
 
-def parse_run_lines(html_str):
+def parse_run_lines(html_str, tag=""):
     """
     解析全場讓分 (Run Line) 與大小分盤口。
 
@@ -435,6 +456,14 @@ def parse_run_lines(html_str):
         # ⚠️ 數字一律以標準 1.5 呈現：covers 的 Run Line 趨勢統計以 ±1.5 為準，
         # 使用者實際下的也是 1.5，把 2.5 印出去等於叫他下一個不同的盤口。
         favorite = _majority_side(votes) or _majority_side(alt_votes)
+
+        # ⚠️ 每一輪都把票數印出來，不是只在判不出來的時候。
+        # 多數決可能是 8:0，也可能是 3:2，而畫面上兩者長得一模一樣——
+        # 險勝的場次只要下一輪多抓到一家報價就會**翻邊**，等於叫使用者下反邊。
+        # 實測全部歷史 623 組（賽事日 × 場次）有 33 組（5.3%）在同一天內方向翻轉過，
+        # 且從 7/11 到 9/05 平均分佈，不是舊資料的殘留。
+        # 沒有票數就無法分辨「這場很穩」與「這場剛好多一票」，所以一律記錄。
+        _report_run_line_votes(votes, alt_votes, favorite, tag)
 
         spread_a = spread_b = None
         if favorite == 'home':
@@ -1202,7 +1231,7 @@ def parse_matchup_details(matchup):
     home_logo = f"https://img.covers.com/covers/data/svg_logos/mlb/{matchup['home_short']}.svg" if matchup['home_short'] else ""
         
     # 解析讓分、受讓與大小分總分盤口狀態
-    parsed_spreads = parse_run_lines(html_content)
+    parsed_spreads = parse_run_lines(html_content, tag=f"{team_a} vs {team_b}")
     team_a_spread = parsed_spreads['spread_a'] if parsed_spreads else None
     team_b_spread = parsed_spreads['spread_b'] if parsed_spreads else None
     total_line = parsed_spreads['total_line'] if parsed_spreads else None
