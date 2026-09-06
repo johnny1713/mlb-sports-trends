@@ -15419,9 +15419,9 @@
     "home": "Marlins"
    },
    "368346": {
-    "away": "Tampa Bay Rays",
+    "away": "Rays",
     "day": true,
-    "home": "Texas Rangers"
+    "home": "Rangers"
    },
    "368462": {
     "away": "Red Sox",
@@ -15429,9 +15429,9 @@
     "home": "Orioles"
    },
    "368648": {
-    "away": "St. Louis Cardinals",
+    "away": "Cardinals",
     "day": true,
-    "home": "Colorado Rockies"
+    "home": "Rockies"
    },
    "369160": {
     "away": "Giants",
@@ -15542,7 +15542,7 @@
     "top_totals": true
    },
    {
-    "bet_on": "Tampa Bay Rays",
+    "bet_on": "Rays",
     "gid": "368346",
     "market": "受讓 1.5",
     "score": 51.5,
@@ -15567,7 +15567,7 @@
    {
     "bet_on": null,
     "gid": "369487",
-    "line": "7.5",
+    "line": "7.0",
     "market": "Over",
     "score": 53.3,
     "top5": false,
