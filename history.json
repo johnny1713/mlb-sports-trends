@@ -15736,31 +15736,6 @@
   },
   "picks": [
    {
-    "bet_on": "Marlins",
-    "gid": "369968",
-    "market": "讓 1.5",
-    "score": 47.4,
-    "top5": false
-   },
-   {
-    "bet_on": "Red Sox",
-    "gid": "369930",
-    "market": "獨贏",
-    "rf": null,
-    "score": 57.0,
-    "top5": true,
-    "top_sides": true
-   },
-   {
-    "bet_on": "Angels",
-    "gid": "369930",
-    "market": "受讓 1.5",
-    "rf": null,
-    "score": 58.8,
-    "top5": true,
-    "top_sides": true
-   },
-   {
     "bet_on": "Guardians",
     "gid": "370297",
     "market": "獨贏",
@@ -15841,6 +15816,31 @@
     "score": 51.3,
     "top5": false,
     "top_totals": true
+   },
+   {
+    "bet_on": "Marlins",
+    "gid": "369968",
+    "market": "讓 1.5",
+    "score": 47.4,
+    "top5": false
+   },
+   {
+    "bet_on": "Red Sox",
+    "gid": "369930",
+    "market": "獨贏",
+    "rf": null,
+    "score": 57.0,
+    "top5": true,
+    "top_sides": true
+   },
+   {
+    "bet_on": "Angels",
+    "gid": "369930",
+    "market": "受讓 1.5",
+    "rf": null,
+    "score": 58.8,
+    "top5": true,
+    "top_sides": true
    }
   ],
   "results": {}
