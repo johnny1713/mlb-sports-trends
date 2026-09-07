@@ -15689,14 +15689,14 @@
     "home": "Phillies"
    },
    "368582": {
-    "away": "Arizona Diamondbacks",
+    "away": "Diamondbacks",
     "day": true,
-    "home": "Kansas City Royals"
+    "home": "Royals"
    },
    "368727": {
-    "away": "Chicago Cubs",
+    "away": "Cubs",
     "day": true,
-    "home": "Milwaukee Brewers"
+    "home": "Brewers"
    },
    "368990": {
     "away": "Cincinnati Reds",
@@ -15719,9 +15719,9 @@
     "home": "Marlins"
    },
    "370189": {
-    "away": "Minnesota Twins",
+    "away": "Twins",
     "day": true,
-    "home": "Detroit Tigers"
+    "home": "Tigers"
    },
    "370214": {
     "away": "Washington Nationals",
@@ -15821,7 +15821,7 @@
    {
     "bet_on": null,
     "gid": "368990",
-    "line": "7.0",
+    "line": "8.5",
     "market": "Over",
     "score": 46.2,
     "top5": false
