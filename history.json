@@ -15613,6 +15613,236 @@
     "top5": false
    }
   ],
+  "results": {
+   "367906": {
+    "away": 5,
+    "home": 4
+   },
+   "368023": {
+    "away": 2,
+    "home": 3
+   },
+   "368165": {
+    "away": 3,
+    "home": 10
+   },
+   "368346": {
+    "away": 6,
+    "home": 8
+   },
+   "368462": {
+    "away": 3,
+    "home": 1
+   },
+   "368648": {
+    "away": 10,
+    "home": 8
+   },
+   "369160": {
+    "away": 2,
+    "home": 4
+   },
+   "369225": {
+    "away": 0,
+    "home": 1
+   },
+   "369244": {
+    "away": 8,
+    "home": 12
+   },
+   "369436": {
+    "away": 3,
+    "home": 4
+   },
+   "369487": {
+    "away": 0,
+    "home": 2
+   },
+   "369510": {
+    "away": 1,
+    "home": 6
+   },
+   "369578": {
+    "away": 3,
+    "home": 2
+   },
+   "370035": {
+    "away": 5,
+    "home": 7
+   },
+   "370060": {
+    "away": 1,
+    "home": 10
+   }
+  }
+ },
+ "2026-09-07": {
+  "games": {
+   "368483": {
+    "away": "St. Louis Cardinals",
+    "day": false,
+    "home": "San Francisco Giants"
+   },
+   "368562": {
+    "away": "Atlanta Braves",
+    "day": true,
+    "home": "Philadelphia Phillies"
+   },
+   "368582": {
+    "away": "Arizona Diamondbacks",
+    "day": true,
+    "home": "Kansas City Royals"
+   },
+   "368727": {
+    "away": "Chicago Cubs",
+    "day": true,
+    "home": "Milwaukee Brewers"
+   },
+   "368990": {
+    "away": "Cincinnati Reds",
+    "day": false,
+    "home": "Los Angeles Dodgers"
+   },
+   "369175": {
+    "away": "Toronto Blue Jays",
+    "day": false,
+    "home": "Athletics Athletics"
+   },
+   "369930": {
+    "away": "Los Angeles Angels",
+    "day": true,
+    "home": "Boston Red Sox"
+   },
+   "369968": {
+    "away": "New York Mets",
+    "day": true,
+    "home": "Miami Marlins"
+   },
+   "370189": {
+    "away": "Minnesota Twins",
+    "day": true,
+    "home": "Detroit Tigers"
+   },
+   "370214": {
+    "away": "Washington Nationals",
+    "day": true,
+    "home": "San Diego Padres"
+   },
+   "370297": {
+    "away": "Cleveland Guardians",
+    "day": true,
+    "home": "Baltimore Orioles"
+   }
+  },
+  "picks": [
+   {
+    "bet_on": "Miami Marlins",
+    "gid": "369968",
+    "market": "讓 1.5",
+    "score": 47.4,
+    "top5": false
+   },
+   {
+    "bet_on": "Boston Red Sox",
+    "gid": "369930",
+    "market": "獨贏",
+    "rf": null,
+    "score": 57.0,
+    "top5": true,
+    "top_sides": true
+   },
+   {
+    "bet_on": "Los Angeles Angels",
+    "gid": "369930",
+    "market": "受讓 1.5",
+    "rf": null,
+    "score": 58.8,
+    "top5": true,
+    "top_sides": true
+   },
+   {
+    "bet_on": "Cleveland Guardians",
+    "gid": "370297",
+    "market": "獨贏",
+    "score": 54.1,
+    "top5": false,
+    "top_sides": true
+   },
+   {
+    "bet_on": null,
+    "gid": "370297",
+    "line": "7.0",
+    "market": "Under",
+    "rf": true,
+    "score": 59.1,
+    "top5": true,
+    "top_totals": true
+   },
+   {
+    "bet_on": "San Diego Padres",
+    "gid": "370214",
+    "market": "獨贏",
+    "rf": null,
+    "score": 67.7,
+    "top5": true,
+    "top_sides": true
+   },
+   {
+    "bet_on": "San Diego Padres",
+    "gid": "370214",
+    "market": "讓 1.5",
+    "score": 52.7,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "370214",
+    "line": "8.0",
+    "market": "Under",
+    "score": 45.9,
+    "top5": false
+   },
+   {
+    "bet_on": "San Francisco Giants",
+    "gid": "368483",
+    "market": "獨贏",
+    "score": 45.3,
+    "top5": false
+   },
+   {
+    "bet_on": "Cincinnati Reds",
+    "gid": "368990",
+    "market": "受讓 1.5",
+    "rf": false,
+    "score": 57.6,
+    "top5": true,
+    "top_sides": true
+   },
+   {
+    "bet_on": null,
+    "gid": "368990",
+    "line": "7.0",
+    "market": "Over",
+    "score": 46.2,
+    "top5": false
+   },
+   {
+    "bet_on": "Toronto Blue Jays",
+    "gid": "369175",
+    "market": "讓 1.5",
+    "score": 53.7,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "369175",
+    "line": "8.0",
+    "market": "Over",
+    "score": 51.3,
+    "top5": false,
+    "top_totals": true
+   }
+  ],
   "results": {}
  }
 }
