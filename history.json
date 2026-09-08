@@ -15679,9 +15679,9 @@
  "2026-09-07": {
   "games": {
    "368483": {
-    "away": "St. Louis Cardinals",
+    "away": "Cardinals",
     "day": false,
-    "home": "San Francisco Giants"
+    "home": "Giants"
    },
    "368562": {
     "away": "Braves",
@@ -15724,9 +15724,9 @@
     "home": "Tigers"
    },
    "370214": {
-    "away": "Washington Nationals",
+    "away": "Nationals",
     "day": true,
-    "home": "San Diego Padres"
+    "home": "Padres"
    },
    "370297": {
     "away": "Guardians",
@@ -15736,49 +15736,7 @@
   },
   "picks": [
    {
-    "bet_on": "Guardians",
-    "gid": "370297",
-    "market": "獨贏",
-    "score": 54.1,
-    "top5": false,
-    "top_sides": true
-   },
-   {
-    "bet_on": null,
-    "gid": "370297",
-    "line": "7.0",
-    "market": "Under",
-    "rf": true,
-    "score": 59.1,
-    "top5": true,
-    "top_totals": true
-   },
-   {
-    "bet_on": "San Diego Padres",
-    "gid": "370214",
-    "market": "獨贏",
-    "rf": null,
-    "score": 67.7,
-    "top5": true,
-    "top_sides": true
-   },
-   {
-    "bet_on": "San Diego Padres",
-    "gid": "370214",
-    "market": "讓 1.5",
-    "score": 52.7,
-    "top5": false
-   },
-   {
-    "bet_on": null,
-    "gid": "370214",
-    "line": "8.0",
-    "market": "Under",
-    "score": 45.9,
-    "top5": false
-   },
-   {
-    "bet_on": "San Francisco Giants",
+    "bet_on": "Giants",
     "gid": "368483",
     "market": "獨贏",
     "score": 45.3,
@@ -15788,7 +15746,7 @@
     "bet_on": "Cincinnati Reds",
     "gid": "368990",
     "market": "受讓 1.5",
-    "rf": false,
+    "rf": null,
     "score": 57.6,
     "top5": true,
     "top_sides": true
@@ -15811,7 +15769,7 @@
    {
     "bet_on": null,
     "gid": "369175",
-    "line": "8.0",
+    "line": "7.5",
     "market": "Over",
     "score": 51.3,
     "top5": false,
@@ -15825,12 +15783,30 @@
     "top5": false
    },
    {
+    "bet_on": "Guardians",
+    "gid": "370297",
+    "market": "獨贏",
+    "rf": true,
+    "score": 54.1,
+    "top5": true,
+    "top_sides": true
+   },
+   {
+    "bet_on": null,
+    "gid": "370297",
+    "line": "7.0",
+    "market": "Under",
+    "rf": true,
+    "score": 59.1,
+    "top5": true,
+    "top_totals": true
+   },
+   {
     "bet_on": "Red Sox",
     "gid": "369930",
     "market": "獨贏",
-    "rf": null,
     "score": 57.0,
-    "top5": true,
+    "top5": false,
     "top_sides": true
    },
    {
@@ -15841,6 +15817,30 @@
     "score": 58.8,
     "top5": true,
     "top_sides": true
+   },
+   {
+    "bet_on": "Padres",
+    "gid": "370214",
+    "market": "獨贏",
+    "rf": null,
+    "score": 67.7,
+    "top5": true,
+    "top_sides": true
+   },
+   {
+    "bet_on": "Padres",
+    "gid": "370214",
+    "market": "讓 1.5",
+    "score": 52.7,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "370214",
+    "line": "7.5",
+    "market": "Under",
+    "score": 45.9,
+    "top5": false
    }
   ],
   "results": {}
