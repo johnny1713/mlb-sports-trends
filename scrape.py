@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "4.0"
+APP_VERSION = "4.1"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -5388,8 +5388,25 @@ def main():
         m_id for m_id, recs in by_matchup.items() if picks_are_contradictory(recs)
     }
 
+    # ⚠️ AI Top 5 的同場勝負推薦再收斂成「一場最多一筆」（2026-09-08 使用者要求）。
+    # picks_are_contradictory 只擋**邏輯上不可能同時成立**的組合，所以像
+    # 「買天使 受讓 1.5」＋「買紅襪 獨贏」這種相容的組合會兩筆都上榜
+    # （天使輸 1 分時兩邊同時中）。相容歸相容，但排在同一份精選清單裡，
+    # 看起來就像系統對這場沒有意見，還吃掉 5 個名額裡的 2 個。
+    # 實測 60 天：AI Top 5 出現過 1 天、勝負 Top 5 出現過 9 天（16 筆，命中率
+    # 50.0% vs 其餘 51.2%，沒有差異）——所以這不是命中率問題，是清單可讀性問題。
+    # **只收斂 AI Top 5**：勝負 Top 5 是分市場的完整清單，兩邊並列在那裡合理，
+    # 使用者明確要求維持現況。大小分推薦沒有 bet_on，不算「兩邊都推」，不受影響。
+    ai_sides = []
+    seen_matchups = set()
+    for r in sorted(sides_for_top, key=rank_key):
+        if r['matchup_id'] in seen_matchups:
+            continue
+        seen_matchups.add(r['matchup_id'])
+        ai_sides.append(r)
+
     ai_candidates = []
-    for r in sides_for_top:
+    for r in ai_sides:
         if r['matchup_id'] in conflicting_matchups:
             continue
         ai_candidates.append({
