@@ -16242,9 +16242,9 @@
     "home": "Philadelphia Phillies"
    },
    "369966": {
-    "away": "St. Louis Cardinals",
+    "away": "Cardinals",
     "day": true,
-    "home": "San Francisco Giants"
+    "home": "Giants"
    }
   },
   "picks": [
@@ -16266,7 +16266,7 @@
    {
     "bet_on": null,
     "gid": "368288",
-    "line": "9.5",
+    "line": "9.0",
     "market": "Over",
     "score": 49.2,
     "top5": false
@@ -16281,7 +16281,7 @@
    {
     "bet_on": null,
     "gid": "369534",
-    "line": "8.0",
+    "line": "7.5",
     "market": "Over",
     "score": 47.9,
     "top5": false
@@ -16353,7 +16353,7 @@
    {
     "bet_on": null,
     "gid": "369258",
-    "line": "7.5",
+    "line": "7.0",
     "market": "Under",
     "score": 52.7,
     "top5": false,
@@ -16371,7 +16371,7 @@
    {
     "bet_on": null,
     "gid": "368898",
-    "line": "8.5",
+    "line": "8.0",
     "market": "Under",
     "score": 49.4,
     "top5": false
