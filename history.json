@@ -16177,14 +16177,14 @@
     "home": "Boston Red Sox"
    },
    "368272": {
-    "away": "Minnesota Twins",
+    "away": "Twins",
     "day": true,
-    "home": "Detroit Tigers"
+    "home": "Tigers"
    },
    "368288": {
-    "away": "Toronto Blue Jays",
+    "away": "Blue Jays",
     "day": true,
-    "home": "Athletics Athletics"
+    "home": "Athletics"
    },
    "368610": {
     "away": "Washington Nationals",
@@ -16249,14 +16249,14 @@
   },
   "picks": [
    {
-    "bet_on": "Minnesota Twins",
+    "bet_on": "Twins",
     "gid": "368272",
     "market": "受讓 1.5",
     "score": 50.5,
     "top5": false
    },
    {
-    "bet_on": "Toronto Blue Jays",
+    "bet_on": "Blue Jays",
     "gid": "368288",
     "market": "讓 1.5",
     "score": 52.7,
@@ -16281,7 +16281,7 @@
    {
     "bet_on": null,
     "gid": "369534",
-    "line": "7.5",
+    "line": "8.0",
     "market": "Over",
     "score": 47.9,
     "top5": false
@@ -16305,7 +16305,7 @@
    {
     "bet_on": null,
     "gid": "368610",
-    "line": "8.0",
+    "line": "8.5",
     "market": "Under",
     "score": 44.2,
     "top5": false
@@ -16353,7 +16353,7 @@
    {
     "bet_on": null,
     "gid": "369258",
-    "line": "7.0",
+    "line": "7.5",
     "market": "Under",
     "score": 52.7,
     "top5": false,
