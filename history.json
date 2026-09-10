@@ -16467,9 +16467,9 @@
     "home": "Braves"
    },
    "369377": {
-    "away": "Houston Astros",
+    "away": "Astros",
     "day": true,
-    "home": "Philadelphia Phillies"
+    "home": "Phillies"
    },
    "369871": {
     "away": "Colorado Rockies",
@@ -16478,15 +16478,6 @@
    }
   },
   "picks": [
-   {
-    "bet_on": "Rays",
-    "gid": "368977",
-    "market": "獨贏",
-    "rf": true,
-    "score": 54.6,
-    "top5": true,
-    "top_sides": true
-   },
    {
     "bet_on": "Texas Rangers",
     "gid": "368277",
@@ -16509,7 +16500,7 @@
    {
     "bet_on": null,
     "gid": "369871",
-    "line": "8.0",
+    "line": "8.5",
     "market": "Under",
     "score": 48.7,
     "top5": false
@@ -16520,6 +16511,15 @@
     "market": "受讓 1.5",
     "rf": false,
     "score": 50.8,
+    "top5": true,
+    "top_sides": true
+   },
+   {
+    "bet_on": "Rays",
+    "gid": "368977",
+    "market": "獨贏",
+    "rf": true,
+    "score": 54.6,
     "top5": true,
     "top_sides": true
    }
