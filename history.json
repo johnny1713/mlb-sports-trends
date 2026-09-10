@@ -16462,9 +16462,9 @@
     "home": "Chicago White Sox"
    },
    "368977": {
-    "away": "Tampa Bay Rays",
+    "away": "Rays",
     "day": true,
-    "home": "Atlanta Braves"
+    "home": "Braves"
    },
    "369377": {
     "away": "Houston Astros",
@@ -16479,7 +16479,7 @@
   },
   "picks": [
    {
-    "bet_on": "Tampa Bay Rays",
+    "bet_on": "Rays",
     "gid": "368977",
     "market": "獨贏",
     "rf": true,
@@ -16509,7 +16509,7 @@
    {
     "bet_on": null,
     "gid": "369871",
-    "line": "8.5",
+    "line": "8.0",
     "market": "Under",
     "score": 48.7,
     "top5": false
@@ -16517,7 +16517,7 @@
    {
     "bet_on": "Chicago White Sox",
     "gid": "368651",
-    "market": "讓 1.5",
+    "market": "受讓 1.5",
     "rf": false,
     "score": 50.8,
     "top5": true,
