@@ -16386,6 +16386,144 @@
     "top_sides": true
    }
   ],
+  "results": {
+   "368265": {
+    "away": 6,
+    "home": 4
+   },
+   "368272": {
+    "away": 2,
+    "home": 7
+   },
+   "368288": {
+    "away": 0,
+    "home": 2
+   },
+   "368610": {
+    "away": 2,
+    "home": 9
+   },
+   "368833": {
+    "away": 4,
+    "home": 2
+   },
+   "368898": {
+    "away": 2,
+    "home": 5
+   },
+   "369258": {
+    "away": 7,
+    "home": 2
+   },
+   "369513": {
+    "away": 6,
+    "home": 8
+   },
+   "369534": {
+    "away": 2,
+    "home": 3
+   },
+   "369584": {
+    "away": 1,
+    "home": 14
+   },
+   "369637": {
+    "away": 1,
+    "home": 6
+   },
+   "369754": {
+    "away": 15,
+    "home": 14
+   },
+   "369869": {
+    "away": 5,
+    "home": 9
+   },
+   "369887": {
+    "away": 7,
+    "home": 11
+   },
+   "369966": {
+    "away": 6,
+    "home": 7
+   }
+  }
+ },
+ "2026-09-10": {
+  "games": {
+   "368277": {
+    "away": "Texas Rangers",
+    "day": true,
+    "home": "Seattle Mariners"
+   },
+   "368651": {
+    "away": "Pittsburgh Pirates",
+    "day": false,
+    "home": "Chicago White Sox"
+   },
+   "368977": {
+    "away": "Tampa Bay Rays",
+    "day": true,
+    "home": "Atlanta Braves"
+   },
+   "369377": {
+    "away": "Houston Astros",
+    "day": true,
+    "home": "Philadelphia Phillies"
+   },
+   "369871": {
+    "away": "Colorado Rockies",
+    "day": false,
+    "home": "New York Yankees"
+   }
+  },
+  "picks": [
+   {
+    "bet_on": "Tampa Bay Rays",
+    "gid": "368977",
+    "market": "獨贏",
+    "rf": true,
+    "score": 54.6,
+    "top5": true,
+    "top_sides": true
+   },
+   {
+    "bet_on": "Texas Rangers",
+    "gid": "368277",
+    "market": "受讓 1.5",
+    "rf": null,
+    "score": 54.6,
+    "top5": true,
+    "top_sides": true
+   },
+   {
+    "bet_on": null,
+    "gid": "368277",
+    "line": "6.5",
+    "market": "Over",
+    "rf": true,
+    "score": 55.8,
+    "top5": true,
+    "top_totals": true
+   },
+   {
+    "bet_on": null,
+    "gid": "369871",
+    "line": "8.5",
+    "market": "Under",
+    "score": 48.7,
+    "top5": false
+   },
+   {
+    "bet_on": "Chicago White Sox",
+    "gid": "368651",
+    "market": "受讓 1.5",
+    "rf": false,
+    "score": 50.8,
+    "top5": true,
+    "top_sides": true
+   }
+  ],
   "results": {}
  }
 }
