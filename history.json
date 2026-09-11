@@ -16620,14 +16620,14 @@
     "home": "St. Louis Cardinals"
    },
    "370161": {
-    "away": "Pittsburgh Pirates",
+    "away": "Pirates",
     "day": true,
-    "home": "Chicago Cubs"
+    "home": "Cubs"
    }
   },
   "picks": [
    {
-    "bet_on": "Pittsburgh Pirates",
+    "bet_on": "Pirates",
     "gid": "370161",
     "market": "獨贏",
     "score": 53.1,
@@ -16635,7 +16635,7 @@
     "top_sides": true
    },
    {
-    "bet_on": "Chicago Cubs",
+    "bet_on": "Cubs",
     "gid": "370161",
     "market": "讓 1.5",
     "score": 49.8,
@@ -16714,7 +16714,7 @@
    {
     "bet_on": null,
     "gid": "369426",
-    "line": "7.5",
+    "line": "7.0",
     "market": "Under",
     "score": 53.0,
     "top5": false,
