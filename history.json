@@ -16730,7 +16730,7 @@
    {
     "bet_on": "Chicago White Sox",
     "gid": "370029",
-    "market": "受讓 1.5",
+    "market": "讓 1.5",
     "score": 47.8,
     "top5": false
    },
@@ -16755,7 +16755,7 @@
    {
     "bet_on": null,
     "gid": "369797",
-    "line": "9.5",
+    "line": "10.0",
     "market": "Over",
     "score": 47.9,
     "top5": false
