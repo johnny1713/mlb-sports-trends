@@ -16834,9 +16834,9 @@
  "2026-09-12": {
   "games": {
    "368035": {
-    "away": "Pittsburgh Pirates",
+    "away": "Pirates",
     "day": true,
-    "home": "Chicago Cubs"
+    "home": "Cubs"
    },
    "368173": {
     "away": "Texas Rangers",
@@ -16889,14 +16889,14 @@
     "home": "Washington Nationals"
    },
    "369699": {
-    "away": "New York Mets",
+    "away": "Mets",
     "day": true,
-    "home": "New York Yankees"
+    "home": "Yankees"
    },
    "369736": {
-    "away": "Colorado Rockies",
+    "away": "Rockies",
     "day": true,
-    "home": "Detroit Tigers"
+    "home": "Tigers"
    },
    "369971": {
     "away": "Kansas City Royals",
@@ -16911,7 +16911,7 @@
   },
   "picks": [
    {
-    "bet_on": "New York Yankees",
+    "bet_on": "Yankees",
     "gid": "369699",
     "market": "讓 1.5",
     "rf": true,
@@ -16920,14 +16920,14 @@
     "top_sides": true
    },
    {
-    "bet_on": "Pittsburgh Pirates",
+    "bet_on": "Pirates",
     "gid": "368035",
     "market": "獨贏",
     "score": 49.9,
     "top5": false
    },
    {
-    "bet_on": "Chicago Cubs",
+    "bet_on": "Cubs",
     "gid": "368035",
     "market": "讓 1.5",
     "score": 50.3,
@@ -16939,6 +16939,14 @@
     "gid": "368766",
     "market": "讓 1.5",
     "score": 44.5,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "368184",
+    "line": "7.5",
+    "market": "Over",
+    "score": 48.5,
     "top5": false
    },
    {
@@ -16958,7 +16966,7 @@
    {
     "bet_on": "Cleveland Guardians",
     "gid": "368347",
-    "market": "讓 1.5",
+    "market": "受讓 1.5",
     "score": 43.8,
     "top5": false
    },
@@ -16971,14 +16979,6 @@
     "top5": false
    },
    {
-    "bet_on": null,
-    "gid": "368184",
-    "line": "7.5",
-    "market": "Over",
-    "score": 48.5,
-    "top5": false
-   },
-   {
     "bet_on": "Philadelphia Phillies",
     "gid": "369134",
     "market": "獨贏",
@@ -16988,7 +16988,7 @@
    {
     "bet_on": null,
     "gid": "369134",
-    "line": "8.0",
+    "line": "8.5",
     "market": "Under",
     "rf": null,
     "score": 52.0,
