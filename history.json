@@ -16904,9 +16904,9 @@
     "home": "Boston Red Sox"
    },
    "370226": {
-    "away": "Baltimore Orioles",
+    "away": "Orioles",
     "day": true,
-    "home": "Toronto Blue Jays"
+    "home": "Blue Jays"
    }
   },
   "picks": [
@@ -16966,14 +16966,14 @@
    {
     "bet_on": "Cleveland Guardians",
     "gid": "368347",
-    "market": "受讓 1.5",
+    "market": "讓 1.5",
     "score": 43.8,
     "top5": false
    },
    {
     "bet_on": null,
     "gid": "368347",
-    "line": "8.0",
+    "line": "8.5",
     "market": "Under",
     "score": 47.2,
     "top5": false
