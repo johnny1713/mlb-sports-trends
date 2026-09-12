@@ -16958,7 +16958,7 @@
    {
     "bet_on": "Cleveland Guardians",
     "gid": "368347",
-    "market": "受讓 1.5",
+    "market": "讓 1.5",
     "score": 43.8,
     "top5": false
    },
@@ -16973,7 +16973,7 @@
    {
     "bet_on": null,
     "gid": "368184",
-    "line": "7.0",
+    "line": "7.5",
     "market": "Over",
     "score": 48.5,
     "top5": false
