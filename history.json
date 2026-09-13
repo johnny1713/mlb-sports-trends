@@ -17095,46 +17095,101 @@
     "home": "Boston Red Sox"
    },
    "368216": {
-    "away": "Pittsburgh Pirates",
+    "away": "Pirates",
     "day": true,
-    "home": "Chicago Cubs"
+    "home": "Cubs"
+   },
+   "368319": {
+    "away": "Rockies",
+    "day": false,
+    "home": "Tigers"
    },
    "368435": {
-    "away": "Philadelphia Phillies",
+    "away": "Phillies",
     "day": true,
-    "home": "Atlanta Braves"
+    "home": "Braves"
+   },
+   "368468": {
+    "away": "San Diego Padres",
+    "day": true,
+    "home": "San Francisco Giants"
    },
    "368550": {
     "away": "Texas Rangers",
     "day": true,
     "home": "Arizona Diamondbacks"
    },
+   "368721": {
+    "away": "Astros",
+    "day": false,
+    "home": "Rays"
+   },
+   "368744": {
+    "away": "Dodgers",
+    "day": false,
+    "home": "Marlins"
+   },
+   "368812": {
+    "away": "Orioles",
+    "day": false,
+    "home": "Blue Jays"
+   },
    "368813": {
-    "away": "Chicago White Sox",
+    "away": "White Sox",
     "day": true,
-    "home": "St. Louis Cardinals"
+    "home": "Cardinals"
    },
    "368996": {
     "away": "Seattle Mariners",
     "day": true,
     "home": "Athletics Athletics"
    },
+   "369457": {
+    "away": "Mets",
+    "day": false,
+    "home": "Yankees"
+   },
    "369794": {
-    "away": "Los Angeles Angels",
+    "away": "Angels",
     "day": true,
-    "home": "Washington Nationals"
+    "home": "Nationals"
+   },
+   "370054": {
+    "away": "Guardians",
+    "day": false,
+    "home": "Twins"
+   },
+   "370137": {
+    "away": "Reds",
+    "day": false,
+    "home": "Brewers"
    }
   },
   "picks": [
    {
-    "bet_on": "Philadelphia Phillies",
+    "bet_on": "Tigers",
+    "gid": "368319",
+    "market": "讓 1.5",
+    "score": 52.6,
+    "top5": false,
+    "top_sides": true
+   },
+   {
+    "bet_on": "Yankees",
+    "gid": "369457",
+    "market": "讓 1.5",
+    "score": 42.5,
+    "top5": false
+   },
+   {
+    "bet_on": "Phillies",
     "gid": "368435",
     "market": "受讓 1.5",
     "score": 49.8,
     "top5": false
    },
    {
-    "bet_on": "Washington Nationals",
+    "bet_on": "Nationals",
     "gid": "369794",
     "market": "獨贏",
     "score": 54.6,
@@ -17142,7 +17197,7 @@
     "top_sides": true
    },
    {
-    "bet_on": "Los Angeles Angels",
+    "bet_on": "Angels",
     "gid": "369794",
     "market": "受讓 1.5",
     "rf": null,
@@ -17151,7 +17206,46 @@
     "top_sides": true
    },
    {
-    "bet_on": "Chicago White Sox",
+    "bet_on": "Blue Jays",
+    "gid": "368812",
+    "market": "讓 1.5",
+    "score": 47.9,
+    "top5": false
+   },
+   {
+    "bet_on": "Astros",
+    "gid": "368721",
+    "market": "受讓 1.5",
+    "rf": null,
+    "score": 59.1,
+    "top5": true,
+    "top_sides": true
+   },
+   {
+    "bet_on": "Guardians",
+    "gid": "370054",
+    "market": "獨贏",
+    "score": 47.0,
+    "top5": false
+   },
+   {
+    "bet_on": "Brewers",
+    "gid": "370137",
+    "market": "讓 1.5",
+    "score": 47.4,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "370137",
+    "line": "8.0",
+    "market": "Over",
+    "score": 52.9,
+    "top5": false,
+    "top_totals": true
+   },
+   {
+    "bet_on": "White Sox",
     "gid": "368813",
     "market": "獨贏",
     "score": 46.9,
@@ -17168,14 +17262,14 @@
     "top_totals": true
    },
    {
-    "bet_on": "Pittsburgh Pirates",
+    "bet_on": "Pirates",
     "gid": "368216",
     "market": "獨贏",
     "score": 46.3,
     "top5": false
    },
    {
-    "bet_on": "Chicago Cubs",
+    "bet_on": "Cubs",
     "gid": "368216",
     "market": "讓 1.5",
     "score": 49.4,
@@ -17213,6 +17307,20 @@
     "score": 53.9,
     "top5": true,
     "top_sides": true
+   },
+   {
+    "bet_on": "San Diego Padres",
+    "gid": "368468",
+    "market": "獨贏",
+    "score": 54.8,
+    "top5": false
+   },
+   {
+    "bet_on": "San Diego Padres",
+    "gid": "368468",
+    "market": "受讓 1.5",
+    "score": 43.0,
+    "top5": false
    }
   ],
   "results": {}
