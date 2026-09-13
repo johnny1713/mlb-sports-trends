@@ -17090,9 +17090,9 @@
  "2026-09-13": {
   "games": {
    "368156": {
-    "away": "Kansas City Royals",
+    "away": "Royals",
     "day": true,
-    "home": "Boston Red Sox"
+    "home": "Red Sox"
    },
    "368216": {
     "away": "Pirates",
@@ -17166,14 +17166,6 @@
    }
   },
   "picks": [
-   {
-    "bet_on": "Tigers",
-    "gid": "368319",
-    "market": "讓 1.5",
-    "score": 52.6,
-    "top5": false,
-    "top_sides": true
-   },
    {
     "bet_on": "Yankees",
     "gid": "369457",
@@ -17276,7 +17268,7 @@
     "top5": false
    },
    {
-    "bet_on": "Kansas City Royals",
+    "bet_on": "Royals",
     "gid": "368156",
     "market": "獨贏",
     "score": 44.6,
@@ -17303,23 +17295,31 @@
     "bet_on": "Arizona Diamondbacks",
     "gid": "368550",
     "market": "獨贏",
-    "rf": true,
     "score": 53.9,
-    "top5": true,
+    "top5": false,
     "top_sides": true
    },
    {
     "bet_on": "San Diego Padres",
     "gid": "368468",
     "market": "獨贏",
+    "rf": true,
     "score": 54.8,
-    "top5": false
+    "top5": true,
+    "top_sides": true
    },
    {
     "bet_on": "San Diego Padres",
     "gid": "368468",
-    "market": "受讓 1.5",
+    "market": "讓 1.5",
     "score": 43.0,
+    "top5": false
+   },
+   {
+    "bet_on": "Tigers",
+    "gid": "368319",
+    "market": "讓 1.5",
+    "score": 52.6,
     "top5": false
    }
   ],
