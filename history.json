@@ -17323,6 +17323,184 @@
     "top5": false
    }
   ],
+  "results": {
+   "368156": {
+    "away": 1,
+    "home": 4
+   },
+   "368216": {
+    "away": 4,
+    "home": 3
+   },
+   "368319": {
+    "away": 1,
+    "home": 8
+   },
+   "368435": {
+    "away": 9,
+    "home": 4
+   },
+   "368468": {
+    "away": 6,
+    "home": 4
+   },
+   "368550": {
+    "away": 7,
+    "home": 6
+   },
+   "368721": {
+    "away": 4,
+    "home": 14
+   },
+   "368744": {
+    "away": 4,
+    "home": 6
+   },
+   "368812": {
+    "away": 1,
+    "home": 8
+   },
+   "368813": {
+    "away": 1,
+    "home": 3
+   },
+   "368996": {
+    "away": 7,
+    "home": 8
+   },
+   "369457": {
+    "away": 0,
+    "home": 2
+   },
+   "369794": {
+    "away": 5,
+    "home": 6
+   },
+   "370054": {
+    "away": 9,
+    "home": 2
+   },
+   "370137": {
+    "away": 4,
+    "home": 3
+   }
+  }
+ },
+ "2026-09-14": {
+  "games": {
+   "368054": {
+    "away": "New York Yankees",
+    "day": false,
+    "home": "Minnesota Twins"
+   },
+   "368522": {
+    "away": "Chicago White Sox",
+    "day": false,
+    "home": "Cleveland Guardians"
+   },
+   "368618": {
+    "away": "Baltimore Orioles",
+    "day": false,
+    "home": "New York Mets"
+   },
+   "368668": {
+    "away": "Los Angeles Dodgers",
+    "day": false,
+    "home": "Cincinnati Reds"
+   },
+   "368780": {
+    "away": "Detroit Tigers",
+    "day": false,
+    "home": "Toronto Blue Jays"
+   },
+   "368928": {
+    "away": "Miami Marlins",
+    "day": false,
+    "home": "Arizona Diamondbacks"
+   },
+   "368981": {
+    "away": "Seattle Mariners",
+    "day": false,
+    "home": "Los Angeles Angels"
+   },
+   "369030": {
+    "away": "Atlanta Braves",
+    "day": false,
+    "home": "Chicago Cubs"
+   },
+   "369187": {
+    "away": "San Francisco Giants",
+    "day": false,
+    "home": "St. Louis Cardinals"
+   },
+   "369228": {
+    "away": "San Diego Padres",
+    "day": false,
+    "home": "Colorado Rockies"
+   }
+  },
+  "picks": [
+   {
+    "bet_on": "Cleveland Guardians",
+    "gid": "368522",
+    "market": "獨贏",
+    "rf": null,
+    "score": 53.1,
+    "top5": true,
+    "top_sides": true
+   },
+   {
+    "bet_on": "Toronto Blue Jays",
+    "gid": "368780",
+    "market": "獨贏",
+    "score": 48.3,
+    "top5": false
+   },
+   {
+    "bet_on": "New York Yankees",
+    "gid": "368054",
+    "market": "獨贏",
+    "rf": true,
+    "score": 50.0,
+    "top5": true,
+    "top_sides": true
+   },
+   {
+    "bet_on": "Atlanta Braves",
+    "gid": "369030",
+    "market": "獨贏",
+    "score": 46.0,
+    "top5": false
+   },
+   {
+    "bet_on": "St. Louis Cardinals",
+    "gid": "369187",
+    "market": "讓 1.5",
+    "rf": null,
+    "score": 54.6,
+    "top5": true,
+    "top_sides": true
+   },
+   {
+    "bet_on": null,
+    "gid": "369187",
+    "line": "7.0",
+    "market": "Over",
+    "rf": true,
+    "score": 59.2,
+    "top5": true,
+    "top_totals": true
+   },
+   {
+    "bet_on": "Los Angeles Angels",
+    "gid": "368981",
+    "market": "讓 1.5",
+    "rf": null,
+    "score": 63.1,
+    "top5": true,
+    "top_sides": true
+   }
+  ],
   "results": {}
  }
 }
