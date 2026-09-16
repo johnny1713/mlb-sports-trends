@@ -17787,9 +17787,9 @@
     "home": "Washington Nationals"
    },
    "368034": {
-    "away": "Chicago White Sox",
+    "away": "White Sox",
     "day": true,
-    "home": "Cleveland Guardians"
+    "home": "Guardians"
    },
    "368182": {
     "away": "Athletics Athletics",
@@ -17812,9 +17812,9 @@
     "home": "Colorado Rockies"
    },
    "368817": {
-    "away": "San Francisco Giants",
+    "away": "Giants",
     "day": true,
-    "home": "St. Louis Cardinals"
+    "home": "Cardinals"
    },
    "368891": {
     "away": "Kansas City Royals",
@@ -17832,9 +17832,9 @@
     "home": "Chicago Cubs"
    },
    "369444": {
-    "away": "New York Yankees",
+    "away": "Yankees",
     "day": true,
-    "home": "Minnesota Twins"
+    "home": "Twins"
    },
    "369739": {
     "away": "Boston Red Sox",
@@ -17852,14 +17852,14 @@
     "home": "Arizona Diamondbacks"
    },
    "370294": {
-    "away": "Detroit Tigers",
+    "away": "Tigers",
     "day": true,
-    "home": "Toronto Blue Jays"
+    "home": "Blue Jays"
    }
   },
   "picks": [
    {
-    "bet_on": "Cleveland Guardians",
+    "bet_on": "Guardians",
     "gid": "368034",
     "market": "獨贏",
     "score": 52.0,
@@ -17867,7 +17867,7 @@
     "top_sides": true
    },
    {
-    "bet_on": "Chicago White Sox",
+    "bet_on": "White Sox",
     "gid": "368034",
     "market": "受讓 1.5",
     "score": 54.3,
@@ -17893,7 +17893,7 @@
     "top_totals": true
    },
    {
-    "bet_on": "New York Yankees",
+    "bet_on": "Yankees",
     "gid": "369444",
     "market": "獨贏",
     "rf": true,
@@ -17902,14 +17902,14 @@
     "top_sides": true
    },
    {
-    "bet_on": "New York Yankees",
+    "bet_on": "Yankees",
     "gid": "369444",
     "market": "讓 1.5",
     "score": 51.7,
     "top5": false
    },
    {
-    "bet_on": "Toronto Blue Jays",
+    "bet_on": "Blue Jays",
     "gid": "370294",
     "market": "獨贏",
     "score": 49.2,
@@ -17950,7 +17950,7 @@
    {
     "bet_on": null,
     "gid": "368891",
-    "line": "8.0",
+    "line": "8.5",
     "market": "Under",
     "rf": true,
     "score": 56.6,
