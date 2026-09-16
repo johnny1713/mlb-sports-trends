@@ -17859,30 +17859,6 @@
   },
   "picks": [
    {
-    "bet_on": "Guardians",
-    "gid": "368034",
-    "market": "獨贏",
-    "score": 52.0,
-    "top5": false,
-    "top_sides": true
-   },
-   {
-    "bet_on": "White Sox",
-    "gid": "368034",
-    "market": "受讓 1.5",
-    "score": 54.3,
-    "top5": false,
-    "top_sides": true
-   },
-   {
-    "bet_on": null,
-    "gid": "368034",
-    "line": "6.5",
-    "market": "Over",
-    "score": 45.4,
-    "top5": false
-   },
-   {
     "bet_on": null,
     "gid": "368817",
     "line": "8.0",
@@ -17950,7 +17926,7 @@
    {
     "bet_on": null,
     "gid": "368891",
-    "line": "8.5",
+    "line": "8.0",
     "market": "Under",
     "rf": true,
     "score": 56.6,
@@ -17965,6 +17941,30 @@
     "score": 66.5,
     "top5": true,
     "top_sides": true
+   },
+   {
+    "bet_on": "Guardians",
+    "gid": "368034",
+    "market": "獨贏",
+    "score": 52.0,
+    "top5": false,
+    "top_sides": true
+   },
+   {
+    "bet_on": "White Sox",
+    "gid": "368034",
+    "market": "受讓 1.5",
+    "score": 54.3,
+    "top5": false,
+    "top_sides": true
+   },
+   {
+    "bet_on": null,
+    "gid": "368034",
+    "line": "6.5",
+    "market": "Over",
+    "score": 45.4,
+    "top5": false
    }
   ],
   "results": {}
