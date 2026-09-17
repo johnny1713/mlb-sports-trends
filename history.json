@@ -18038,9 +18038,9 @@
     "home": "Los Angeles Angels"
    },
    "368385": {
-    "away": "San Diego Padres",
+    "away": "Padres",
     "day": true,
-    "home": "Colorado Rockies"
+    "home": "Rockies"
    },
    "368636": {
     "away": "Kansas City Royals",
@@ -18073,30 +18073,14 @@
     "home": "Chicago White Sox"
    },
    "369293": {
-    "away": "Athletics Athletics",
+    "away": "Athletics",
     "day": true,
-    "home": "Tampa Bay Rays"
+    "home": "Rays"
    }
   },
   "picks": [
    {
-    "bet_on": "Pirates",
-    "gid": "368933",
-    "market": "受讓 1.5",
-    "score": 51.4,
-    "top5": false,
-    "top_sides": true
-   },
-   {
-    "bet_on": null,
-    "gid": "368757",
-    "line": "9.5",
-    "market": "Under",
-    "score": 49.9,
-    "top5": false
-   },
-   {
-    "bet_on": "Athletics Athletics",
+    "bet_on": "Athletics",
     "gid": "369293",
     "market": "受讓 1.5",
     "rf": false,
@@ -18107,7 +18091,7 @@
    {
     "bet_on": null,
     "gid": "368385",
-    "line": "10.0",
+    "line": "10.5",
     "market": "Over",
     "rf": true,
     "score": 69.8,
@@ -18136,11 +18120,27 @@
    {
     "bet_on": "Los Angeles Angels",
     "gid": "367895",
-    "market": "讓 1.5",
+    "market": "受讓 1.5",
     "rf": null,
     "score": 57.1,
     "top5": true,
     "top_sides": true
+   },
+   {
+    "bet_on": "Pirates",
+    "gid": "368933",
+    "market": "受讓 1.5",
+    "score": 51.4,
+    "top5": false,
+    "top_sides": true
+   },
+   {
+    "bet_on": null,
+    "gid": "368757",
+    "line": "9.5",
+    "market": "Under",
+    "score": 49.9,
+    "top5": false
    }
   ],
   "results": {}
