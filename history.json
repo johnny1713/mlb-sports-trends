@@ -18080,15 +18080,6 @@
   },
   "picks": [
    {
-    "bet_on": "Athletics",
-    "gid": "369293",
-    "market": "受讓 1.5",
-    "rf": false,
-    "score": 63.8,
-    "top5": true,
-    "top_sides": true
-   },
-   {
     "bet_on": null,
     "gid": "368385",
     "line": "10.5",
@@ -18141,6 +18132,15 @@
     "market": "Under",
     "score": 49.9,
     "top5": false
+   },
+   {
+    "bet_on": "Athletics",
+    "gid": "369293",
+    "market": "受讓 1.5",
+    "rf": false,
+    "score": 63.8,
+    "top5": true,
+    "top_sides": true
    }
   ],
   "results": {}
