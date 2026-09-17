@@ -18053,14 +18053,14 @@
     "home": "Texas Rangers"
    },
    "368757": {
-    "away": "Los Angeles Dodgers",
+    "away": "Dodgers",
     "day": true,
-    "home": "Cincinnati Reds"
+    "home": "Reds"
    },
    "368933": {
-    "away": "Milwaukee Brewers",
+    "away": "Brewers",
     "day": true,
-    "home": "Pittsburgh Pirates"
+    "home": "Pirates"
    },
    "369112": {
     "away": "Philadelphia Phillies",
@@ -18080,7 +18080,7 @@
   },
   "picks": [
    {
-    "bet_on": "Pittsburgh Pirates",
+    "bet_on": "Pirates",
     "gid": "368933",
     "market": "受讓 1.5",
     "score": 51.4,
@@ -18107,7 +18107,7 @@
    {
     "bet_on": null,
     "gid": "368385",
-    "line": "10.5",
+    "line": "10.0",
     "market": "Over",
     "rf": true,
     "score": 69.8,
@@ -18136,7 +18136,7 @@
    {
     "bet_on": "Los Angeles Angels",
     "gid": "367895",
-    "market": "受讓 1.5",
+    "market": "讓 1.5",
     "rf": null,
     "score": 57.1,
     "top5": true,
