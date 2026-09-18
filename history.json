@@ -18303,7 +18303,7 @@
    {
     "bet_on": "Philadelphia Phillies",
     "gid": "368268",
-    "market": "讓 1.5",
+    "market": "受讓 1.5",
     "rf": null,
     "score": 55.5,
     "top5": true,
@@ -18346,7 +18346,7 @@
    {
     "bet_on": null,
     "gid": "368357",
-    "line": "7.5",
+    "line": "7.0",
     "market": "Over",
     "score": 53.5,
     "top5": false,
@@ -18355,7 +18355,7 @@
    {
     "bet_on": null,
     "gid": "369525",
-    "line": "7.5",
+    "line": "7.0",
     "market": "Over",
     "rf": true,
     "score": 67.6,
@@ -18374,7 +18374,7 @@
    {
     "bet_on": null,
     "gid": "370252",
-    "line": "8.0",
+    "line": "7.5",
     "market": "Over",
     "score": 50.4,
     "top5": false,
