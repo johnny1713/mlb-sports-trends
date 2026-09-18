@@ -18262,14 +18262,6 @@
   },
   "picks": [
    {
-    "bet_on": "Pittsburgh Pirates",
-    "gid": "369854",
-    "market": "獨贏",
-    "score": 52.1,
-    "top5": false,
-    "top_sides": true
-   },
-   {
     "bet_on": "Cincinnati Reds",
     "gid": "370167",
     "market": "獨贏",
@@ -18281,6 +18273,14 @@
     "gid": "370167",
     "market": "讓 1.5",
     "score": 52.7,
+    "top5": false,
+    "top_sides": true
+   },
+   {
+    "bet_on": "Pittsburgh Pirates",
+    "gid": "369854",
+    "market": "獨贏",
+    "score": 52.1,
     "top5": false,
     "top_sides": true
    },
