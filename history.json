@@ -18507,9 +18507,9 @@
     "home": "Pittsburgh Pirates"
    },
    "369988": {
-    "away": "Detroit Tigers",
+    "away": "Tigers",
     "day": true,
-    "home": "Chicago White Sox"
+    "home": "White Sox"
    },
    "370003": {
     "away": "Chicago Cubs",
@@ -18565,7 +18565,7 @@
    {
     "bet_on": "Pittsburgh Pirates",
     "gid": "369672",
-    "market": "讓 1.5",
+    "market": "受讓 1.5",
     "score": 49.9,
     "top5": false
    },
