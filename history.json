@@ -18563,17 +18563,17 @@
     "top5": false
    },
    {
-    "bet_on": "Pittsburgh Pirates",
-    "gid": "369672",
-    "market": "受讓 1.5",
-    "score": 49.9,
-    "top5": false
-   },
-   {
     "bet_on": "Cincinnati Reds",
     "gid": "370003",
     "market": "獨贏",
     "score": 43.4,
+    "top5": false
+   },
+   {
+    "bet_on": "Pittsburgh Pirates",
+    "gid": "369672",
+    "market": "受讓 1.5",
+    "score": 49.9,
     "top5": false
    },
    {
