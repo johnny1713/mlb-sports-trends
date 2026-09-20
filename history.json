@@ -18741,9 +18741,9 @@
     "home": "Cardinals"
    },
    "368389": {
-    "away": "Seattle Mariners",
+    "away": "Mariners",
     "day": true,
-    "home": "Colorado Rockies"
+    "home": "Rockies"
    },
    "368722": {
     "away": "Milwaukee Brewers",
@@ -18810,7 +18810,7 @@
    {
     "bet_on": "Pirates",
     "gid": "369947",
-    "market": "受讓 1.5",
+    "market": "讓 1.5",
     "rf": null,
     "score": 57.4,
     "top5": true,
@@ -18866,22 +18866,14 @@
     "top_totals": true
    },
    {
-    "bet_on": null,
-    "gid": "368889",
-    "line": "7.0",
-    "market": "Over",
-    "score": 50.6,
-    "top5": false
-   },
-   {
-    "bet_on": "Colorado Rockies",
+    "bet_on": "Rockies",
     "gid": "368389",
     "market": "獨贏",
     "score": 42.6,
     "top5": false
    },
    {
-    "bet_on": "Colorado Rockies",
+    "bet_on": "Rockies",
     "gid": "368389",
     "market": "受讓 1.5",
     "rf": null,
@@ -18895,6 +18887,14 @@
     "line": "10.5",
     "market": "Over",
     "score": 50.5,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "368889",
+    "line": "6.5",
+    "market": "Over",
+    "score": 50.6,
     "top5": false
    },
    {
