@@ -18950,6 +18950,121 @@
     "top_sides": true
    }
   ],
+  "results": {
+   "368003": {
+    "away": 1,
+    "home": 5
+   },
+   "368152": {
+    "away": 3,
+    "home": 5
+   },
+   "368389": {
+    "away": 2,
+    "home": 1
+   },
+   "368722": {
+    "away": 3,
+    "home": 0
+   },
+   "368877": {
+    "away": 8,
+    "home": 0
+   },
+   "368889": {
+    "away": 0,
+    "home": 1
+   },
+   "368896": {
+    "away": 3,
+    "home": 7
+   },
+   "369169": {
+    "away": 9,
+    "home": 1
+   },
+   "369219": {
+    "away": 7,
+    "home": 2
+   },
+   "369254": {
+    "away": 4,
+    "home": 8
+   },
+   "369364": {
+    "away": 4,
+    "home": 2
+   },
+   "369471": {
+    "away": 1,
+    "home": 3
+   },
+   "369766": {
+    "away": 7,
+    "home": 2
+   },
+   "369947": {
+    "away": 3,
+    "home": 4
+   },
+   "370061": {
+    "away": 1,
+    "home": 8
+   }
+  }
+ },
+ "2026-09-21": {
+  "games": {
+   "368076": {
+    "away": "Minnesota Twins",
+    "day": false,
+    "home": "San Francisco Giants"
+   },
+   "368201": {
+    "away": "Washington Nationals",
+    "day": false,
+    "home": "Detroit Tigers"
+   },
+   "368951": {
+    "away": "Toronto Blue Jays",
+    "day": false,
+    "home": "Baltimore Orioles"
+   }
+  },
+  "picks": [
+   {
+    "bet_on": "Toronto Blue Jays",
+    "gid": "368951",
+    "market": "獨贏",
+    "score": 49.9,
+    "top5": false
+   },
+   {
+    "bet_on": "Washington Nationals",
+    "gid": "368201",
+    "market": "獨贏",
+    "score": 52.2,
+    "top5": false,
+    "top_sides": true
+   },
+   {
+    "bet_on": "Detroit Tigers",
+    "gid": "368201",
+    "market": "讓 1.5",
+    "score": 49.4,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "368076",
+    "line": "8.0",
+    "market": "Over",
+    "rf": true,
+    "score": 51.4,
+    "top5": true,
+    "top_totals": true
+   }
+  ],
   "results": {}
  }
 }
