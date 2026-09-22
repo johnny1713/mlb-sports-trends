@@ -19134,14 +19134,9 @@
     "home": "Chicago Cubs"
    },
    "369131": {
-    "away": "Tampa Bay Rays",
+    "away": "Rays",
     "day": true,
-    "home": "New York Yankees"
-   },
-   "369235": {
-    "away": "Toronto Blue Jays",
-    "day": false,
-    "home": "Baltimore Orioles"
+    "home": "Yankees"
    },
    "369825": {
     "away": "Minnesota Twins",
@@ -19160,22 +19155,6 @@
    }
   },
   "picks": [
-   {
-    "bet_on": "Tampa Bay Rays",
-    "gid": "369131",
-    "market": "受讓 1.5",
-    "rf": null,
-    "score": 61.2,
-    "top5": true,
-    "top_sides": true
-   },
-   {
-    "bet_on": "Toronto Blue Jays",
-    "gid": "369235",
-    "market": "獨贏",
-    "score": 49.7,
-    "top5": false
-   },
    {
     "bet_on": "Pittsburgh Pirates",
     "gid": "368579",
@@ -19247,6 +19226,14 @@
     "top_totals": true
    },
    {
+    "bet_on": "Kansas City Royals",
+    "gid": "368000",
+    "market": "獨贏",
+    "score": 51.5,
+    "top5": false,
+    "top_sides": true
+   },
+   {
     "bet_on": null,
     "gid": "369103",
     "line": "6.5",
@@ -19254,14 +19241,6 @@
     "score": 52.1,
     "top5": false,
     "top_totals": true
-   },
-   {
-    "bet_on": "Kansas City Royals",
-    "gid": "368000",
-    "market": "獨贏",
-    "score": 51.5,
-    "top5": false,
-    "top_sides": true
    },
    {
     "bet_on": "Texas Rangers",
@@ -19273,7 +19252,7 @@
    {
     "bet_on": null,
     "gid": "368873",
-    "line": "8.0",
+    "line": "7.5",
     "market": "Over",
     "score": 53.1,
     "top5": false,
@@ -19329,12 +19308,21 @@
    {
     "bet_on": null,
     "gid": "368446",
-    "line": "8.5",
+    "line": "8.0",
     "market": "Over",
     "rf": true,
     "score": 62.5,
     "top5": true,
     "top_totals": true
+   },
+   {
+    "bet_on": "Rays",
+    "gid": "369131",
+    "market": "受讓 1.5",
+    "rf": null,
+    "score": 61.2,
+    "top5": true,
+    "top_sides": true
    }
   ],
   "results": {}
