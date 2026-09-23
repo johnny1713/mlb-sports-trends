@@ -19070,6 +19070,10 @@
     "away": 2,
     "home": 5
    },
+   "368201": {
+    "away": 2,
+    "home": 9
+   },
    "368951": {
     "away": 3,
     "home": 4
@@ -19536,7 +19540,7 @@
    {
     "bet_on": null,
     "gid": "368418",
-    "line": "7.5",
+    "line": "7.0",
     "market": "Over",
     "score": 49.2,
     "top5": false
