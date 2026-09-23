@@ -19425,9 +19425,9 @@
     "home": "Texas Rangers"
    },
    "368783": {
-    "away": "Washington Nationals",
+    "away": "Nationals",
     "day": true,
-    "home": "Detroit Tigers"
+    "home": "Tigers"
    },
    "369201": {
     "away": "St. Louis Cardinals",
@@ -19435,9 +19435,9 @@
     "home": "Pittsburgh Pirates"
    },
    "369235": {
-    "away": "Toronto Blue Jays",
+    "away": "Blue Jays",
     "day": true,
-    "home": "Baltimore Orioles"
+    "home": "Orioles"
    },
    "369346": {
     "away": "San Diego Padres",
@@ -19477,21 +19477,21 @@
   },
   "picks": [
    {
-    "bet_on": "Washington Nationals",
+    "bet_on": "Nationals",
     "gid": "368783",
     "market": "獨贏",
     "score": 49.8,
     "top5": false
    },
    {
-    "bet_on": "Detroit Tigers",
+    "bet_on": "Tigers",
     "gid": "368783",
     "market": "讓 1.5",
     "score": 47.8,
     "top5": false
    },
    {
-    "bet_on": "Toronto Blue Jays",
+    "bet_on": "Blue Jays",
     "gid": "369235",
     "market": "獨贏",
     "score": 49.7,
