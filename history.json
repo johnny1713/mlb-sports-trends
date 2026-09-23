@@ -19470,33 +19470,12 @@
     "home": "Boston Red Sox"
    },
    "370240": {
-    "away": "Minnesota Twins",
+    "away": "Twins",
     "day": true,
-    "home": "San Francisco Giants"
+    "home": "Giants"
    }
   },
   "picks": [
-   {
-    "bet_on": "Nationals",
-    "gid": "368783",
-    "market": "獨贏",
-    "score": 49.8,
-    "top5": false
-   },
-   {
-    "bet_on": "Tigers",
-    "gid": "368783",
-    "market": "讓 1.5",
-    "score": 47.8,
-    "top5": false
-   },
-   {
-    "bet_on": "Blue Jays",
-    "gid": "369235",
-    "market": "獨贏",
-    "score": 49.7,
-    "top5": false
-   },
    {
     "bet_on": null,
     "gid": "370240",
@@ -19629,7 +19608,7 @@
    {
     "bet_on": null,
     "gid": "369346",
-    "line": "7.5",
+    "line": "7.0",
     "market": "Over",
     "rf": true,
     "score": 61.4,
@@ -19651,6 +19630,27 @@
     "score": 56.0,
     "top5": true,
     "top_sides": true
+   },
+   {
+    "bet_on": "Nationals",
+    "gid": "368783",
+    "market": "獨贏",
+    "score": 49.8,
+    "top5": false
+   },
+   {
+    "bet_on": "Tigers",
+    "gid": "368783",
+    "market": "讓 1.5",
+    "score": 47.8,
+    "top5": false
+   },
+   {
+    "bet_on": "Blue Jays",
+    "gid": "369235",
+    "market": "獨贏",
+    "score": 49.7,
+    "top5": false
    }
   ],
   "results": {}
