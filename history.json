@@ -19723,14 +19723,14 @@
  "2026-09-24": {
   "games": {
    "368206": {
-    "away": "Miami Marlins",
+    "away": "Marlins",
     "day": true,
-    "home": "Chicago Cubs"
+    "home": "Cubs"
    },
    "368713": {
-    "away": "Arizona Diamondbacks",
+    "away": "Diamondbacks",
     "day": true,
-    "home": "Colorado Rockies"
+    "home": "Rockies"
    },
    "368818": {
     "away": "Los Angeles Angels",
@@ -19743,9 +19743,9 @@
     "home": "Athletics Athletics"
    },
    "369179": {
-    "away": "Chicago White Sox",
+    "away": "White Sox",
     "day": true,
-    "home": "Kansas City Royals"
+    "home": "Royals"
    },
    "369431": {
     "away": "Cardinals",
@@ -19763,9 +19763,9 @@
     "home": "New York Yankees"
    },
    "369999": {
-    "away": "New York Mets",
+    "away": "Mets",
     "day": true,
-    "home": "Texas Rangers"
+    "home": "Rangers"
    },
    "370090": {
     "away": "Milwaukee Brewers",
@@ -19785,29 +19785,14 @@
   },
   "picks": [
    {
-    "bet_on": "Pirates",
-    "gid": "369431",
-    "market": "獨贏",
-    "score": 51.5,
-    "top5": false,
-    "top_sides": true
-   },
-   {
-    "bet_on": "Pirates",
-    "gid": "369431",
-    "market": "讓 1.5",
-    "score": 57.2,
-    "top5": false
-   },
-   {
-    "bet_on": "Kansas City Royals",
+    "bet_on": "Royals",
     "gid": "369179",
     "market": "獨贏",
     "score": 48.7,
     "top5": false
    },
    {
-    "bet_on": "Miami Marlins",
+    "bet_on": "Marlins",
     "gid": "368206",
     "market": "獨贏",
     "score": 43.3,
@@ -19834,7 +19819,7 @@
     "top_totals": true
    },
    {
-    "bet_on": "Arizona Diamondbacks",
+    "bet_on": "Diamondbacks",
     "gid": "368713",
     "market": "獨贏",
     "rf": null,
@@ -19843,7 +19828,7 @@
     "top_sides": true
    },
    {
-    "bet_on": "Colorado Rockies",
+    "bet_on": "Rockies",
     "gid": "368713",
     "market": "受讓 1.5",
     "score": 47.6,
@@ -19875,6 +19860,21 @@
     "score": 61.3,
     "top5": true,
     "top_sides": true
+   },
+   {
+    "bet_on": "Pirates",
+    "gid": "369431",
+    "market": "獨贏",
+    "score": 51.5,
+    "top5": false,
+    "top_sides": true
+   },
+   {
+    "bet_on": "Pirates",
+    "gid": "369431",
+    "market": "讓 1.5",
+    "score": 57.2,
+    "top5": false
    }
   ],
   "results": {}
