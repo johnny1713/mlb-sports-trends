@@ -19748,9 +19748,9 @@
     "home": "Kansas City Royals"
    },
    "369431": {
-    "away": "St. Louis Cardinals",
+    "away": "Cardinals",
     "day": true,
-    "home": "Pittsburgh Pirates"
+    "home": "Pirates"
    },
    "369612": {
     "away": "San Diego Padres",
@@ -19785,7 +19785,7 @@
   },
   "picks": [
    {
-    "bet_on": "Pittsburgh Pirates",
+    "bet_on": "Pirates",
     "gid": "369431",
     "market": "獨贏",
     "score": 51.5,
@@ -19793,7 +19793,7 @@
     "top_sides": true
    },
    {
-    "bet_on": "Pittsburgh Pirates",
+    "bet_on": "Pirates",
     "gid": "369431",
     "market": "讓 1.5",
     "score": 57.2,
