@@ -19937,7 +19937,7 @@
    },
    "368333": {
     "away": "Baltimore Orioles",
-    "day": false,
+    "day": true,
     "home": "New York Yankees"
    },
    "368429": {
@@ -20007,7 +20007,7 @@
    },
    "370280": {
     "away": "Baltimore Orioles",
-    "day": true,
+    "day": false,
     "home": "New York Yankees"
    },
    "370306": {
@@ -20062,7 +20062,7 @@
     "gid": "368968",
     "line": "7.0",
     "market": "Under",
-    "rf": null,
+    "rf": false,
     "score": 54.1,
     "top5": true,
     "top_totals": true
@@ -20119,7 +20119,7 @@
     "bet_on": "Los Angeles Dodgers",
     "gid": "369208",
     "market": "獨贏",
-    "rf": null,
+    "rf": true,
     "score": 58.0,
     "top5": true,
     "top_sides": true
