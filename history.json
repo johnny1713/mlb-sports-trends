@@ -20226,9 +20226,9 @@
     "home": "Chicago White Sox"
    },
    "368605": {
-    "away": "Pittsburgh Pirates",
+    "away": "Pirates",
     "day": true,
-    "home": "Detroit Tigers"
+    "home": "Tigers"
    },
    "368643": {
     "away": "St. Louis Cardinals",
@@ -20251,9 +20251,9 @@
     "home": "Athletics Athletics"
    },
    "369009": {
-    "away": "Cincinnati Reds",
+    "away": "Reds",
     "day": true,
-    "home": "Toronto Blue Jays"
+    "home": "Blue Jays"
    },
    "369141": {
     "away": "Los Angeles Angels",
@@ -20261,9 +20261,9 @@
     "home": "Seattle Mariners"
    },
    "369807": {
-    "away": "New York Mets",
+    "away": "Mets",
     "day": true,
-    "home": "Washington Nationals"
+    "home": "Nationals"
    },
    "370070": {
     "away": "Texas Rangers",
@@ -20273,7 +20273,7 @@
   },
   "picks": [
    {
-    "bet_on": "Pittsburgh Pirates",
+    "bet_on": "Pirates",
     "gid": "368605",
     "market": "獨贏",
     "rf": true,
@@ -20333,7 +20333,7 @@
    {
     "bet_on": null,
     "gid": "368041",
-    "line": "8.0",
+    "line": "8.5",
     "market": "Under",
     "score": 50.7,
     "top5": false,
