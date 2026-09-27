@@ -20540,14 +20540,6 @@
     "top_sides": true
    },
    {
-    "bet_on": "Chicago Cubs",
-    "gid": "369557",
-    "market": "讓 1.5",
-    "score": 51.6,
-    "top5": false,
-    "top_sides": true
-   },
-   {
     "bet_on": null,
     "gid": "367913",
     "line": "9.5",
@@ -20568,7 +20560,7 @@
    {
     "bet_on": null,
     "gid": "370020",
-    "line": "8.0",
+    "line": "8.5",
     "market": "Over",
     "score": 47.1,
     "top5": false
