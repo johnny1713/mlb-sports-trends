@@ -20634,6 +20634,108 @@
     "top_totals": true
    }
   ],
+  "results": {
+   "367894": {
+    "away": 5,
+    "home": 1
+   },
+   "367913": {
+    "away": 9,
+    "home": 0
+   },
+   "368179": {
+    "away": 4,
+    "home": 2
+   },
+   "368327": {
+    "away": 4,
+    "home": 6
+   },
+   "368361": {
+    "away": 3,
+    "home": 7
+   },
+   "368634": {
+    "away": 2,
+    "home": 3
+   },
+   "369084": {
+    "away": 1,
+    "home": 5
+   },
+   "369230": {
+    "away": 4,
+    "home": 9
+   },
+   "369557": {
+    "away": 6,
+    "home": 2
+   },
+   "369756": {
+    "away": 3,
+    "home": 7
+   },
+   "369866": {
+    "away": 3,
+    "home": 5
+   },
+   "370020": {
+    "away": 2,
+    "home": 4
+   },
+   "370119": {
+    "away": 4,
+    "home": 6
+   },
+   "370227": {
+    "away": 4,
+    "home": 6
+   }
+  }
+ },
+ "2026-09-28": {
+  "games": {
+   "394591": {
+    "away": "Boston Red Sox",
+    "day": false,
+    "home": "New York Yankees"
+   },
+   "394703": {
+    "away": "Chicago Cubs",
+    "day": false,
+    "home": "San Diego Padres"
+   },
+   "394706": {
+    "away": "Philadelphia Phillies",
+    "day": true,
+    "home": "Atlanta Braves"
+   },
+   "394707": {
+    "away": "Chicago White Sox",
+    "day": true,
+    "home": "Houston Astros"
+   }
+  },
+  "picks": [
+   {
+    "bet_on": "Philadelphia Phillies",
+    "gid": "394706",
+    "market": "受讓 1.5",
+    "rf": null,
+    "score": 56.9,
+    "top5": true,
+    "top_sides": true
+   },
+   {
+    "bet_on": "San Diego Padres",
+    "gid": "394703",
+    "market": "獨贏",
+    "rf": null,
+    "score": 54.0,
+    "top5": true,
+    "top_sides": true
+   }
+  ],
   "results": {}
  }
 }
