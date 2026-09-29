@@ -20736,7 +20736,12 @@
     "top_sides": true
    }
   ],
-  "results": {}
+  "results": {
+   "394706": {
+    "away": 3,
+    "home": 5
+   }
+  }
  },
  "2026-09-29": {
   "games": {
@@ -20763,20 +20768,20 @@
   },
   "picks": [
    {
-    "bet_on": "Phillies",
-    "gid": "394706",
-    "market": "受讓 1.5",
-    "rf": null,
-    "score": 56.9,
-    "top5": true,
-    "top_sides": true
-   },
-   {
     "bet_on": "San Diego Padres",
     "gid": "394703",
     "market": "獨贏",
     "rf": null,
     "score": 54.0,
+    "top5": true,
+    "top_sides": true
+   },
+   {
+    "bet_on": "Phillies",
+    "gid": "394706",
+    "market": "受讓 1.5",
+    "rf": null,
+    "score": 56.9,
     "top5": true,
     "top_sides": true
    }
