@@ -20737,5 +20737,50 @@
    }
   ],
   "results": {}
+ },
+ "2026-09-29": {
+  "games": {
+   "394591": {
+    "away": "Boston Red Sox",
+    "day": false,
+    "home": "New York Yankees"
+   },
+   "394703": {
+    "away": "Chicago Cubs",
+    "day": false,
+    "home": "San Diego Padres"
+   },
+   "394706": {
+    "away": "Philadelphia Phillies",
+    "day": true,
+    "home": "Atlanta Braves"
+   },
+   "394707": {
+    "away": "Chicago White Sox",
+    "day": true,
+    "home": "Houston Astros"
+   }
+  },
+  "picks": [
+   {
+    "bet_on": "Philadelphia Phillies",
+    "gid": "394706",
+    "market": "受讓 1.5",
+    "rf": null,
+    "score": 56.9,
+    "top5": true,
+    "top_sides": true
+   },
+   {
+    "bet_on": "San Diego Padres",
+    "gid": "394703",
+    "market": "獨贏",
+    "rf": null,
+    "score": 54.0,
+    "top5": true,
+    "top_sides": true
+   }
+  ],
+  "results": {}
  }
 }
