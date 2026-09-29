@@ -20751,9 +20751,9 @@
     "home": "San Diego Padres"
    },
    "394706": {
-    "away": "Philadelphia Phillies",
+    "away": "Phillies",
     "day": true,
-    "home": "Atlanta Braves"
+    "home": "Braves"
    },
    "394707": {
     "away": "Chicago White Sox",
@@ -20763,7 +20763,7 @@
   },
   "picks": [
    {
-    "bet_on": "Philadelphia Phillies",
+    "bet_on": "Phillies",
     "gid": "394706",
     "market": "受讓 1.5",
     "rf": null,
