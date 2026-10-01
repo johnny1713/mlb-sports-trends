@@ -20859,6 +20859,44 @@
     "top5": false
    }
   ],
+  "results": {
+   "394593": {
+    "away": 2,
+    "home": 9
+   },
+   "394704": {
+    "away": 1,
+    "home": 4
+   },
+   "394708": {
+    "away": 4,
+    "home": 3
+   },
+   "394710": {
+    "away": 7,
+    "home": 3
+   }
+  }
+ },
+ "2026-10-01": {
+  "games": {
+   "394711": {
+    "away": "Philadelphia Phillies",
+    "day": false,
+    "home": "Atlanta Braves"
+   }
+  },
+  "picks": [
+   {
+    "bet_on": "Atlanta Braves",
+    "gid": "394711",
+    "market": "獨贏",
+    "rf": null,
+    "score": 52.6,
+    "top5": true,
+    "top_sides": true
+   }
+  ],
   "results": {}
  }
 }
