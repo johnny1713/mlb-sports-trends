@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "4.1"
+APP_VERSION = "4.2"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -497,14 +497,13 @@ HOME_TZ_OFFSET = {
     'az': -3, 'ath': -3, 'laa': -3, 'lad': -3, 'sd': -3, 'sea': -3, 'sf': -3,               # 太平洋/亞利桑那
 }
 
-def parse_start_time_et(html_str):
+def parse_start_datetime_et(html_str):
     """
-    從單場頁面的 schema.org 資料取開賽時間，轉成與賽事列表相同的 "H:MM AM/PM ET" 格式。
+    從單場頁面的 schema.org `startDate`（UTC 絕對時間）取出美東的 datetime。
 
-    賽事列表的 gamebox 在比賽開打後會把開賽時間換成比分／局數，該場的時間就變成 "None"
-    （實測最早那輪 UTC 11:17 有 56% 場次抓不到）。單場頁面的 startDate 是 UTC 絕對時間、
-    不受賽況影響，而且那頁本來就要抓，不必多發一次請求。
-    已完賽的頁面同樣沒有 startDate，那種情況仍然回 None。
+    ⚠️ 只有**賽前**的頁面才有 startDate：進行中的是 `InProgress`、已完賽的兩者皆無
+    （見 CLAUDE.md covers 行為第 9 點）。抓不到一律回 None，呼叫端必須把 None
+    當成「不知道」而不是「不符」。
     """
     hit = re.search(r'"startDate"\s*:\s*"([^"]+)"', html_str or '')
     if not hit:
@@ -519,12 +518,25 @@ def parse_start_time_et(html_str):
         utc_dt = datetime(year, month, day, hour, minute, second, tzinfo=timezone.utc)
         try:
             from zoneinfo import ZoneInfo
-            et_dt = utc_dt.astimezone(ZoneInfo("America/New_York"))
+            return utc_dt.astimezone(ZoneInfo("America/New_York"))
         except Exception:
             # 無時區資料庫時以 UTC-4 近似，MLB 賽季均落在美東夏令時間內
             from datetime import timedelta
-            et_dt = utc_dt.astimezone(timezone(timedelta(hours=-4)))
+            return utc_dt.astimezone(timezone(timedelta(hours=-4)))
     except (ValueError, OverflowError):
+        return None
+
+
+def parse_start_time_et(html_str):
+    """
+    把 schema.org 的開賽時間轉成與賽事列表相同的 "H:MM AM/PM ET" 格式。
+
+    賽事列表的 gamebox 在比賽開打後會把開賽時間換成比分／局數，該場的時間就變成 "None"
+    （實測最早那輪 UTC 11:17 有 56% 場次抓不到）。單場頁面的 startDate 不受賽況影響，
+    而且那頁本來就要抓，不必多發一次請求。
+    """
+    et_dt = parse_start_datetime_et(html_str)
+    if not et_dt:
         return None
     return f"{et_dt.strftime('%I:%M %p').lstrip('0')} ET"
 
@@ -1165,6 +1177,11 @@ def parse_matchup_details(matchup):
     if not html_content:
         return None
 
+    # 這場實際的美東日期（賽前才有，見 parse_start_datetime_et）。
+    # 給呼叫端用來擋掉「賽事列表回了別一天的賽程」——休息日會發生，見 main() 的檢查。
+    _start_et = parse_start_datetime_et(html_content)
+    start_date_et = _start_et.strftime('%Y-%m-%d') if _start_et else None
+
     # 1. 提取隊伍名稱 (從 Schema 中提取)
     team_a = "主隊"
     team_b = "客隊"
@@ -1282,7 +1299,9 @@ def parse_matchup_details(matchup):
         'trends': raw_trends,
         'recent_form': recent_form,
         'game_time': game_time,
-        'is_day_game': is_day
+        'is_day_game': is_day,
+        # 這場實際的美東日期；賽前才抓得到，抓不到是 None（＝不知道，不是不符）
+        'start_date_et': start_date_et
     }
 
 def classify_and_process_trends(matchup):
@@ -5244,6 +5263,7 @@ def main():
         
     all_matchups_data = []
     failed_matchups = []   # 抓取/解析失敗的場次，用於在網頁上顯示警告
+    off_day_matchups = []  # 實際日期不是今天的場次（休息日時 covers 會回隔天的賽程）
 
     # 2. 迴圈抓取每對賽事的 picks 頁面並進行解析
     for i, matchup in enumerate(matchups_list):
@@ -5255,6 +5275,20 @@ def main():
             # 網站上不會有任何跡象。記下來，最後交給前端顯示警告。
             print(f"  [跳過] 無法抓取或解析該場對戰: {matchup['path']}")
             failed_matchups.append(matchup['path'].split('/')[-1])
+            continue
+
+        # ⚠️ 休息日時 covers 會回「下一個有比賽的日子」的賽程，`?selectedDate=` 擋不住
+        # （2026-09-28 與 10-02 實際發生：例行賽／外卡結束後的休息日，頁面標成當天，
+        # 實際上那幾場是隔天才打，使用者會在沒有比賽的日子看到推薦）。
+        # 單場頁面的 schema.org startDate 是 UTC 絕對時間，拿它換算成美東日期來對帳。
+        # ⚠️ 只在「確定不符」時才跳過：startDate 只有賽前才有，進行中／已完賽的頁面
+        # 沒有這個欄位（回 None），那是「不知道」而不是「不符」——若把 None 當成不符，
+        # 會把當天已開打的場次全部誤殺。我們要擋的是未來的賽程，而那一定是賽前頁面。
+        actual = matchup_data.get('start_date_et')
+        if actual and actual != date_str:
+            print(f"  [跳過] 該場實際是 {actual} 的比賽，不是 {date_str}"
+                  f"（covers 在休息日會回下一個有比賽的日子）: {matchup['path']}")
+            off_day_matchups.append((matchup['path'].split('/')[-1], actual))
             continue
             
         # 賽事列表與單場頁面都沒有開賽時間時（比賽已開打），沿用上一輪抓到的
@@ -5457,6 +5491,12 @@ def main():
     print(f"[+] 成功計算出今日「AI 推薦 Top 5」精選：{len(top_5_ai)} 項組合。")
     if failed_matchups:
         print(f"[!] 有 {len(failed_matchups)} 場抓取失敗，網頁上會顯示警告：{failed_matchups}")
+    if off_day_matchups:
+        print(f"[!] 有 {len(off_day_matchups)} 場的實際日期不是 {date_str}，已排除："
+              f"{off_day_matchups}")
+        if not all_matchups_data:
+            print(f"[!] {date_str} 沒有任何屬於當天的比賽（休息日）。"
+                  f"covers 回的是後面幾天的賽程，全部已排除。")
 
     # 6. 累積戰績：記下今天的推薦，並補抓前幾天的比賽結果
     history = load_history()
