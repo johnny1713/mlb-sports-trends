@@ -10,7 +10,7 @@ from collections import Counter
 from datetime import datetime
 
 # 網頁標題列顯示的版本號。使用者看得到，有新增/改變功能時就往上調。
-APP_VERSION = "4.2"
+APP_VERSION = "4.3"
 
 # 趨勢樣本數最低門檻：低於此場次數的趨勢視為小樣本雜訊，不參與推薦媒合
 MIN_TREND_SAMPLE = 8
@@ -4751,13 +4751,18 @@ def render_track_record(track):
 
 
 def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, date_str,
-                            failed_count=0, expected_count=None, track_record=None):
+                            failed_count=0, expected_count=None, track_record=None,
+                            off_day_count=0):
     """
     將爬取與運算後的結果導出為一個極具質感的本機互動式繁體中文 HTML 網頁。
 
     failed_count / expected_count 用來在頁面上明示「有幾場沒抓到」——抓取失敗原本是
     完全靜默的（那場直接從資料裡消失），使用者只會看到今天少了一場，無從分辨是
     covers 沒排還是我們漏抓。
+
+    off_day_count 是「實際日期不是今天、已被排除」的場次數（休息日時 covers 會回
+    下一個有比賽的日子，見 main() 的 start_date_et 檢查）。休息日整頁會是空的，
+    必須明說原因——空白頁和「壞掉」在畫面上長得一模一樣。
     """
     track_section = render_track_record(track_record)
     total_matches = len(matchups_data)
@@ -4774,6 +4779,19 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             f'（賽事列表共 {expected} 場，實際分析 {total_matches} 場）。'
             '缺少的場次不會出現在下方清單與推薦中，並非當天沒有該場比賽——'
             '通常是 covers.com 暫時無回應，下一輪自動更新會重試。'
+            '</div>'
+        )
+
+    # 休息日說明列。⚠️ 只在「當天一場都沒有」時才出現：
+    # 若部分場次屬於今天、部分被排除，頁面本來就有內容，不必解釋。
+    off_day_notice = ''
+    if off_day_count and not total_matches:
+        off_day_notice = (
+            '<div class="fetch-warning">'
+            '🗓️ <strong>今天沒有比賽</strong>'
+            f'（covers 回的是後面幾天的 {off_day_count} 場賽程，已排除）。'
+            '季後賽系列賽之間會有休息日，這天本來就沒有可下的場次——'
+            '不是網站壞掉，也不是抓取失敗。下一個有比賽的日子會自動恢復。'
             '</div>'
         )
 
@@ -4854,7 +4872,7 @@ def generate_html_dashboard(matchups_data, top_5_sides, top_5_totals, top_5_ai, 
             </div>
         </header>
 
-        {fetch_warning}
+        {fetch_warning}{off_day_notice}
 
         <!-- 今日 AI 精選 Top 5 推薦專區 -->
         <section class="ai-section" id="ai-top5-section">
@@ -5043,13 +5061,23 @@ def replay_from_html(path="index.html"):
     if m_warn:
         failed_count, expected_count = int(m_warn.group(1)), int(m_warn.group(2))
 
+    # 休息日說明列同理：有那段文字就代表當時被排除了幾場。
+    # ⚠️ 不補這一段的話，replay 休息日的頁面會把說明列弄不見，
+    # 「只改樣板就該位元組相同」那個安全網也會跟著失效。
+    off_day_count = 0
+    m_off = re.search(r'covers 回的是後面幾天的 (\d+) 場賽程', html_text)
+    if m_off:
+        off_day_count = int(m_off.group(1))
+
     print(f"[*] Replay 模式：從 {path} 讀回 {len(matchups_data)} 場賽事資料（{date_str}），不連網。")
     print(f"    Top 5 勝負 {len(top_sides)} 筆 / 大小分 {len(top_totals)} 筆 / AI {len(top_ai)} 筆"
-          + (f" / 當時有 {failed_count} 場抓取失敗" if failed_count else ""))
+          + (f" / 當時有 {failed_count} 場抓取失敗" if failed_count else "")
+          + (f" / 當時有 {off_day_count} 場不屬於當天被排除" if off_day_count else ""))
     track_record = compute_track_record(load_history(), date_str)
     generate_html_dashboard(matchups_data, top_sides, top_totals, top_ai, date_str,
                             track_record=track_record,
-                            failed_count=failed_count, expected_count=expected_count)
+                            failed_count=failed_count, expected_count=expected_count,
+                            off_day_count=off_day_count)
 
 
 # ==========================================
@@ -5515,7 +5543,8 @@ def main():
     generate_html_dashboard(all_matchups_data, top_5_sides, top_5_totals, top_5_ai, date_str,
                             failed_count=len(failed_matchups),
                             expected_count=len(matchups_list),
-                            track_record=track_record)
+                            track_record=track_record,
+                            off_day_count=len(off_day_matchups))
     
     print("====================================================")
     print("                  抓取與分析完成！")
