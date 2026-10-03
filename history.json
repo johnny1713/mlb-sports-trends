@@ -20959,9 +20959,9 @@
  "2026-10-03": {
   "games": {
    "394749": {
-    "away": "Chicago White Sox",
+    "away": "White Sox",
     "day": true,
-    "home": "Cleveland Guardians"
+    "home": "Guardians"
    },
    "394751": {
     "away": "New York Yankees",
@@ -20981,7 +20981,7 @@
   },
   "picks": [
    {
-    "bet_on": "Cleveland Guardians",
+    "bet_on": "Guardians",
     "gid": "394749",
     "market": "獨贏",
     "score": 45.1,
