@@ -20530,5 +20530,29 @@
     "home": 5
    }
   }
+ },
+ "2026-10-05": {
+  "games": {
+   "394745": {
+    "away": "Chicago White Sox",
+    "day": false,
+    "home": "Cleveland Guardians"
+   },
+   "394750": {
+    "away": "New York Yankees",
+    "day": false,
+    "home": "Tampa Bay Rays"
+   }
+  },
+  "picks": [
+   {
+    "bet_on": "Cleveland Guardians",
+    "gid": "394745",
+    "market": "獨贏",
+    "score": 46.8,
+    "top5": false
+   }
+  ],
+  "results": {}
  }
 }
