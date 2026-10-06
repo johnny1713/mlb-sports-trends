@@ -20553,6 +20553,41 @@
     "top5": false
    }
   ],
+  "results": {
+   "394745": {
+    "away": 4,
+    "home": 3
+   },
+   "394750": {
+    "away": 2,
+    "home": 5
+   }
+  }
+ },
+ "2026-10-06": {
+  "games": {
+   "394757": {
+    "away": "Milwaukee Brewers",
+    "day": false,
+    "home": "San Diego Padres"
+   },
+   "394800": {
+    "away": "Los Angeles Dodgers",
+    "day": false,
+    "home": "Atlanta Braves"
+   }
+  },
+  "picks": [
+   {
+    "bet_on": "San Diego Padres",
+    "gid": "394757",
+    "market": "讓 1.5",
+    "rf": true,
+    "score": 52.0,
+    "top5": true,
+    "top_sides": true
+   }
+  ],
   "results": {}
  }
 }
