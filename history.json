@@ -20588,6 +20588,58 @@
     "top_sides": true
    }
   ],
+  "results": {
+   "394757": {
+    "away": 3,
+    "home": 4
+   },
+   "394800": {
+    "away": 3,
+    "home": 1
+   }
+  }
+ },
+ "2026-10-07": {
+  "games": {
+   "394747": {
+    "away": "Cleveland Guardians",
+    "day": true,
+    "home": "Chicago White Sox"
+   },
+   "394754": {
+    "away": "Tampa Bay Rays",
+    "day": false,
+    "home": "New York Yankees"
+   },
+   "394759": {
+    "away": "Milwaukee Brewers",
+    "day": false,
+    "home": "San Diego Padres"
+   },
+   "394801": {
+    "away": "Los Angeles Dodgers",
+    "day": false,
+    "home": "Atlanta Braves"
+   }
+  },
+  "picks": [
+   {
+    "bet_on": "Cleveland Guardians",
+    "gid": "394747",
+    "market": "獨贏",
+    "score": 48.7,
+    "top5": false
+   },
+   {
+    "bet_on": "San Diego Padres",
+    "gid": "394759",
+    "market": "受讓 1.5",
+    "rf": null,
+    "score": 51.6,
+    "top5": true,
+    "top_sides": true
+   }
+  ],
   "results": {}
  }
 }
