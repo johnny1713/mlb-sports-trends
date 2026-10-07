@@ -20602,9 +20602,9 @@
  "2026-10-07": {
   "games": {
    "394747": {
-    "away": "Cleveland Guardians",
+    "away": "Guardians",
     "day": true,
-    "home": "Chicago White Sox"
+    "home": "White Sox"
    },
    "394754": {
     "away": "Tampa Bay Rays",
@@ -20624,7 +20624,7 @@
   },
   "picks": [
    {
-    "bet_on": "Cleveland Guardians",
+    "bet_on": "Guardians",
     "gid": "394747",
     "market": "獨贏",
     "score": 48.7,
