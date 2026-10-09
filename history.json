@@ -20676,6 +20676,11 @@
     "top5": false
    }
   ],
-  "results": {}
+  "results": {
+   "394748": {
+    "away": 9,
+    "home": 5
+   }
+  }
  }
 }
