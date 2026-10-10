@@ -20682,5 +20682,34 @@
     "home": 5
    }
   }
+ },
+ "2026-10-10": {
+  "games": {
+   "394746": {
+    "away": "Chicago White Sox",
+    "day": false,
+    "home": "Cleveland Guardians"
+   }
+  },
+  "picks": [
+   {
+    "bet_on": "Cleveland Guardians",
+    "gid": "394746",
+    "market": "讓 1.5",
+    "score": 46.4,
+    "top5": false
+   },
+   {
+    "bet_on": null,
+    "gid": "394746",
+    "line": "7.0",
+    "market": "Over",
+    "rf": true,
+    "score": 52.7,
+    "top5": true,
+    "top_totals": true
+   }
+  ],
+  "results": {}
  }
 }
