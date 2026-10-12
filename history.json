@@ -20716,5 +20716,31 @@
     "home": 2
    }
   }
+ },
+ "2026-10-12": {
+  "games": {
+   "395458": {
+    "away": "Los Angeles Dodgers",
+    "day": true,
+    "home": "Milwaukee Brewers"
+   },
+   "395498": {
+    "away": "Cleveland Guardians",
+    "day": false,
+    "home": "Tampa Bay Rays"
+   }
+  },
+  "picks": [
+   {
+    "bet_on": "Cleveland Guardians",
+    "gid": "395498",
+    "market": "受讓 1.5",
+    "rf": false,
+    "score": 57.4,
+    "top5": true,
+    "top_sides": true
+   }
+  ],
+  "results": {}
  }
 }
