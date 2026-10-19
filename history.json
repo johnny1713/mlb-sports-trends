@@ -20751,5 +20751,26 @@
     "home": 3
    }
   }
+ },
+ "2026-10-19": {
+  "games": {
+   "395497": {
+    "away": "Cleveland Guardians",
+    "day": false,
+    "home": "Tampa Bay Rays"
+   }
+  },
+  "picks": [
+   {
+    "bet_on": "Cleveland Guardians",
+    "gid": "395497",
+    "market": "受讓 1.5",
+    "rf": false,
+    "score": 57.2,
+    "top5": true,
+    "top_sides": true
+   }
+  ],
+  "results": {}
  }
 }
