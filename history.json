@@ -20771,6 +20771,11 @@
     "top_sides": true
    }
   ],
-  "results": {}
+  "results": {
+   "395497": {
+    "away": 3,
+    "home": 7
+   }
+  }
  }
 }

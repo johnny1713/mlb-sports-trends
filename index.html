@@ -1779,8 +1779,8 @@
                 <div class="header-actions">
                     <div class="date-badge">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                        賽事日期：<strong>2026-10-19</strong><span class="date-badge-et">美東</span>
-                        <span class="date-badge-tw">台灣 10/20 開打</span>
+                        賽事日期：<strong>2026-10-20</strong><span class="date-badge-et">美東</span>
+                        <span class="date-badge-tw">台灣 10/21 開打</span>
                     </div>
                 </div>
             </div>
@@ -1790,7 +1790,7 @@
                 <div class="stats-card stats-total">
                     <div class="stats-info">
                         <h3>當日對戰組合數</h3>
-                        <p id="stat-total-matches">1</p>
+                        <p id="stat-total-matches">0</p>
                     </div>
                     <div class="stats-icon">🏟️</div>
                 </div>
@@ -1804,14 +1804,14 @@
                 <div class="stats-card stats-opposing">
                     <div class="stats-info">
                         <h3>🎯 勝負/讓分盤推薦數</h3>
-                        <p id="stat-opposing-recs">1</p>
+                        <p id="stat-opposing-recs">0</p>
                     </div>
                     <div class="stats-icon">🎯</div>
                 </div>
             </div>
         </header>
 
-        
+        <div class="fetch-warning">🗓️ <strong>今天沒有比賽</strong>（covers 回的是後面幾天的 1 場賽程，已排除）。季後賽系列賽之間會有休息日，這天本來就沒有可下的場次——不是網站壞掉，也不是抓取失敗。下一個有比賽的日子會自動恢復。</div>
 
         <!-- 今日 AI 精選 Top 5 推薦專區 -->
         <section class="ai-section" id="ai-top5-section">
@@ -1850,13 +1850,13 @@
         <div class="controls-bar">
             <div class="tabs">
                 <button class="tab-btn active" onclick="switchTab('all', this)">
-                    全部對戰 <span class="tab-count" id="count-all">1</span>
+                    全部對戰 <span class="tab-count" id="count-all">0</span>
                 </button>
                 <button class="tab-btn" onclick="switchTab('double', this)">
                     🔥 大小分總分 <span class="tab-count" id="count-double">0</span>
                 </button>
                 <button class="tab-btn" onclick="switchTab('opposing', this)">
-                    🎯 勝負/讓分盤 <span class="tab-count" id="count-opposing">1</span>
+                    🎯 勝負/讓分盤 <span class="tab-count" id="count-opposing">0</span>
                 </button>
             </div>
             
@@ -1884,19 +1884,19 @@
         <section class="track-record" id="track-record">
             <button class="tr-toggle" onclick="toggleTrackRecord()" aria-expanded="false">
                 <span class="tr-title">📊 過往命中率</span>
-                <span class="tr-sub">84 天 / 373 筆推薦</span>
+                <span class="tr-sub">85 天 / 374 筆推薦</span>
                 <span class="tr-caret" id="tr-caret">▾</span>
             </button>
             <div class="tr-body" id="tr-body">
-                <div class="tr-yesterday"><span class="tr-yesterday-label">最近一次結算（10/12）</span><span class="tr-marks"><span class="tr-mark hit">✅</span></span><span class="tr-yesterday-score">1/1</span></div>
-                <div class="tr-streak"><div class="tr-streak-head"><span class="tr-yesterday-label">📊 近 7 天</span><span class="tr-streak-score">4/8（50.0%）</span><span class="tr-streak-verdict">正常波動範圍內</span></div><p class="tr-streak-detail">以其餘期間的 52.1% 計算，這種或更差的 7 天，出現機率約 <strong>59.1%</strong>。這只描述眼前這一段有多常見，<strong>不代表接下來會延續或回歸</strong>。</p></div>
+                <div class="tr-yesterday"><span class="tr-yesterday-label">最近一次結算（10/19）</span><span class="tr-marks"><span class="tr-mark miss">❌</span></span><span class="tr-yesterday-score">0/1</span></div>
+                <div class="tr-streak"><div class="tr-streak-head"><span class="tr-yesterday-label">📊 近 7 天</span><span class="tr-streak-score">4/8（50.0%）</span><span class="tr-streak-verdict">正常波動範圍內</span></div><p class="tr-streak-detail">以其餘期間的 51.9% 計算，這種或更差的 7 天，出現機率約 <strong>59.4%</strong>。這只描述眼前這一段有多常見，<strong>不代表接下來會延續或回歸</strong>。</p></div>
                 <div class="tr-table-wrap">
                     <table class="tr-table">
                         <thead><tr><th></th><th>近 30 天</th><th>全期間</th></tr></thead>
-                        <tbody><tr class="tr-total"><th>AI Top 5 合計</th><td><span class="tr-rate">60.8%</span><span class="tr-n">31/51</span></td><td><span class="tr-rate">52.0%</span><span class="tr-n">194/373</span></td></tr><tr><th>獨贏</th><td><span class="tr-rate">82.4%</span><span class="tr-n">14/17</span></td><td><span class="tr-rate">59.3%</span><span class="tr-n">83/140</span></td></tr><tr><th>受讓 1.5</th><td><span class="tr-rate">58.3%</span><span class="tr-n">7/12</span></td><td><span class="tr-rate">59.1%</span><span class="tr-n">39/66</span></td></tr><tr><th>讓 1.5</th><td><span class="tr-rate">25.0%</span><span class="tr-n">1/4</span></td><td><span class="tr-rate">30.4%</span><span class="tr-n">14/46</span></td></tr><tr><th>全場大分</th><td><span class="tr-rate">46.2%</span><span class="tr-n">6/13</span></td><td><span class="tr-rate">54.1%</span><span class="tr-n">20/37</span></td></tr><tr><th>全場小分</th><td><span class="tr-rate">60.0%</span><span class="tr-n">3/5</span></td><td><span class="tr-rate">45.2%</span><span class="tr-n">38/84</span></td></tr></tbody>
+                        <tbody><tr class="tr-total"><th>AI Top 5 合計</th><td><span class="tr-rate">59.6%</span><span class="tr-n">28/47</span></td><td><span class="tr-rate">51.9%</span><span class="tr-n">194/374</span></td></tr><tr><th>獨贏</th><td><span class="tr-rate">81.2%</span><span class="tr-n">13/16</span></td><td><span class="tr-rate">59.3%</span><span class="tr-n">83/140</span></td></tr><tr><th>受讓 1.5</th><td><span class="tr-rate">50.0%</span><span class="tr-n">6/12</span></td><td><span class="tr-rate">58.2%</span><span class="tr-n">39/67</span></td></tr><tr><th>讓 1.5</th><td><span class="tr-rate">33.3%</span><span class="tr-n">1/3</span></td><td><span class="tr-rate">30.4%</span><span class="tr-n">14/46</span></td></tr><tr><th>全場大分</th><td><span class="tr-rate">41.7%</span><span class="tr-n">5/12</span></td><td><span class="tr-rate">54.1%</span><span class="tr-n">20/37</span></td></tr><tr><th>全場小分</th><td><span class="tr-rate">75.0%</span><span class="tr-n">3/4</span></td><td><span class="tr-rate">45.2%</span><span class="tr-n">38/84</span></td></tr></tbody>
                     </table>
                 </div>
-                <div class="tr-splits"><div class="tr-split"><h4>依榜單</h4><table class="tr-table"><thead><tr><th></th><th>近 30 天</th><th>全期間</th></tr></thead><tbody><tr><th>AI Top 5</th><td><span class="tr-rate">60.8%</span><span class="tr-n">31/51</span></td><td><span class="tr-rate">52.0%</span><span class="tr-n">194/373</span></td></tr><tr><th>勝負 Top 5</th><td><span class="tr-rate">57.4%</span><span class="tr-n">27/47</span></td><td><span class="tr-rate">51.3%</span><span class="tr-n">184/359</span></td></tr><tr><th>大小分 Top 5</th><td><span class="tr-rate">48.5%</span><span class="tr-n">16/33</span></td><td><span class="tr-rate">50.0%</span><span class="tr-n">128/256</span></td></tr><tr><th>都沒上榜</th><td><span class="tr-rate">50.7%</span><span class="tr-n">34/67</span></td><td><span class="tr-rate">51.3%</span><span class="tr-n">314/612</span></td></tr></tbody></table><p class="tr-note">同一筆常同時上兩個榜，各列不可相加。上表只統計 AI Top 5。</p></div><div class="tr-split"><h4>依時段（全期間）</h4><table class="tr-table"><thead><tr><th></th><th>有上榜</th><th>都沒上榜</th></tr></thead><tbody><tr><th>非下午場</th><td><span class="tr-rate">49.6%</span><span class="tr-n">204/411</span></td><td><span class="tr-rate">52.3%</span><span class="tr-n">223/426</span></td></tr><tr><th>下午場</th><td><span class="tr-rate">53.3%</span><span class="tr-n">112/210</span></td><td><span class="tr-rate">48.9%</span><span class="tr-n">91/186</span></td></tr><tr class="tr-total"><th>合計</th><td><span class="tr-rate">50.9%</span><span class="tr-n">316/621</span></td><td><span class="tr-rate">51.3%</span><span class="tr-n">314/612</span></td></tr></tbody></table><p class="tr-note">「有上榜」= 上面三份清單任一，與該表最後一列互補。</p></div><div class="tr-split"><h4>依近期走勢（全期間，2026-08-01 起才有資料）</h4><table class="tr-table"><thead><tr><th></th><th>有上榜</th><th>都沒上榜</th></tr></thead><tbody><tr><th>走勢同向</th><td><span class="tr-rate">51.3%</span><span class="tr-n">77/150</span></td><td><span class="tr-rate">55.7%</span><span class="tr-n">39/70</span></td></tr><tr><th>走勢反向</th><td><span class="tr-rate">41.3%</span><span class="tr-n">19/46</span></td><td><span class="tr-rate">54.8%</span><span class="tr-n">17/31</span></td></tr><tr><th>走勢無方向</th><td><span class="tr-rate">57.0%</span><span class="tr-n">98/172</span></td><td><span class="tr-rate">53.2%</span><span class="tr-n">67/126</span></td></tr><tr class="tr-total"><th>合計</th><td><span class="tr-rate">52.7%</span><span class="tr-n">194/368</span></td><td><span class="tr-rate">54.2%</span><span class="tr-n">123/227</span></td></tr></tbody></table></div></div>
+                <div class="tr-splits"><div class="tr-split"><h4>依榜單</h4><table class="tr-table"><thead><tr><th></th><th>近 30 天</th><th>全期間</th></tr></thead><tbody><tr><th>AI Top 5</th><td><span class="tr-rate">59.6%</span><span class="tr-n">28/47</span></td><td><span class="tr-rate">51.9%</span><span class="tr-n">194/374</span></td></tr><tr><th>勝負 Top 5</th><td><span class="tr-rate">55.8%</span><span class="tr-n">24/43</span></td><td><span class="tr-rate">51.1%</span><span class="tr-n">184/360</span></td></tr><tr><th>大小分 Top 5</th><td><span class="tr-rate">46.4%</span><span class="tr-n">13/28</span></td><td><span class="tr-rate">50.0%</span><span class="tr-n">128/256</span></td></tr><tr><th>都沒上榜</th><td><span class="tr-rate">46.7%</span><span class="tr-n">28/60</span></td><td><span class="tr-rate">51.3%</span><span class="tr-n">314/612</span></td></tr></tbody></table><p class="tr-note">同一筆常同時上兩個榜，各列不可相加。上表只統計 AI Top 5。</p></div><div class="tr-split"><h4>依時段（全期間）</h4><table class="tr-table"><thead><tr><th></th><th>有上榜</th><th>都沒上榜</th></tr></thead><tbody><tr><th>非下午場</th><td><span class="tr-rate">49.5%</span><span class="tr-n">204/412</span></td><td><span class="tr-rate">52.3%</span><span class="tr-n">223/426</span></td></tr><tr><th>下午場</th><td><span class="tr-rate">53.3%</span><span class="tr-n">112/210</span></td><td><span class="tr-rate">48.9%</span><span class="tr-n">91/186</span></td></tr><tr class="tr-total"><th>合計</th><td><span class="tr-rate">50.8%</span><span class="tr-n">316/622</span></td><td><span class="tr-rate">51.3%</span><span class="tr-n">314/612</span></td></tr></tbody></table><p class="tr-note">「有上榜」= 上面三份清單任一，與該表最後一列互補。</p></div><div class="tr-split"><h4>依近期走勢（全期間，2026-08-01 起才有資料）</h4><table class="tr-table"><thead><tr><th></th><th>有上榜</th><th>都沒上榜</th></tr></thead><tbody><tr><th>走勢同向</th><td><span class="tr-rate">51.3%</span><span class="tr-n">77/150</span></td><td><span class="tr-rate">55.7%</span><span class="tr-n">39/70</span></td></tr><tr><th>走勢反向</th><td><span class="tr-rate">40.4%</span><span class="tr-n">19/47</span></td><td><span class="tr-rate">54.8%</span><span class="tr-n">17/31</span></td></tr><tr><th>走勢無方向</th><td><span class="tr-rate">57.0%</span><span class="tr-n">98/172</span></td><td><span class="tr-rate">53.2%</span><span class="tr-n">67/126</span></td></tr><tr class="tr-total"><th>合計</th><td><span class="tr-rate">52.6%</span><span class="tr-n">194/369</span></td><td><span class="tr-rate">54.2%</span><span class="tr-n">123/227</span></td></tr></tbody></table></div></div>
                 <p class="tr-note">
                     這是「有沒有過盤」的紀錄，<strong>不含賠率</strong>——命中率高不等於賺錢。
                     樣本數少的欄位波動很大，<strong>請一併看分母</strong>——
@@ -1916,16 +1916,16 @@
 
     <!-- 嵌入 JSON 賽事數據 -->
     <script id="matchups-data" type="application/json">
-        [{"path": "/sport/baseball/mlb/matchup/395497", "team_a": "Cleveland Guardians", "team_b": "Tampa Bay Rays", "team_a_logo": "https://img.covers.com/covers/data/svg_logos/mlb/cle.svg", "team_b_logo": "https://img.covers.com/covers/data/svg_logos/mlb/tb.svg", "processed_trends": [{"team": "Cleveland Guardians", "team_confident": true, "class": "High", "text": "The Cleveland Guardians have covered the Run Line in 25 of their last 40 away games", "text_zh": "@@Cleveland Guardians@@ 最近 40 個客場有 25 場過「讓分」", "market": "Run Line", "direction": "Cover", "units": 9.05, "roi": 16.0, "wins": 25, "sample": 40}, {"team": "Cleveland Guardians", "team_confident": true, "class": "High", "text": "The Cleveland Guardians have hit the Moneyline in 14 of their last 21 games", "text_zh": "@@Cleveland Guardians@@ 最近 21 場有 14 場過「獨贏」", "market": "Moneyline", "direction": "Win", "units": 6.5, "roi": 23.0, "wins": 14, "sample": 21}, {"team": "Cleveland Guardians", "team_confident": true, "class": "High", "text": "The Cleveland Guardians have hit the Game Total Under in 26 of their last 45 away games", "text_zh": "@@Cleveland Guardians@@ 最近 45 個客場有 26 場過「全場小分」", "market": "Game Total", "direction": "Under", "units": 5.0, "roi": 10.0, "wins": 26, "sample": 45}, {"team": "Cleveland Guardians", "team_confident": true, "class": "Low", "text": "The Cleveland Guardians have only hit the Game Total Over in 19 of their last 45 away games", "text_zh": "@@Cleveland Guardians@@ 最近 45 個客場只有 19 場過「全場大分」", "market": "Game Total", "direction": "Over", "units": -9.35, "roi": -19.0, "wins": 19, "sample": 45}, {"team": "Tampa Bay Rays", "team_confident": true, "class": "High", "text": "The Tampa Bay Rays have hit the Moneyline in 21 of their last 30 games", "text_zh": "@@Tampa Bay Rays@@ 最近 30 場有 21 場過「獨贏」", "market": "Moneyline", "direction": "Win", "units": 12.05, "roi": 31.0, "wins": 21, "sample": 30}, {"team": "Tampa Bay Rays", "team_confident": true, "class": "Low", "text": "The Tampa Bay Rays have only covered the Run Line in 8 of their last 30 games at home", "text_zh": "@@Tampa Bay Rays@@ 最近 30 個主場只有 8 場過「讓分」", "market": "Run Line", "direction": "Fail to Cover", "units": -11.05, "roi": -36.0, "wins": 8, "sample": 30}, {"team": "Tampa Bay Rays", "team_confident": true, "class": "Low", "text": "The Tampa Bay Rays have only hit the Game Total Over in 19 of their last 45 games at home", "text_zh": "@@Tampa Bay Rays@@ 最近 45 個主場只有 19 場過「全場大分」", "market": "Game Total", "direction": "Over", "units": -7.15, "roi": -14.0, "wins": 19, "sample": 45}], "double_positive": [], "opposing_trends": [{"market": "Run Line", "market_zh": "受讓 1.5", "spread_side": "受讓", "bet_on": "Cleveland Guardians", "bet_against": "Tampa Bay Rays", "recommendation": "買 Cleveland Guardians 受讓 1.5", "confidence": "黃金一正一反組合：Cleveland Guardians 在 受讓 1.5 近期過盤 25/40 (62%)，而對手 Tampa Bay Rays 僅 8/30 (27%)。", "strong_trend": "The Cleveland Guardians have covered the Run Line in 25 of their last 40 away games", "weak_trend": "The Tampa Bay Rays have only covered the Run Line in 8 of their last 30 games at home", "hit_detail": "25/40 (62%) vs 對手 8/30 (27%)", "score": 57.2}], "recent_form": [{"raw": "Rays are 6-0 in Peraltas last 6 starts vs. a team with a winning record", "zh": "@@Rays@@ 6-0｜投手 Peralta 最近 6 次先發（對戰勝率過五成的球隊）", "side": null, "win_team": "Tampa Bay Rays", "record": "6-0", "sample": 6, "losses": 0}, {"raw": "Rays are 5-0 in Peraltas last 5 starts on fieldturf", "zh": "@@Rays@@ 5-0｜投手 Peralta 最近 5 次先發（on fieldturf）", "side": null, "win_team": "Tampa Bay Rays", "record": "5-0", "sample": 5, "losses": 0}, {"raw": "Rays are 7-0 in their last 7 home games vs. a right-handed starter", "zh": "@@Rays@@ 7-0｜最近 7 場（主場、對戰右投先發）", "side": null, "win_team": "Tampa Bay Rays", "record": "7-0", "sample": 7, "losses": 0}, {"raw": "Rays are 8-0 in Peraltas last 8 starts", "zh": "@@Rays@@ 8-0｜投手 Peralta 最近 8 次先發", "side": null, "win_team": "Tampa Bay Rays", "record": "8-0", "sample": 8, "losses": 0}, {"raw": "Rays are 5-0 in Peraltas last 5 home starts", "zh": "@@Rays@@ 5-0｜投手 Peralta 最近 5 次先發（主場）", "side": null, "win_team": "Tampa Bay Rays", "record": "5-0", "sample": 5, "losses": 0}, {"raw": "Rays are 4-0 in Peraltas last 4 starts as a home favorite", "zh": "@@Rays@@ 4-0｜投手 Peralta 最近 4 次先發（主場熱門時）", "side": null, "win_team": "Tampa Bay Rays", "record": "4-0", "sample": 4, "losses": 0}, {"raw": "Rays are 4-0 in Peraltas last 4 starts as a favorite", "zh": "@@Rays@@ 4-0｜投手 Peralta 最近 4 次先發（熱門時）", "side": null, "win_team": "Tampa Bay Rays", "record": "4-0", "sample": 4, "losses": 0}, {"raw": "Rays are 4-0 in Peraltas last 4 starts as an underdog", "zh": "@@Rays@@ 4-0｜投手 Peralta 最近 4 次先發（冷門時）", "side": null, "win_team": "Tampa Bay Rays", "record": "4-0", "sample": 4, "losses": 0}], "rf_lean": {"over": 0, "under": 0, "lean": null}, "pitcher_a": {"name": "Shawn Armstrong", "record": "2-1", "era": "4.58", "whip": "1.39", "ip": "35.1"}, "pitcher_b": {"name": "Freddy Peralta", "record": "10-11", "era": "4.42", "whip": "1.33", "ip": "169.0"}, "game_time": "8:08 PM ET", "local_time": "8:08 PM", "taiwan_time": "10/20 08:08", "is_day_game": false}]
+        []
     </script>
     <script id="top-sides-data" type="application/json">
-        [{"matchup_id": "395497", "matchup_name": "Cleveland Guardians vs Tampa Bay Rays", "type": "opposing", "type_zh": "勝負/讓分盤", "market_type": "受讓 1.5", "recommendation": "買 Cleveland Guardians 受讓 1.5", "confidence": "黃金一正一反組合：Cleveland Guardians 在 受讓 1.5 近期過盤 25/40 (62%)，而對手 Tampa Bay Rays 僅 8/30 (27%)。", "score": 57.2, "hit_detail": "25/40 (62%) vs 對手 8/30 (27%)", "bet_on": "Cleveland Guardians", "bet_against": "Tampa Bay Rays", "market": "Run Line", "spread_side": "受讓", "rf_agree": false, "logo": "https://img.covers.com/covers/data/svg_logos/mlb/cle.svg", "details": "過盤紀錄: 25/40 (62%) vs 對手 8/30 (27%)", "is_day_game": false, "game_time": "8:08 PM ET"}]
+        []
     </script>
     <script id="top-totals-data" type="application/json">
         []
     </script>
     <script id="top-ai-data" type="application/json">
-        [{"matchup_id": "395497", "matchup_name": "Cleveland Guardians vs Tampa Bay Rays", "type": "opposing", "type_zh": "勝負/讓分盤", "market_type": "受讓 1.5", "recommendation": "買 Cleveland Guardians 受讓 1.5", "confidence": "黃金一正一反組合：Cleveland Guardians 在 受讓 1.5 近期過盤 25/40 (62%)，而對手 Tampa Bay Rays 僅 8/30 (27%)。", "score": 57.2, "hit_detail": "25/40 (62%) vs 對手 8/30 (27%)", "bet_on": "Cleveland Guardians", "bet_against": "Tampa Bay Rays", "market": "Run Line", "spread_side": "受讓", "rf_agree": false, "logo_a": "https://img.covers.com/covers/data/svg_logos/mlb/cle.svg", "logo_b": null, "rationale": "黃金對立組合！優勢隊 Cleveland Guardians 近期過盤 25/40 (62%) vs 對手 8/30 (27%)，保守命中率 57.2%，強弱差距顯著。", "is_day_game": false, "game_time": "8:08 PM ET"}]
+        []
     </script>
 
     <script>
