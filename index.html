@@ -1790,7 +1790,7 @@
                 <div class="stats-card stats-total">
                     <div class="stats-info">
                         <h3>當日對戰組合數</h3>
-                        <p id="stat-total-matches">0</p>
+                        <p id="stat-total-matches">1</p>
                     </div>
                     <div class="stats-icon">🏟️</div>
                 </div>
@@ -1811,7 +1811,7 @@
             </div>
         </header>
 
-        <div class="fetch-warning">⚠️ <strong>今日有 1 場沒有抓取成功</strong>（賽事列表共 1 場，實際分析 0 場）。缺少的場次不會出現在下方清單與推薦中，並非當天沒有該場比賽——通常是 covers.com 暫時無回應，下一輪自動更新會重試。</div>
+        
 
         <!-- 今日 AI 精選 Top 5 推薦專區 -->
         <section class="ai-section" id="ai-top5-section">
@@ -1850,7 +1850,7 @@
         <div class="controls-bar">
             <div class="tabs">
                 <button class="tab-btn active" onclick="switchTab('all', this)">
-                    全部對戰 <span class="tab-count" id="count-all">0</span>
+                    全部對戰 <span class="tab-count" id="count-all">1</span>
                 </button>
                 <button class="tab-btn" onclick="switchTab('double', this)">
                     🔥 大小分總分 <span class="tab-count" id="count-double">0</span>
@@ -1916,7 +1916,7 @@
 
     <!-- 嵌入 JSON 賽事數據 -->
     <script id="matchups-data" type="application/json">
-        []
+        [{"path": "/sport/baseball/mlb/matchup/395579", "team_a": "主隊", "team_b": "客隊", "team_a_logo": "https://img.covers.com/covers/data/svg_logos/mlb/mil.svg", "team_b_logo": "https://img.covers.com/covers/data/svg_logos/mlb/tb.svg", "processed_trends": [], "double_positive": [], "opposing_trends": [], "recent_form": [], "rf_lean": {"over": 0, "under": 0, "lean": null}, "pitcher_a": null, "pitcher_b": null, "game_time": "None", "local_time": null, "taiwan_time": null, "is_day_game": false}]
     </script>
     <script id="top-sides-data" type="application/json">
         []
